@@ -2,8 +2,7 @@ import os
 import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
-from openai import OpenAI
-import httpx
+from openai_client import get_async_openai
 from collections import Counter
 import re
 import statistics
@@ -11,22 +10,6 @@ import statistics
 from models import ConversationMessage
 from database import conversation_sessions_collection
 
-# Initialize OpenAI client with error handling
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Warning: OPENAI_API_KEY not found in environment variables")
-
-try:
-    client = OpenAI(api_key=api_key)
-    print("OpenAI client initialized successfully in enhanced_analysis")
-except TypeError as e:
-    if "proxies" in str(e):
-        print("Detected 'proxies' error in OpenAI initialization. Using alternative initialization...")
-        client = OpenAI(api_key=api_key, http_client=httpx.Client())
-        print("OpenAI client initialized with alternative method in enhanced_analysis")
-    else:
-        print(f"Error initializing OpenAI client in enhanced_analysis: {str(e)}")
-        raise
 
 class ConversationQualityMetrics:
     """Analyze conversation quality and engagement"""
@@ -471,7 +454,7 @@ async def _generate_ai_insights(
         {conversation_text}
         """
         
-        response = client.chat.completions.create(
+        response = await get_async_openai().chat.completions.create(
             model="gpt-4o",
             response_format={"type": "json_object"},
             messages=[
