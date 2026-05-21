@@ -34,21 +34,21 @@ export const options = {
     browse_scenario: {
       executor: 'ramping-vus',
       startVUs: 0,
-      // Steps capped at 70 browse VUs (+ 20 ai + 10 realtime = 100 total limit)
-      // Steps find the breaking point within available VU budget
+      // 75 browse VUs max (+ 15 ai_help + 10 realtime = 100 total, at project limit)
+      // Steps find the breaking point within the full available budget
       stages: [
         { duration: '30s', target: 10 },    // step 1: 10 VUs
         { duration: '4m30s', target: 10 },
-        { duration: '30s', target: 20 },    // step 2: 20 VUs
-        { duration: '4m30s', target: 20 },
-        { duration: '30s', target: 35 },    // step 3: 35 VUs
-        { duration: '4m30s', target: 35 },
-        { duration: '30s', target: 50 },    // step 4: 50 VUs
-        { duration: '4m30s', target: 50 },
-        { duration: '30s', target: 60 },    // step 5: 60 VUs
-        { duration: '4m30s', target: 60 },
-        { duration: '30s', target: 70 },    // step 6: 70 VUs (max allowed)
-        { duration: '4m30s', target: 70 },
+        { duration: '30s', target: 25 },    // step 2: 25 VUs
+        { duration: '4m30s', target: 25 },
+        { duration: '30s', target: 40 },    // step 3: 40 VUs
+        { duration: '4m30s', target: 40 },
+        { duration: '30s', target: 55 },    // step 4: 55 VUs
+        { duration: '4m30s', target: 55 },
+        { duration: '30s', target: 65 },    // step 5: 65 VUs
+        { duration: '4m30s', target: 65 },
+        { duration: '30s', target: 75 },    // step 6: 75 VUs (full budget)
+        { duration: '4m30s', target: 75 },
         { duration: '1m', target: 0 },
       ],
       gracefulRampDown: '30s',
