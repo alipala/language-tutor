@@ -57,11 +57,11 @@ export const options = {
     // AI rates are FIXED — same as profile 02, not scaled
     ai_help_scenario: {
       executor: 'constant-arrival-rate',
-      rate: 5,
+      rate: 3,          // reduced from 5 to prevent VU starvation on slow AI calls
       timeUnit: '1s',
       duration: '33m',
-      preAllocatedVUs: 20,
-      maxVUs: 20,
+      preAllocatedVUs: 15,
+      maxVUs: 15,
       startTime: '30s',
       exec: 'aiHelpFn',
     },
