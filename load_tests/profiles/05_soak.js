@@ -38,9 +38,10 @@ export const options = {
     browse_scenario: {
       executor: 'ramping-vus',
       startVUs: 0,
+      // 70 VUs max (+ 15 ai + 5 realtime = 90 total, under 100 limit)
       stages: [
-        { duration: '2m', target: 150 },   // ramp up
-        { duration: '60m', target: 150 },  // 1-hour soak
+        { duration: '2m', target: 70 },    // ramp up
+        { duration: '60m', target: 70 },   // 1-hour soak
         { duration: '2m', target: 0 },     // ramp down
       ],
       gracefulRampDown: '30s',

@@ -27,13 +27,15 @@ export const options = {
     },
   },
   scenarios: {
-    // Main browse traffic: ramps to 200 VUs and holds
+    // Main browse traffic: ramps to 70 VUs and holds
+    // (capped at 70 to stay within Grafana Cloud 100-VU project limit:
+    //  70 browse + 20 ai_help + 10 realtime = 100 total)
     browse_scenario: {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '2m', target: 200 },   // ramp up
-        { duration: '15m', target: 200 },  // steady state
+        { duration: '2m', target: 70 },    // ramp up
+        { duration: '15m', target: 70 },   // steady state
         { duration: '2m', target: 0 },     // ramp down
       ],
       gracefulRampDown: '30s',
@@ -46,8 +48,8 @@ export const options = {
       timeUnit: '1s',
       duration: '19m',
       preAllocatedVUs: 20,
-      maxVUs: 40,
-      startTime: '2m',   // start when browse VUs are at steady state
+      maxVUs: 20,
+      startTime: '2m',
       exec: 'aiHelpFn',
     },
     // Realtime token: fixed arrival rate (2 req/s)
@@ -57,7 +59,7 @@ export const options = {
       timeUnit: '1s',
       duration: '19m',
       preAllocatedVUs: 10,
-      maxVUs: 20,
+      maxVUs: 10,
       startTime: '2m',
       exec: 'realtimeFn',
     },

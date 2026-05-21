@@ -34,19 +34,21 @@ export const options = {
     browse_scenario: {
       executor: 'ramping-vus',
       startVUs: 0,
+      // Steps capped at 70 browse VUs (+ 20 ai + 10 realtime = 100 total limit)
+      // Steps find the breaking point within available VU budget
       stages: [
-        { duration: '30s', target: 50 },    // step 1: 50 VUs
+        { duration: '30s', target: 10 },    // step 1: 10 VUs
+        { duration: '4m30s', target: 10 },
+        { duration: '30s', target: 20 },    // step 2: 20 VUs
+        { duration: '4m30s', target: 20 },
+        { duration: '30s', target: 35 },    // step 3: 35 VUs
+        { duration: '4m30s', target: 35 },
+        { duration: '30s', target: 50 },    // step 4: 50 VUs
         { duration: '4m30s', target: 50 },
-        { duration: '30s', target: 100 },   // step 2: 100 VUs
-        { duration: '4m30s', target: 100 },
-        { duration: '30s', target: 250 },   // step 3: 250 VUs
-        { duration: '4m30s', target: 250 },
-        { duration: '30s', target: 500 },   // step 4: 500 VUs
-        { duration: '4m30s', target: 500 },
-        { duration: '30s', target: 1000 },  // step 5: 1000 VUs
-        { duration: '4m30s', target: 1000 },
-        { duration: '30s', target: 1500 },  // step 6: 1500 VUs
-        { duration: '4m30s', target: 1500 },
+        { duration: '30s', target: 60 },    // step 5: 60 VUs
+        { duration: '4m30s', target: 60 },
+        { duration: '30s', target: 70 },    // step 6: 70 VUs (max allowed)
+        { duration: '4m30s', target: 70 },
         { duration: '1m', target: 0 },
       ],
       gracefulRampDown: '30s',
@@ -59,7 +61,7 @@ export const options = {
       timeUnit: '1s',
       duration: '33m',
       preAllocatedVUs: 20,
-      maxVUs: 40,
+      maxVUs: 20,
       startTime: '30s',
       exec: 'aiHelpFn',
     },
@@ -69,7 +71,7 @@ export const options = {
       timeUnit: '1s',
       duration: '33m',
       preAllocatedVUs: 10,
-      maxVUs: 20,
+      maxVUs: 10,
       startTime: '30s',
       exec: 'realtimeFn',
     },

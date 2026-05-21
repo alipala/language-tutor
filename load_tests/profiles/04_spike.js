@@ -38,13 +38,14 @@ export const options = {
     browse_scenario: {
       executor: 'ramping-vus',
       startVUs: 0,
+      // Spike within 100 VU total limit (70 browse + 20 ai + 10 realtime)
       stages: [
-        { duration: '30s', target: 100 },   // baseline ramp
-        { duration: '3m', target: 100 },    // pre-spike steady state
-        { duration: '30s', target: 800 },   // instant spike
-        { duration: '90s', target: 800 },   // spike hold
-        { duration: '30s', target: 100 },   // drop back
-        { duration: '5m', target: 100 },    // recovery observation window
+        { duration: '30s', target: 30 },    // baseline ramp
+        { duration: '3m', target: 30 },     // pre-spike steady state
+        { duration: '30s', target: 70 },    // spike to max allowed
+        { duration: '90s', target: 70 },    // spike hold
+        { duration: '30s', target: 30 },    // drop back to baseline
+        { duration: '5m', target: 30 },     // recovery observation window
         { duration: '30s', target: 0 },
       ],
       gracefulRampDown: '30s',
@@ -57,7 +58,7 @@ export const options = {
       timeUnit: '1s',
       duration: '10m',
       preAllocatedVUs: 20,
-      maxVUs: 40,
+      maxVUs: 20,
       startTime: '30s',
       exec: 'aiHelpFn',
     },
@@ -67,7 +68,7 @@ export const options = {
       timeUnit: '1s',
       duration: '10m',
       preAllocatedVUs: 10,
-      maxVUs: 20,
+      maxVUs: 10,
       startTime: '30s',
       exec: 'realtimeFn',
     },
