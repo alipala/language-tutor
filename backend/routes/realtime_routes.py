@@ -1824,25 +1824,34 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             + audio_safe_instructions
         )
 
-        # GA API shape: session config nested under "session" key, model at top level.
-        # Endpoint changed from /v1/realtime/sessions (beta) to /v1/realtime/client_secrets (GA).
+        # GA API shape: session config nested under "session" key.
+        # Endpoint: /v1/realtime/client_secrets (GA, replaces beta /v1/realtime/sessions)
+        # GA requires: type="realtime", audio.input/output nested structure, output_modalities
+        transcription_model = "gpt-4o-transcribe" if os.getenv("USE_GPT4O_TRANSCRIBE", "true").lower() == "true" else "whisper-1"
         session_config = {
+            "type": "realtime",
             "model": model,
-            "voice": selected_voice,
             "instructions": audio_safe_instructions,
-            "modalities": ["audio", "text"],
-            "input_audio_transcription": {
-                "model": "gpt-4o-transcribe" if os.getenv("USE_GPT4O_TRANSCRIBE", "true").lower() == "true" else "whisper-1",
-                "language": get_language_iso_code(request.language) if request.language else "en"
-            },
-            "turn_detection": {
-                "type": "semantic_vad",
-                "eagerness": "low",
-                "create_response": True,
-                "interrupt_response": True
-            },
-            "input_audio_noise_reduction": {
-                "type": "near_field"
+            "output_modalities": ["audio"],
+            "audio": {
+                "input": {
+                    "transcription": {
+                        "model": transcription_model,
+                        "language": get_language_iso_code(request.language) if request.language else "en"
+                    },
+                    "turn_detection": {
+                        "type": "semantic_vad",
+                        "eagerness": "low",
+                        "create_response": True,
+                        "interrupt_response": True
+                    },
+                    "noise_reduction": {
+                        "type": "near_field"
+                    }
+                },
+                "output": {
+                    "voice": selected_voice
+                }
             },
             "truncation": build_truncation_config()
         }
@@ -1898,6 +1907,24 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             raise HTTPException(status_code=response.status_code, detail=error_text)
 
         result = response.json()
+
+        # GA API returns {"value": "ek_...", "expires_at": ..., "session": {...}}
+        # Mobile app expects beta shape: {"id": "...", "model": "...", "client_secret": {"value": "..."}, ...}
+        # Transform GA response to beta-compatible shape so the mobile app doesn't break.
+        if "value" in result and "client_secret" not in result:
+            ga_session = result.get("session", {})
+            result = {
+                "id": ga_session.get("id", result.get("id", "unknown")),
+                "model": ga_session.get("model", model),
+                "client_secret": {
+                    "value": result["value"],
+                    "expires_at": result.get("expires_at")
+                },
+                "object": result.get("object", "realtime.client_secret"),
+                "expires_at": result.get("expires_at"),
+                "session": ga_session,
+            }
+            print(f"[GA_COMPAT] Transformed GA response to beta shape, id={result['id']}")
 
         # Log session creation
         session_id = result.get('id', 'unknown')
