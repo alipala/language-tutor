@@ -1824,7 +1824,9 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             + audio_safe_instructions
         )
 
-        payload = {
+        # GA API shape: session config nested under "session" key, model at top level.
+        # Endpoint changed from /v1/realtime/sessions (beta) to /v1/realtime/client_secrets (GA).
+        session_config = {
             "model": model,
             "voice": selected_voice,
             "instructions": audio_safe_instructions,
@@ -1847,8 +1849,10 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
 
         # Add tools if available
         if tools:
-            payload["tools"] = tools
+            session_config["tools"] = tools
             print(f"[TOOLS] Added {len(tools)} function tools for {request.level} level")
+
+        payload = {"session": session_config}
 
         print(f"[TRUNCATION] Configured with retention_ratio=0.8, post_instructions limit=8000 tokens")
 
@@ -1879,7 +1883,7 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
 
         async with httpx.AsyncClient() as http_client:
             response = await http_client.post(
-                "https://api.openai.com/v1/realtime/sessions",
+                "https://api.openai.com/v1/realtime/client_secrets",
                 headers={
                     "Authorization": f"Bearer {openai_api_key}",
                     "Content-Type": "application/json",
@@ -2132,7 +2136,7 @@ async def get_model_config():
         return {
             "model": model,
             "configured_via": "environment_variable" if os.getenv("OPENAI_REALTIME_MODEL") else "default",
-            "available_models": ["gpt-realtime-mini", "gpt-realtime"],
+            "available_models": ["gpt-realtime-mini", "gpt-4o-mini-realtime-preview"],
             "default_model": "gpt-realtime-mini"
         }
     except Exception as e:
