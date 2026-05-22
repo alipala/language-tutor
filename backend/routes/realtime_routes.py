@@ -16,6 +16,36 @@ from openai_client import get_async_openai
 from auth import get_optional_current_user_from_request
 from models import UserResponse
 
+# Debug flag — set DEBUG_REALTIME=true in Railway env to re-enable verbose prints.
+# Off by default to keep Railway log rate below the 500/s cap under load.
+DEBUG_REALTIME = os.getenv("DEBUG_REALTIME", "false").lower() == "true"
+
+# Shared httpx client for OpenAI Realtime API calls.
+# One pool per worker process; reuses TLS connections across requests, eliminating
+# the 100-150ms per-request TLS handshake cost that existed when AsyncClient()
+# was instantiated fresh on every call.
+_openai_http_client: httpx.AsyncClient | None = None
+
+
+def get_openai_http_client() -> httpx.AsyncClient:
+    """Return the shared httpx client, creating it on first call."""
+    global _openai_http_client
+    if _openai_http_client is None:
+        _openai_http_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(connect=3.0, read=10.0, write=5.0, pool=2.0),
+            limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
+        )
+    return _openai_http_client
+
+
+async def close_openai_http_client() -> None:
+    """Close the shared client on application shutdown."""
+    global _openai_http_client
+    if _openai_http_client is not None:
+        await _openai_http_client.aclose()
+        _openai_http_client = None
+
+
 # Initialize router
 router = APIRouter()
 
@@ -140,7 +170,8 @@ def get_language_iso_code(language: str) -> str:
     language_lower = language.lower().strip()
     iso_code = language_map.get(language_lower, "en")
 
-    print(f"Language mapping: '{language}' -> '{iso_code}'")
+    if DEBUG_REALTIME:
+        print(f"Language mapping: '{language}' -> '{iso_code}'")
     return iso_code
 
 def get_next_cefr_level(current_level: str) -> str:
@@ -198,7 +229,8 @@ async def build_universal_instructions(request: TutorSessionRequest) -> str:
 
     # ROUTE A1/A2 BEGINNERS TO SPECIALIZED PROMPTS (skipped in roleplay mode)
     if level in ['A1', 'A2'] and _session_mode != 'roleplay':
-        print(f"[BEGINNER_MODE] Routing {level} to specialized beginner instructions")
+        if DEBUG_REALTIME:
+            print(f"[BEGINNER_MODE] Routing {level} to specialized beginner instructions")
         from prompt_optimization_helpers import build_beginner_instructions
 
         # Extract assessment and learning plan data if available
@@ -207,20 +239,26 @@ async def build_universal_instructions(request: TutorSessionRequest) -> str:
 
         # Log if learning plan data is present
         if learning_plan_data:
-            print(f"[BEGINNER_MODE] ✅ Learning plan data available")
+            if DEBUG_REALTIME:
+                print(f"[BEGINNER_MODE] ✅ Learning plan data available")
             completed_sessions = learning_plan_data.get('completed_sessions', 0)
             total_sessions = learning_plan_data.get('total_sessions', 0)
-            print(f"[BEGINNER_MODE] 📚 Progress: {completed_sessions}/{total_sessions} sessions")
+            if DEBUG_REALTIME:
+                print(f"[BEGINNER_MODE] 📚 Progress: {completed_sessions}/{total_sessions} sessions")
         else:
-            print(f"[BEGINNER_MODE] ⚠️ NO learning plan data")
+            if DEBUG_REALTIME:
+                print(f"[BEGINNER_MODE] ⚠️ NO learning plan data")
 
         # Build beginner-optimized instructions
         research_context = request.research_data if hasattr(request, 'research_data') and request.research_data else None
         if research_context:
-            print(f"[BEGINNER_MODE] ✅ Research context available: {len(research_context)} characters")
-            print(f"[BEGINNER_MODE] Research preview: {research_context[:200]}...")
+            if DEBUG_REALTIME:
+                print(f"[BEGINNER_MODE] ✅ Research context available: {len(research_context)} characters")
+            if DEBUG_REALTIME:
+                print(f"[BEGINNER_MODE] Research preview: {research_context[:200]}...")
         else:
-            print(f"[BEGINNER_MODE] ⚠️ NO research context available")
+            if DEBUG_REALTIME:
+                print(f"[BEGINNER_MODE] ⚠️ NO research context available")
 
         beginner_instructions = build_beginner_instructions(
             language=language,
@@ -235,7 +273,8 @@ async def build_universal_instructions(request: TutorSessionRequest) -> str:
             selected_duration=getattr(request, 'selected_duration', 5) or 5,
         )
 
-        print(f"[BEGINNER_MODE] Created beginner instructions: {len(beginner_instructions)} characters")
+        if DEBUG_REALTIME:
+            print(f"[BEGINNER_MODE] Created beginner instructions: {len(beginner_instructions)} characters")
         return beginner_instructions
 
     # ============================================================================
@@ -308,7 +347,8 @@ CRITICAL INSTRUCTIONS FOR RECONNECTION:
     learning_plan_context = ""
 
     if request.assessment_data:
-        print(f"[ASSESSMENT] Integrating assessment data into instructions")
+        if DEBUG_REALTIME:
+            print(f"[ASSESSMENT] Integrating assessment data into instructions")
 
         overall_score = request.assessment_data.get('overall_score', 0)
         recommended_level = request.assessment_data.get('recommended_level', level)
@@ -340,11 +380,13 @@ PERSONALIZED APPROACH:
 - Adapt difficulty to their {recommended_level} level capabilities
 - Provide targeted feedback based on their assessment results"""
 
-        print(f"Assessment context integrated: {len(assessment_context)} characters")
+        if DEBUG_REALTIME:
+            print(f"Assessment context integrated: {len(assessment_context)} characters")
 
     # Extract learning plan data if available
     if request.assessment_data and 'learning_plan_data' in request.assessment_data:
-        print(f"[LEARNING_PLAN] Integrating learning plan data into instructions")
+        if DEBUG_REALTIME:
+            print(f"[LEARNING_PLAN] Integrating learning plan data into instructions")
 
         learning_plan_data = request.assessment_data.get('learning_plan_data', {})
         plan_content = learning_plan_data.get('plan_content', {})
@@ -356,7 +398,8 @@ PERSONALIZED APPROACH:
             # Detect if this is a FINAL ASSESSMENT
             is_final_assessment = completed_sessions >= total_sessions
             if is_final_assessment:
-                print(f"[FINAL_ASSESSMENT] Detected final assessment mode - {completed_sessions}/{total_sessions} sessions completed")
+                if DEBUG_REALTIME:
+                    print(f"[FINAL_ASSESSMENT] Detected final assessment mode - {completed_sessions}/{total_sessions} sessions completed")
 
                 # Get current and next level for assessment
                 current_level = level
@@ -448,8 +491,10 @@ Plan Details:
 - Title: {plan_content.get('title', 'Learning Plan')}
 - Overview: {plan_content.get('overview', 'Comprehensive language learning')}
 """
-                print(f"[FINAL_ASSESSMENT] Special assessment instructions created: {len(learning_plan_context)} characters")
-                print(f"[FINAL_ASSESSMENT] Current level: {current_level}, Next level: {next_level}")
+                if DEBUG_REALTIME:
+                    print(f"[FINAL_ASSESSMENT] Special assessment instructions created: {len(learning_plan_context)} characters")
+                if DEBUG_REALTIME:
+                    print(f"[FINAL_ASSESSMENT] Current level: {current_level}, Next level: {next_level}")
 
             else:
                 # Regular learning plan session (not final assessment)
@@ -580,23 +625,32 @@ CONVERSATION GUIDANCE:
 - Encourage practice of specific skills mentioned in the weekly activities
 - Build upon previous session insights and maintain learning continuity"""
 
-                    print(f"Learning plan context integrated: {len(learning_plan_context)} characters")
-                    print(f"Current week {current_week_number} focus: {week_focus}")
-                    print(f"Current week activities: {week_activities}")
-                    print(f"Session {current_session_in_week} of week {current_week_number}")
+                    if DEBUG_REALTIME:
+                        print(f"Learning plan context integrated: {len(learning_plan_context)} characters")
+                    if DEBUG_REALTIME:
+                        print(f"Current week {current_week_number} focus: {week_focus}")
+                    if DEBUG_REALTIME:
+                        print(f"Current week activities: {week_activities}")
+                    if DEBUG_REALTIME:
+                        print(f"Session {current_session_in_week} of week {current_week_number}")
                     if key_vocabulary:
-                        print(f"Key vocabulary injected: {key_vocabulary[:5]}")
+                        if DEBUG_REALTIME:
+                            print(f"Key vocabulary injected: {key_vocabulary[:5]}")
                     if key_phrases:
-                        print(f"Key phrases injected: {key_phrases[:3]}")
+                        if DEBUG_REALTIME:
+                            print(f"Key phrases injected: {key_phrases[:3]}")
 
     # Handle news conversations FIRST (highest priority)
     if request.news_context:
         import json
         try:
             news_data = json.loads(request.news_context)
-            print(f"[NEWS] Building instructions for news conversation")
-            print(f"[NEWS] Raw news_data keys: {news_data.keys() if isinstance(news_data, dict) else 'not a dict'}")
-            print(f"[NEWS] News data preview: {str(news_data)[:500]}")
+            if DEBUG_REALTIME:
+                print(f"[NEWS] Building instructions for news conversation")
+            if DEBUG_REALTIME:
+                print(f"[NEWS] Raw news_data keys: {news_data.keys() if isinstance(news_data, dict) else 'not a dict'}")
+            if DEBUG_REALTIME:
+                print(f"[NEWS] News data preview: {str(news_data)[:500]}")
 
             # Extract news article details - FIXED: Use correct key names
             article_title = news_data.get('news_title', news_data.get('title', 'a news article'))
@@ -752,20 +806,27 @@ The learner expects to practice these specific vocabulary words and discuss thes
 
 Remember: You're having an engaging conversation about news, using it as a vehicle for language practice and cultural learning!"""
 
-            print(f"[NEWS] News instructions created: {len(instructions)} characters")
-            print(f"[NEWS] Article: {article_title}")
-            print(f"[NEWS] Vocabulary items: {len(vocabulary_items)}")
-            print(f"[NEWS] Discussion questions: {len(discussion_questions)}")
+            if DEBUG_REALTIME:
+                print(f"[NEWS] News instructions created: {len(instructions)} characters")
+            if DEBUG_REALTIME:
+                print(f"[NEWS] Article: {article_title}")
+            if DEBUG_REALTIME:
+                print(f"[NEWS] Vocabulary items: {len(vocabulary_items)}")
+            if DEBUG_REALTIME:
+                print(f"[NEWS] Discussion questions: {len(discussion_questions)}")
             return instructions
 
         except Exception as e:
-            print(f"[NEWS] Error parsing news_context, falling back to default")
-            print(f"[NEWS] Error details: {str(e)}")
+            if DEBUG_REALTIME:
+                print(f"[NEWS] Error parsing news_context, falling back to default")
+            if DEBUG_REALTIME:
+                print(f"[NEWS] Error details: {str(e)}")
             # Fall through to default instructions
 
     # Handle custom topic
     if request.topic == "custom" and request.user_prompt:
-        print(f"[CUSTOM_TOPIC] Creating universal custom topic instructions")
+        if DEBUG_REALTIME:
+            print(f"[CUSTOM_TOPIC] Creating universal custom topic instructions")
 
         # Duration-aware pacing for custom topics
         from tutor_config import get_session_pacing as _gsp
@@ -781,7 +842,8 @@ Remember: You're having an engaging conversation about news, using it as a vehic
         research_content = ""
         if request.research_data:
             research_content = request.research_data
-            print(f"Using provided research data: {len(research_content)} chars")
+            if DEBUG_REALTIME:
+                print(f"Using provided research data: {len(research_content)} chars")
         else:
             # Fallback research — use gpt-4.1-mini with language+level context
             try:
@@ -804,9 +866,11 @@ Remember: You're having an engaging conversation about news, using it as a vehic
                 )
                 if response and response.choices:
                     research_content = response.choices[0].message.content
-                    print(f"Fallback research completed ({len(research_content)} chars)")
+                    if DEBUG_REALTIME:
+                        print(f"Fallback research completed ({len(research_content)} chars)")
             except Exception as e:
-                print(f"Research failed: {str(e)}")
+                if DEBUG_REALTIME:
+                    print(f"Research failed: {str(e)}")
 
         # Add all optimization sections
         personality_section = build_personality_tone_section(language, level)
@@ -918,7 +982,8 @@ CRITICAL: Keep all conversation about '{request.user_prompt}' using the specific
 - Apply personalized feedback based on assessment results
 - If learning plan context is available, connect the topic to the student's learning objectives"""
 
-        print(f"Custom topic instructions: {len(instructions)} characters")
+        if DEBUG_REALTIME:
+            print(f"Custom topic instructions: {len(instructions)} characters")
         return instructions
 
     # Handle regular topics — B1-C2 path (A1/A2 handled above via build_beginner_instructions)
@@ -1115,7 +1180,8 @@ Apply personalised feedback based on assessment results if available."""
         # ── ROLEPLAY MODE — override with immersive scenario instructions ────
         session_mode = _session_mode  # already resolved at top of function
         if session_mode == 'roleplay':
-            print(f"[ROLEPLAY] ✅ Roleplay mode detected for topic={request.topic} level={level}")
+            if DEBUG_REALTIME:
+                print(f"[ROLEPLAY] ✅ Roleplay mode detected for topic={request.topic} level={level}")
             from tutor_config import get_roleplay_scenario
             scenario = get_roleplay_scenario(request.topic)
             if scenario:
@@ -1176,15 +1242,19 @@ The learner has just arrived: {scenario['entry_action']}.
 
 Never say you are a language tutor. Never explain grammar. Just be {scenario['character'].split(',')[0]}."""
 
-                print(f"[ROLEPLAY] Scenario: {scenario['character']} | Topic: {request.topic} | Level: {level}")
+                if DEBUG_REALTIME:
+                    print(f"[ROLEPLAY] Scenario: {scenario['character']} | Topic: {request.topic} | Level: {level}")
                 return instructions
 
         # ── CONVERSATION MODE (default) ──────────────────────────────────────
-        print(f"Regular topic instructions ({_selected_duration}min, {level}): {len(instructions)} characters")
+        if DEBUG_REALTIME:
+            print(f"Regular topic instructions ({_selected_duration}min, {level}): {len(instructions)} characters")
         if _vocab_words:
-            print(f"  Topic vocab injected: {_vocab_words[:5]}")
+            if DEBUG_REALTIME:
+                print(f"  Topic vocab injected: {_vocab_words[:5]}")
         if _arcs:
-            print(f"  Subtopic arcs: {[a['name'] for a in _arcs]}")
+            if DEBUG_REALTIME:
+                print(f"  Subtopic arcs: {[a['name'] for a in _arcs]}")
         return instructions
 
     # Default conversation instructions (no specific topic)
@@ -1300,18 +1370,22 @@ async def process_usage_log_background(
         # Always use environment variable model for cost calculation
         model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-mini")
 
-        print(f"[USAGE_LOG] Using model from environment: {model}")
+        if DEBUG_REALTIME:
+            print(f"[USAGE_LOG] Using model from environment: {model}")
 
         if hasattr(usage_data, 'model') and usage_data.model and usage_data.model != model:
-            print(f"[USAGE_LOG] Note: usage_data.model was '{usage_data.model}' but using environment model '{model}' for cost calculation")
+            if DEBUG_REALTIME:
+                print(f"[USAGE_LOG] Note: usage_data.model was '{usage_data.model}' but using environment model '{model}' for cost calculation")
 
         if model not in PRICING:
-            print(f"[USAGE_LOG] Unknown model '{model}', defaulting to gpt-realtime-mini pricing")
+            if DEBUG_REALTIME:
+                print(f"[USAGE_LOG] Unknown model '{model}', defaulting to gpt-realtime-mini pricing")
             model = "gpt-realtime-mini"
 
         pricing = PRICING[model]
 
-        print(f"[USAGE_LOG] Using pricing for model: {model}")
+        if DEBUG_REALTIME:
+            print(f"[USAGE_LOG] Using pricing for model: {model}")
 
         # Calculate costs
         audio_input_cost = usage_data.audio_input_tokens * pricing["audio_input"]
@@ -1341,36 +1415,66 @@ async def process_usage_log_background(
         duration_str = f"{duration_min} min {duration_sec} sec" if duration_min > 0 else f"{duration_sec} sec"
 
         # Log to console with detailed breakdown
-        print("="*80)
-        print(f"[USAGE_LOG] SESSION COMPLETED")
-        print(f"Session ID: {usage_data.session_id}")
-        print(f"User ID: {current_user.id if current_user else usage_data.user_id or 'guest'}")
-        print(f"Language: {usage_data.language}")
-        print(f"Level: {usage_data.level}")
-        print(f"Duration: {usage_data.session_duration_seconds}s ({duration_str})")
-        print(f"Model: {usage_data.model}")
-        print("-"*80)
-        print(f"TOKEN USAGE:")
-        print(f"  Audio Input: {usage_data.audio_input_tokens:,} tokens")
-        print(f"  Audio Input (cached): {usage_data.cached_input_audio_tokens:,} tokens")
-        print(f"  Audio Output: {usage_data.audio_output_tokens:,} tokens")
-        print(f"  Text Input: {usage_data.text_input_tokens:,} tokens")
-        print(f"  Text Input (cached): {usage_data.cached_input_text_tokens:,} tokens")
-        print(f"  Text Output: {usage_data.text_output_tokens:,} tokens")
-        print(f"  TOTAL: {usage_data.total_tokens:,} tokens")
-        print("-"*80)
-        print(f"COST BREAKDOWN:")
-        print(f"  Audio Input: ${audio_input_cost:.4f}")
-        print(f"  Audio Input (cached): ${cached_audio_input_cost:.4f}")
-        print(f"  Audio Output: ${audio_output_cost:.4f}")
-        print(f"  Text Input: ${text_input_cost:.4f}")
-        print(f"  Text Input (cached): ${cached_text_input_cost:.4f}")
-        print(f"  Text Output: ${text_output_cost:.4f}")
-        print(f"  TOTAL COST: ${total_cost:.4f}")
-        print("-"*80)
-        print(f"Cost per minute: ${cost_per_minute:.4f}")
-        print(f"Tokens per minute: {tokens_per_minute:,.0f}")
-        print("="*80)
+        if DEBUG_REALTIME:
+            print("="*80)
+        if DEBUG_REALTIME:
+            print(f"[USAGE_LOG] SESSION COMPLETED")
+        if DEBUG_REALTIME:
+            print(f"Session ID: {usage_data.session_id}")
+        if DEBUG_REALTIME:
+            print(f"User ID: {current_user.id if current_user else usage_data.user_id or 'guest'}")
+        if DEBUG_REALTIME:
+            print(f"Language: {usage_data.language}")
+        if DEBUG_REALTIME:
+            print(f"Level: {usage_data.level}")
+        if DEBUG_REALTIME:
+            print(f"Duration: {usage_data.session_duration_seconds}s ({duration_str})")
+        if DEBUG_REALTIME:
+            print(f"Model: {usage_data.model}")
+        if DEBUG_REALTIME:
+            print("-"*80)
+        if DEBUG_REALTIME:
+            print(f"TOKEN USAGE:")
+        if DEBUG_REALTIME:
+            print(f"  Audio Input: {usage_data.audio_input_tokens:,} tokens")
+        if DEBUG_REALTIME:
+            print(f"  Audio Input (cached): {usage_data.cached_input_audio_tokens:,} tokens")
+        if DEBUG_REALTIME:
+            print(f"  Audio Output: {usage_data.audio_output_tokens:,} tokens")
+        if DEBUG_REALTIME:
+            print(f"  Text Input: {usage_data.text_input_tokens:,} tokens")
+        if DEBUG_REALTIME:
+            print(f"  Text Input (cached): {usage_data.cached_input_text_tokens:,} tokens")
+        if DEBUG_REALTIME:
+            print(f"  Text Output: {usage_data.text_output_tokens:,} tokens")
+        if DEBUG_REALTIME:
+            print(f"  TOTAL: {usage_data.total_tokens:,} tokens")
+        if DEBUG_REALTIME:
+            print("-"*80)
+        if DEBUG_REALTIME:
+            print(f"COST BREAKDOWN:")
+        if DEBUG_REALTIME:
+            print(f"  Audio Input: ${audio_input_cost:.4f}")
+        if DEBUG_REALTIME:
+            print(f"  Audio Input (cached): ${cached_audio_input_cost:.4f}")
+        if DEBUG_REALTIME:
+            print(f"  Audio Output: ${audio_output_cost:.4f}")
+        if DEBUG_REALTIME:
+            print(f"  Text Input: ${text_input_cost:.4f}")
+        if DEBUG_REALTIME:
+            print(f"  Text Input (cached): ${cached_text_input_cost:.4f}")
+        if DEBUG_REALTIME:
+            print(f"  Text Output: ${text_output_cost:.4f}")
+        if DEBUG_REALTIME:
+            print(f"  TOTAL COST: ${total_cost:.4f}")
+        if DEBUG_REALTIME:
+            print("-"*80)
+        if DEBUG_REALTIME:
+            print(f"Cost per minute: ${cost_per_minute:.4f}")
+        if DEBUG_REALTIME:
+            print(f"Tokens per minute: {tokens_per_minute:,.0f}")
+        if DEBUG_REALTIME:
+            print("="*80)
 
         # Fetch organization costs from OpenAI API
         organization_cost = None
@@ -1383,12 +1487,16 @@ async def process_usage_log_background(
             start_time = usage_data.start_time
 
             if start_time > current_time:
-                print(f"[ORG_COSTS] Start timestamp is in the future! start={start_time}, current={current_time}")
-                print(f"[ORG_COSTS] Skipping organization cost fetch - invalid timestamp")
+                if DEBUG_REALTIME:
+                    print(f"[ORG_COSTS] Start timestamp is in the future! start={start_time}, current={current_time}")
+                if DEBUG_REALTIME:
+                    print(f"[ORG_COSTS] Skipping organization cost fetch - invalid timestamp")
             else:
                 try:
-                    print(f"[ORG_COSTS] Fetching organization costs for session {usage_data.session_id}")
-                    print(f"[ORG_COSTS] Start time: {start_time} ({datetime.fromtimestamp(start_time, tz=timezone.utc).isoformat()})")
+                    if DEBUG_REALTIME:
+                        print(f"[ORG_COSTS] Fetching organization costs for session {usage_data.session_id}")
+                    if DEBUG_REALTIME:
+                        print(f"[ORG_COSTS] Start time: {start_time} ({datetime.fromtimestamp(start_time, tz=timezone.utc).isoformat()})")
 
                     org_costs = await fetch_organization_costs(
                         start_time=start_time,
@@ -1405,24 +1513,32 @@ async def process_usage_log_background(
                             for result in results:
                                 if "amount" in result:
                                     organization_cost = result["amount"].get("value", 0)
-                                    print(f"[ORG_COSTS] Organization cost for bucket {aggregation_timestamp}: ${organization_cost:.4f}")
+                                    if DEBUG_REALTIME:
+                                        print(f"[ORG_COSTS] Organization cost for bucket {aggregation_timestamp}: ${organization_cost:.4f}")
                                     break
 
                             if organization_cost is not None:
                                 break
 
                         if organization_cost is not None:
-                            print(f"[ORG_COSTS] Final organization cost: ${organization_cost:.4f}")
-                            print(f"[ORG_COSTS] Calculated cost: ${total_cost:.4f}")
-                            print(f"[ORG_COSTS] Difference: ${abs(organization_cost - total_cost):.4f}")
+                            if DEBUG_REALTIME:
+                                print(f"[ORG_COSTS] Final organization cost: ${organization_cost:.4f}")
+                            if DEBUG_REALTIME:
+                                print(f"[ORG_COSTS] Calculated cost: ${total_cost:.4f}")
+                            if DEBUG_REALTIME:
+                                print(f"[ORG_COSTS] Difference: ${abs(organization_cost - total_cost):.4f}")
                         else:
-                            print(f"[ORG_COSTS] No cost data found in API response")
+                            if DEBUG_REALTIME:
+                                print(f"[ORG_COSTS] No cost data found in API response")
                     else:
-                        print(f"[ORG_COSTS] No data in organization costs response")
+                        if DEBUG_REALTIME:
+                            print(f"[ORG_COSTS] No data in organization costs response")
 
                 except Exception as org_error:
-                    print(f"[ORG_COSTS] Error fetching organization costs: {str(org_error)}")
-                    print(f"[ORG_COSTS] Full traceback: {traceback.format_exc()}")
+                    if DEBUG_REALTIME:
+                        print(f"[ORG_COSTS] Error fetching organization costs: {str(org_error)}")
+                    if DEBUG_REALTIME:
+                        print(f"[ORG_COSTS] Full traceback: {traceback.format_exc()}")
 
         # Store in MongoDB
         usage_log = {
@@ -1459,12 +1575,14 @@ async def process_usage_log_background(
         }
 
         result = await usage_logs_collection.insert_one(usage_log)
-        print(f"[USAGE_LOG] Stored in MongoDB with ID: {result.inserted_id}")
+        if DEBUG_REALTIME:
+            print(f"[USAGE_LOG] Stored in MongoDB with ID: {result.inserted_id}")
 
         return True
 
     except Exception as e:
-        print(f"[USAGE_LOG] Background processing error: {str(e)}")
+        if DEBUG_REALTIME:
+            print(f"[USAGE_LOG] Background processing error: {str(e)}")
         return False
 
 # Route Handlers
@@ -1528,7 +1646,8 @@ async def check_rate_limit_status(current_user: Optional[UserResponse] = Depends
             }
 
     except Exception as e:
-        print(f"[RATE_LIMIT_CHECK] Error checking rate limit: {str(e)}")
+        if DEBUG_REALTIME:
+            print(f"[RATE_LIMIT_CHECK] Error checking rate limit: {str(e)}")
         # If there's an error, allow the session (fail open)
         return {
             "is_rate_limited": False,
@@ -1542,22 +1661,35 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
     import asyncio
 
     try:
-        print("="*80)
-        print(f"[PERFORMANCE] Creating ephemeral token with parallel optimization")
-        print(f"[UNIVERSAL] Language: {request.language}")
-        print(f"[UNIVERSAL] Level: {request.level}")
-        print(f"[UNIVERSAL] Topic: {request.topic}")
-        print(f"[UNIVERSAL] Session mode: {getattr(request, 'session_mode', 'NOT_SENT')}")
-        print(f"[DEBUG] news_context exists: {hasattr(request, 'news_context')}")
+        if DEBUG_REALTIME:
+            print("="*80)
+        if DEBUG_REALTIME:
+            print(f"[PERFORMANCE] Creating ephemeral token with parallel optimization")
+        if DEBUG_REALTIME:
+            print(f"[UNIVERSAL] Language: {request.language}")
+        if DEBUG_REALTIME:
+            print(f"[UNIVERSAL] Level: {request.level}")
+        if DEBUG_REALTIME:
+            print(f"[UNIVERSAL] Topic: {request.topic}")
+        if DEBUG_REALTIME:
+            print(f"[UNIVERSAL] Session mode: {getattr(request, 'session_mode', 'NOT_SENT')}")
+        if DEBUG_REALTIME:
+            print(f"[DEBUG] news_context exists: {hasattr(request, 'news_context')}")
         if hasattr(request, 'news_context'):
             nc = request.news_context
-            print(f"[DEBUG] news_context is None: {nc is None}")
-            print(f"[DEBUG] news_context type: {type(nc)}")
+            if DEBUG_REALTIME:
+                print(f"[DEBUG] news_context is None: {nc is None}")
+            if DEBUG_REALTIME:
+                print(f"[DEBUG] news_context type: {type(nc)}")
             if nc is not None:
-                print(f"[DEBUG] news_context length: {len(nc)}")
-                print(f"[DEBUG] news_context preview: {nc[:200] if len(nc) > 200 else nc}")
-            print(f"[DEBUG] news_context is truthy: {bool(nc)}")
-        print("="*80)
+                if DEBUG_REALTIME:
+                    print(f"[DEBUG] news_context length: {len(nc)}")
+                if DEBUG_REALTIME:
+                    print(f"[DEBUG] news_context preview: {nc[:200] if len(nc) > 200 else nc}")
+            if DEBUG_REALTIME:
+                print(f"[DEBUG] news_context is truthy: {bool(nc)}")
+        if DEBUG_REALTIME:
+            print("="*80)
 
         openai_api_key = os.getenv("OPENAI_API_KEY")
         if not openai_api_key:
@@ -1580,7 +1712,8 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             from database import database
             from bson import ObjectId
 
-            print(f"[SUBSCRIPTION_CHECK] Validating access for user {current_user.id}")
+            if DEBUG_REALTIME:
+                print(f"[SUBSCRIPTION_CHECK] Validating access for user {current_user.id}")
 
             # Get fresh user data from database
             user_doc = await database["users"].find_one({"_id": ObjectId(current_user.id)})
@@ -1590,7 +1723,8 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                 subscription_plan = user_doc.get("subscription_plan", "try_learn")
                 period_end = user_doc.get("current_period_end")
 
-                print(f"[SUBSCRIPTION_CHECK] Plan: {subscription_plan}, Period end: {period_end}")
+                if DEBUG_REALTIME:
+                    print(f"[SUBSCRIPTION_CHECK] Plan: {subscription_plan}, Period end: {period_end}")
 
                 # Auto-reset fallback for free users with expired periods (in case cron job missed it)
                 if subscription_plan == "try_learn" and period_end:
@@ -1601,9 +1735,11 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                         period_end = period_end.replace(tzinfo=timezone.utc)
 
                     if now > period_end:
-                        print(f"[SUBSCRIPTION_CHECK] ⚠️ Period expired {(now - period_end).days} days ago - auto-resetting as fallback")
+                        if DEBUG_REALTIME:
+                            print(f"[SUBSCRIPTION_CHECK] ⚠️ Period expired {(now - period_end).days} days ago - auto-resetting as fallback")
                         await SubscriptionService.reset_monthly_usage(str(current_user.id))
-                        print(f"[SUBSCRIPTION_CHECK] ✅ Period reset completed for user {current_user.id}")
+                        if DEBUG_REALTIME:
+                            print(f"[SUBSCRIPTION_CHECK] ✅ Period reset completed for user {current_user.id}")
 
             # Now validate if user can start a session with selected duration
             # Get selected duration from request (A1/A2 can select 3 or 5, others only 5)
@@ -1614,11 +1750,14 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                 selected_duration_minutes=selected_duration
             )
 
-            print(f"[SUBSCRIPTION_CHECK] Can start: {can_start}, Message: {message}")
-            print(f"[SUBSCRIPTION_CHECK] Selected duration: {selected_duration} minutes")
+            if DEBUG_REALTIME:
+                print(f"[SUBSCRIPTION_CHECK] Can start: {can_start}, Message: {message}")
+            if DEBUG_REALTIME:
+                print(f"[SUBSCRIPTION_CHECK] Selected duration: {selected_duration} minutes")
 
             if not can_start:
-                print(f"[SUBSCRIPTION_CHECK] ❌ Access denied for user {current_user.id}: {message}")
+                if DEBUG_REALTIME:
+                    print(f"[SUBSCRIPTION_CHECK] ❌ Access denied for user {current_user.id}: {message}")
                 raise HTTPException(
                     status_code=403,
                     detail={
@@ -1629,7 +1768,8 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                     }
                 )
 
-            print(f"[SUBSCRIPTION_CHECK] ✅ Access granted for user {current_user.id}")
+            if DEBUG_REALTIME:
+                print(f"[SUBSCRIPTION_CHECK] ✅ Access granted for user {current_user.id}")
 
         # PERFORMANCE OPTIMIZATION: Run voice fetch and instruction building in parallel
         async def fetch_voice_preference():
@@ -1647,43 +1787,54 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                 )
 
                 if user_doc and "preferred_voice" in user_doc:
-                    print(f"[VOICE] Fetched voice: {user_doc['preferred_voice']}")
+                    if DEBUG_REALTIME:
+                        print(f"[VOICE] Fetched voice: {user_doc['preferred_voice']}")
                     return user_doc["preferred_voice"]
 
-                print(f"[VOICE] No preference found, using default")
+                if DEBUG_REALTIME:
+                    print(f"[VOICE] No preference found, using default")
                 return "alloy"
             except Exception as e:
-                print(f"[VOICE] Error fetching voice: {str(e)}")
+                if DEBUG_REALTIME:
+                    print(f"[VOICE] Error fetching voice: {str(e)}")
                 return "alloy"
 
         async def fetch_active_learning_plan():
             """Fetch user's active learning plan if not provided"""
             # If learning_plan_data is already provided, use it
             if request.learning_plan_data:
-                print(f"[LEARNING_PLAN] Using provided learning plan data")
+                if DEBUG_REALTIME:
+                    print(f"[LEARNING_PLAN] Using provided learning plan data")
                 return request.learning_plan_data
 
             if not current_user:
-                print(f"[LEARNING_PLAN] No current user, skipping")
+                if DEBUG_REALTIME:
+                    print(f"[LEARNING_PLAN] No current user, skipping")
                 return None
 
             try:
                 from database import database
                 from bson import ObjectId
 
-                print(f"[LEARNING_PLAN] 🔍 Searching for learning plan:")
-                print(f"[LEARNING_PLAN]    user_id: {current_user.id}")
-                print(f"[LEARNING_PLAN]    language: {request.language.lower()}")
-                print(f"[LEARNING_PLAN]    status: in_progress")
+                if DEBUG_REALTIME:
+                    print(f"[LEARNING_PLAN] 🔍 Searching for learning plan:")
+                if DEBUG_REALTIME:
+                    print(f"[LEARNING_PLAN]    user_id: {current_user.id}")
+                if DEBUG_REALTIME:
+                    print(f"[LEARNING_PLAN]    language: {request.language.lower()}")
+                if DEBUG_REALTIME:
+                    print(f"[LEARNING_PLAN]    status: in_progress")
 
                 # Fetch user's active learning plan
                 plans_collection = database.learning_plans
 
                 # First, check what learning plans exist for this user
                 all_plans = await plans_collection.find({"user_id": current_user.id}).to_list(length=10)
-                print(f"[LEARNING_PLAN] 📋 Found {len(all_plans)} total learning plans for user")
+                if DEBUG_REALTIME:
+                    print(f"[LEARNING_PLAN] 📋 Found {len(all_plans)} total learning plans for user")
                 for plan in all_plans:
-                    print(f"[LEARNING_PLAN]    - Language: {plan.get('language')}, Status: {plan.get('status')}")
+                    if DEBUG_REALTIME:
+                        print(f"[LEARNING_PLAN]    - Language: {plan.get('language')}, Status: {plan.get('status')}")
 
                 # FIXED: Also match plans where status is missing/null (legacy plans)
                 learning_plan = await plans_collection.find_one({
@@ -1697,8 +1848,10 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                 })
 
                 if learning_plan:
-                    print(f"[LEARNING_PLAN] ✅ Found active learning plan (status: {learning_plan.get('status', 'None')})")
-                    print(f"[LEARNING_PLAN] 📚 Progress: {learning_plan.get('completed_sessions', 0)}/{learning_plan.get('total_sessions', 0)}")
+                    if DEBUG_REALTIME:
+                        print(f"[LEARNING_PLAN] ✅ Found active learning plan (status: {learning_plan.get('status', 'None')})")
+                    if DEBUG_REALTIME:
+                        print(f"[LEARNING_PLAN] 📚 Progress: {learning_plan.get('completed_sessions', 0)}/{learning_plan.get('total_sessions', 0)}")
                     return {
                         "plan_content": learning_plan.get("plan_content", {}),
                         "completed_sessions": learning_plan.get("completed_sessions", 0),
@@ -1708,10 +1861,12 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                         "session_summaries": learning_plan.get("session_summaries", []),
                     }
                 else:
-                    print(f"[LEARNING_PLAN] ❌ No learning plan found for this language and user")
+                    if DEBUG_REALTIME:
+                        print(f"[LEARNING_PLAN] ❌ No learning plan found for this language and user")
                     return None
             except Exception as e:
-                print(f"[LEARNING_PLAN] ❌ Error fetching learning plan: {str(e)}")
+                if DEBUG_REALTIME:
+                    print(f"[LEARNING_PLAN] ❌ Error fetching learning plan: {str(e)}")
                 import traceback
                 traceback.print_exc()
                 return None
@@ -1728,20 +1883,24 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
 
         # Build instructions (now with learning plan context if available)
         instructions = await build_universal_instructions(request)
-        print(f"[UNIVERSAL] Instructions created: {len(instructions)} characters")
+        if DEBUG_REALTIME:
+            print(f"[UNIVERSAL] Instructions created: {len(instructions)} characters")
 
         # DEBUG: Check if emoji instructions are included (for A1/A2)
         if request.level.upper() in ['A1', 'A2']:
             if '{{emoji:' in instructions:
-                print(f"[DEBUG] ✅ Emoji markers found in instructions")
+                if DEBUG_REALTIME:
+                    print(f"[DEBUG] ✅ Emoji markers found in instructions")
             else:
-                print(f"[DEBUG] ❌ NO emoji markers in instructions!")
+                if DEBUG_REALTIME:
+                    print(f"[DEBUG] ❌ NO emoji markers in instructions!")
 
             # Show a snippet of the topic vocabulary section
             if 'TOPIC VOCABULARY' in instructions:
                 start_idx = instructions.find('TOPIC VOCABULARY')
                 snippet = instructions[start_idx:start_idx+500]
-                print(f"[DEBUG] Topic vocab snippet:\n{snippet}")
+                if DEBUG_REALTIME:
+                    print(f"[DEBUG] Topic vocab snippet:\n{snippet}")
 
         # NEW: Add Speaking DNA context for premium users
         if current_user and current_user.subscription_status in ["active", "trialing"]:
@@ -1759,9 +1918,11 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
 
                 if dna_context:
                     instructions += f"\n\n{dna_context}"
-                    print(f"[DNA] Added Speaking DNA context: {len(dna_context)} characters")
+                    if DEBUG_REALTIME:
+                        print(f"[DNA] Added Speaking DNA context: {len(dna_context)} characters")
             except Exception as e:
-                print(f"[DNA] Error adding DNA context (non-fatal): {str(e)}")
+                if DEBUG_REALTIME:
+                    print(f"[DNA] Error adding DNA context (non-fatal): {str(e)}")
                 # Continue without DNA context - this is a premium feature
 
         # Wait for voice preference (should be done by now)
@@ -1770,9 +1931,12 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         # Use request voice if provided, otherwise use fetched preference
         selected_voice = request.voice or preferred_voice
 
-        print(f"[VOICE] User preferred voice: {preferred_voice}")
-        print(f"[VOICE] Request voice: {request.voice}")
-        print(f"[VOICE] Selected voice: {selected_voice}")
+        if DEBUG_REALTIME:
+            print(f"[VOICE] User preferred voice: {preferred_voice}")
+        if DEBUG_REALTIME:
+            print(f"[VOICE] Request voice: {request.voice}")
+        if DEBUG_REALTIME:
+            print(f"[VOICE] Selected voice: {selected_voice}")
 
         # Create ephemeral token with complete configuration
         model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-mini")
@@ -1859,51 +2023,76 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         # Add tools if available
         if tools:
             session_config["tools"] = tools
-            print(f"[TOOLS] Added {len(tools)} function tools for {request.level} level")
+            if DEBUG_REALTIME:
+                print(f"[TOOLS] Added {len(tools)} function tools for {request.level} level")
 
         payload = {"session": session_config}
 
-        print(f"[TRUNCATION] Configured with retention_ratio=0.8, post_instructions limit=8000 tokens")
+        if DEBUG_REALTIME:
+            print(f"[TRUNCATION] Configured with retention_ratio=0.8, post_instructions limit=8000 tokens")
 
         # DEBUG: Check if news context is in instructions
         if request.news_context:
             if "NEWS CONVERSATION" in instructions or "NEWS DISCUSSION" in instructions or "📰" in instructions:
-                print(f"[DEBUG] ✅ NEWS CONTEXT FOUND IN INSTRUCTIONS")
+                if DEBUG_REALTIME:
+                    print(f"[DEBUG] ✅ NEWS CONTEXT FOUND IN INSTRUCTIONS")
                 # Check for vocabulary
                 if "KEY VOCABULARY" in instructions:
-                    print(f"[DEBUG] ✅ Vocabulary section included")
+                    if DEBUG_REALTIME:
+                        print(f"[DEBUG] ✅ Vocabulary section included")
                 else:
-                    print(f"[DEBUG] ⚠️ Vocabulary section NOT found")
+                    if DEBUG_REALTIME:
+                        print(f"[DEBUG] ⚠️ Vocabulary section NOT found")
                 # Check for discussion questions
                 if "DISCUSSION QUESTIONS" in instructions:
-                    print(f"[DEBUG] ✅ Discussion questions included")
+                    if DEBUG_REALTIME:
+                        print(f"[DEBUG] ✅ Discussion questions included")
                 else:
-                    print(f"[DEBUG] ⚠️ Discussion questions NOT found")
+                    if DEBUG_REALTIME:
+                        print(f"[DEBUG] ⚠️ Discussion questions NOT found")
                 # Find and print the news section
                 if "📰" in instructions:
                     news_start = instructions.find("📰")
-                    print(f"[DEBUG] News section preview: {instructions[news_start:news_start+500]}")
+                    if DEBUG_REALTIME:
+                        print(f"[DEBUG] News section preview: {instructions[news_start:news_start+500]}")
             else:
-                print(f"[DEBUG] ❌ WARNING: news_context exists but NOT found in instructions!")
-                print(f"[DEBUG] Instructions length: {len(instructions)}")
-                print(f"[DEBUG] Instructions preview: {instructions[:500]}")
+                if DEBUG_REALTIME:
+                    print(f"[DEBUG] ❌ WARNING: news_context exists but NOT found in instructions!")
+                if DEBUG_REALTIME:
+                    print(f"[DEBUG] Instructions length: {len(instructions)}")
+                if DEBUG_REALTIME:
+                    print(f"[DEBUG] Instructions preview: {instructions[:500]}")
 
-        print("[UNIVERSAL] Sending ephemeral token request to OpenAI...")
+        if DEBUG_REALTIME:
+            print("[UNIVERSAL] Sending ephemeral token request to OpenAI...")
 
-        async with httpx.AsyncClient() as http_client:
-            response = await http_client.post(
-                "https://api.openai.com/v1/realtime/client_secrets",
-                headers={
-                    "Authorization": f"Bearer {openai_api_key}",
-                    "Content-Type": "application/json",
+        try:
+            http_client = get_openai_http_client()
+            response = await asyncio.wait_for(
+                http_client.post(
+                    "https://api.openai.com/v1/realtime/client_secrets",
+                    headers={
+                        "Authorization": f"Bearer {openai_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                ),
+                timeout=8.0,
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "realtime_unavailable",
+                    "message": "Voice session service temporarily unavailable. Please retry.",
+                    "retry_after": 3,
                 },
-                json=payload,
-                timeout=30.0
             )
 
         if response.status_code != 200:
             error_text = response.text
-            print(f"OpenAI API error: {error_text}")
+            if DEBUG_REALTIME:
+                print(f"OpenAI API error: {error_text}")
             raise HTTPException(status_code=response.status_code, detail=error_text)
 
         result = response.json()
@@ -1924,18 +2113,27 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                 "expires_at": result.get("expires_at"),
                 "session": ga_session,
             }
-            print(f"[GA_COMPAT] Transformed GA response to beta shape, id={result['id']}")
+            if DEBUG_REALTIME:
+                print(f"[GA_COMPAT] Transformed GA response to beta shape, id={result['id']}")
 
         # Log session creation
         session_id = result.get('id', 'unknown')
-        print("="*80)
-        print(f"[USAGE_LOG] SESSION CREATED")
-        print(f"Session ID: {session_id}")
-        print(f"User ID: {current_user.id if current_user else 'guest'}")
-        print(f"Language: {request.language}")
-        print(f"Level: {request.level}")
-        print(f"Timestamp: {datetime.now().isoformat()}")
-        print("="*80)
+        if DEBUG_REALTIME:
+            print("="*80)
+        if DEBUG_REALTIME:
+            print(f"[USAGE_LOG] SESSION CREATED")
+        if DEBUG_REALTIME:
+            print(f"Session ID: {session_id}")
+        if DEBUG_REALTIME:
+            print(f"User ID: {current_user.id if current_user else 'guest'}")
+        if DEBUG_REALTIME:
+            print(f"Language: {request.language}")
+        if DEBUG_REALTIME:
+            print(f"Level: {request.level}")
+        if DEBUG_REALTIME:
+            print(f"Timestamp: {datetime.now().isoformat()}")
+        if DEBUG_REALTIME:
+            print("="*80)
 
         # Add session configuration based on authentication status
         is_guest = current_user is None
@@ -1963,7 +2161,8 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                 'C2': 300   # 5 minutes
             }
             max_duration_seconds = duration_map.get(assessment_level.upper(), 300)
-            print(f"[SESSION_CONFIG] Final assessment mode - Level {assessment_level} - Duration: {max_duration_seconds}s")
+            if DEBUG_REALTIME:
+                print(f"[SESSION_CONFIG] Final assessment mode - Level {assessment_level} - Duration: {max_duration_seconds}s")
         else:
             # Regular practice session - use selected_duration from request
             if is_guest:
@@ -1972,12 +2171,16 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                 # Use selected_duration (3 or 5 minutes) for authenticated users
                 selected_duration = getattr(request, 'selected_duration', None) or 5
                 max_duration_seconds = selected_duration * 60
-                print(f"[SESSION_CONFIG] Using selected_duration: {selected_duration} minutes ({max_duration_seconds}s)")
+                if DEBUG_REALTIME:
+                    print(f"[SESSION_CONFIG] Using selected_duration: {selected_duration} minutes ({max_duration_seconds}s)")
 
-        print(f"[SESSION_CONFIG] User type: {'guest' if is_guest else 'authenticated'}")
-        print(f"[SESSION_CONFIG] Max duration: {max_duration_seconds}s ({max_duration_seconds//60} minutes)")
+        if DEBUG_REALTIME:
+            print(f"[SESSION_CONFIG] User type: {'guest' if is_guest else 'authenticated'}")
+        if DEBUG_REALTIME:
+            print(f"[SESSION_CONFIG] Max duration: {max_duration_seconds}s ({max_duration_seconds//60} minutes)")
 
-        print(f"[UNIVERSAL] Ephemeral token created successfully")
+        if DEBUG_REALTIME:
+            print(f"[UNIVERSAL] Ephemeral token created successfully")
 
         # Return OpenAI result + session configuration
         return {
@@ -1994,7 +2197,8 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         # Re-raise HTTPExceptions (like 403 for insufficient minutes) without modification
         raise
     except Exception as e:
-        print(f"[UNIVERSAL] Error: {str(e)}")
+        if DEBUG_REALTIME:
+            print(f"[UNIVERSAL] Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/realtime/usage-log")
@@ -2014,15 +2218,24 @@ async def log_realtime_usage(
         user_id = current_user.id if current_user else usage_data.user_id
 
         # Log basic session info immediately
-        print("="*80)
-        print(f"[USAGE_LOG] SESSION QUEUED FOR PROCESSING")
-        print(f"Session ID: {usage_data.session_id}")
-        print(f"User ID: {user_id or 'guest'}")
-        print(f"Language: {usage_data.language}")
-        print(f"Level: {usage_data.level}")
-        print(f"Duration: {usage_data.session_duration_seconds}s")
-        print(f"Total Tokens: {usage_data.total_tokens:,}")
-        print("="*80)
+        if DEBUG_REALTIME:
+            print("="*80)
+        if DEBUG_REALTIME:
+            print(f"[USAGE_LOG] SESSION QUEUED FOR PROCESSING")
+        if DEBUG_REALTIME:
+            print(f"Session ID: {usage_data.session_id}")
+        if DEBUG_REALTIME:
+            print(f"User ID: {user_id or 'guest'}")
+        if DEBUG_REALTIME:
+            print(f"Language: {usage_data.language}")
+        if DEBUG_REALTIME:
+            print(f"Level: {usage_data.level}")
+        if DEBUG_REALTIME:
+            print(f"Duration: {usage_data.session_duration_seconds}s")
+        if DEBUG_REALTIME:
+            print(f"Total Tokens: {usage_data.total_tokens:,}")
+        if DEBUG_REALTIME:
+            print("="*80)
 
         # Add heavy processing to background tasks
         background_tasks.add_task(
@@ -2040,7 +2253,8 @@ async def log_realtime_usage(
         }
 
     except Exception as e:
-        print(f"[USAGE_LOG] Error queueing usage log: {str(e)}")
+        if DEBUG_REALTIME:
+            print(f"[USAGE_LOG] Error queueing usage log: {str(e)}")
         # Still return success so frontend doesn't fail, but log the error
         return {
             "success": True,
@@ -2149,7 +2363,8 @@ async def get_semantic_feedback_monitoring():
         }
 
     except Exception as e:
-        print(f"Error getting semantic feedback monitoring: {str(e)}")
+        if DEBUG_REALTIME:
+            print(f"Error getting semantic feedback monitoring: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting semantic feedback monitoring: {str(e)}")
 
 @router.get("/api/realtime/model-config")
@@ -2167,5 +2382,6 @@ async def get_model_config():
             "default_model": "gpt-realtime-mini"
         }
     except Exception as e:
-        print(f"Error getting model config: {str(e)}")
+        if DEBUG_REALTIME:
+            print(f"Error getting model config: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting model config: {str(e)}")

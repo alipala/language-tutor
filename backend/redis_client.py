@@ -70,11 +70,11 @@ async def init_redis():
             socket_connect_timeout=10,  # 10s timeout for initial connection
             retry_on_timeout=True,  # Retry once on timeout
             health_check_interval=30,  # Health check every 30s
-            max_connections=25,     # Cap total connections across all workers.
-                                    # Redis Cloud free/essentials plan = 30 max clients.
-                                    # 25 leaves headroom for health checks and CLI access.
-                                    # With 8 uvicorn workers sharing this pool, each worker
-                                    # can hold at most 3-4 connections concurrently.
+            max_connections=50,     # Cap total connections across all workers.
+                                    # Redis Cloud 1GB Essentials plan = 1024 max clients.
+                                    # 8 workers × 50 = 400 total; leaves 624 headroom.
+                                    # Each worker can hold up to ~6 connections concurrently,
+                                    # enough for parallel Redis ops without internal queueing.
         )
 
         # Test connection

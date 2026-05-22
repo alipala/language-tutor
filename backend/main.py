@@ -338,6 +338,10 @@ async def shutdown_app():
     # Close Redis connection
     await close_redis()
 
+    # Close shared httpx client used for OpenAI Realtime API calls
+    from routes.realtime_routes import close_openai_http_client
+    await close_openai_http_client()
+
     # News scheduler runs in separate Railway service — nothing to stop here.
 
 
