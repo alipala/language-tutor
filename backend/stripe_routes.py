@@ -30,6 +30,7 @@ from database import database
 from subscription_service import SubscriptionService
 from subscription_service_bulletproof_fix_no_transactions import BulletproofTracker
 from performance_cache import perf_cache
+from redis_client import delete_cached
 
 # Create router
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
@@ -556,6 +557,7 @@ async def cancel_subscription(
             if stripe_customer_id:
                 try:
                     await perf_cache.delete(f"stripe_subscription:{stripe_customer_id}")
+                    await delete_cached(f"stripe_sub:{stripe_customer_id}")
                     logger.info(f"[CANCEL_TRIAL] Cleared Stripe cache for user {current_user.id}")
                 except Exception:
                     pass
@@ -673,6 +675,7 @@ async def reactivate_subscription(
             cache_key = f"stripe_subscription:{stripe_customer_id}"
             try:
                 await perf_cache.delete(cache_key)
+                await delete_cached(f"stripe_sub:{stripe_customer_id}")
                 logger.info(f"Cleared Stripe subscription cache for user {current_user.id}")
             except Exception as cache_error:
                 logger.warning(f"Could not clear cache: {str(cache_error)}")
@@ -965,6 +968,7 @@ async def handle_subscription_created(subscription):
                 "$unset": unset_data
             }
         )
+        await delete_cached(f"stripe_sub:{customer_id}")
 
         logger.info(f"Subscription created for user {user['_id']}")
     except Exception as e:
@@ -1135,6 +1139,7 @@ async def handle_subscription_updated(subscription):
             {"_id": user["_id"]},
             {"$set": update_data}
         )
+        await delete_cached(f"stripe_sub:{customer_id}")
 
         logger.info(f"[SUB_UPDATED] Successfully updated subscription for user {user['_id']}")
 
@@ -1250,6 +1255,7 @@ async def handle_subscription_deleted(subscription):
                 "$unset": unset_data
             }
         )
+        await delete_cached(f"stripe_sub:{customer_id}")
 
         logger.info(f"[SUB_DELETED] ✅ User {user['_id']} reset to free tier")
         logger.info(f"[SUB_DELETED] Kept stripe_customer_id for future resubscriptions")
@@ -1348,7 +1354,8 @@ async def handle_subscription_trial_will_end(subscription):
             {"_id": user["_id"]},
             {"$set": update_data}
         )
-        
+        await delete_cached(f"stripe_sub:{customer_id}")
+
         logger.info(f"[TRIAL_WILL_END] Updated user {user['_id']} for upcoming trial end")
         
         # Optional: Send notification email to user about trial ending
@@ -1416,6 +1423,7 @@ async def handle_checkout_completed(checkout_session):
             {"_id": user["_id"]},
             {"$set": update_data}
         )
+        await delete_cached(f"stripe_sub:{customer_id}")
         logger.info(f"Updated Stripe customer ID for user {user['_id']}")
     except Exception as e:
         logger.error(f"Error handling checkout completed: {str(e)}")
@@ -1554,6 +1562,7 @@ async def handle_invoice_payment_succeeded(invoice):
                 "$unset": unset_data
             }
         )
+        await delete_cached(f"stripe_sub:{customer_id}")
 
         if is_renewal:
             logger.info(f"✅ [RENEWAL] Updated subscription for user {user['_id']} - usage reset")

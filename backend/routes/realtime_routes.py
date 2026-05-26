@@ -24,7 +24,7 @@ DEBUG_REALTIME = os.getenv("DEBUG_REALTIME", "false").lower() == "true"
 # One pool per worker process; reuses TLS connections across requests, eliminating
 # the 100-150ms per-request TLS handshake cost that existed when AsyncClient()
 # was instantiated fresh on every call.
-_openai_http_client: httpx.AsyncClient | None = None
+_openai_http_client: Optional[httpx.AsyncClient] = None
 
 
 def get_openai_http_client() -> httpx.AsyncClient:

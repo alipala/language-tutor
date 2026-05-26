@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
+import asyncio
 import stripe
 import os
 from database import database
 from models import (
-    SubscriptionPlan, SubscriptionLimits, SubscriptionStatus, 
+    SubscriptionPlan, SubscriptionLimits, SubscriptionStatus,
     UsageTrackingRequest, SpeakingTimeTrackingRequest, LearningPlanPreservation
 )
 from bson import ObjectId
@@ -12,8 +13,11 @@ from bson import ObjectId
 # Import production-safe logging
 from logging_config import logger
 
-# Import performance cache
+# Import performance cache (still used for non-Stripe data)
 from performance_cache import perf_cache
+
+# Import Redis cache helpers for shared cross-worker Stripe cache
+from redis_client import get_cached, set_cached, delete_cached
 
 # Initialize Stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
@@ -266,23 +270,55 @@ class SubscriptionService:
             stripe_customer_id = user.get("stripe_customer_id")
             if stripe_customer_id:
                 try:
-                    # 🚀 OPTIMIZED: Cache Stripe API call for 30 seconds
-                    cache_key = f"stripe_subscription:{stripe_customer_id}"
-                    
-                    async def fetch_stripe_subscription():
-                        """Fetch subscription from Stripe (cached)"""
-                        return stripe.Subscription.list(
-                            customer=stripe_customer_id,
-                            limit=1
-                        )
-                    
-                    # Get subscription from Stripe with caching
-                    subscriptions = await perf_cache.fetch_with_cache_and_dedup(
-                        cache_key,
-                        fetch_stripe_subscription,
-                        ttl_seconds=30
-                    )
-                    
+                    # 🚀 OPTIMIZED: Shared Redis cache (30s TTL) — eliminates per-worker
+                    # amplification and the blocking sync Stripe call on the event loop.
+                    redis_key = f"stripe_sub:{stripe_customer_id}"
+                    cached_data = await get_cached(redis_key)
+
+                    if cached_data is not None:
+                        # Reconstruct a lightweight object from the cached minimal dict
+                        class _CachedSub:
+                            def __init__(self, d):
+                                self.status = d.get("status")
+                                self.trial_end = d.get("trial_end")
+                                self.cancel_at_period_end = d.get("cancel_at_period_end", False)
+                        class _CachedResult:
+                            def __init__(self, d):
+                                self.data = [_CachedSub(d)] if d else []
+                        subscriptions = _CachedResult(cached_data)
+                        logger.debug(f"[STRIPE_CACHE] HIT for {stripe_customer_id}")
+                    else:
+                        # Cache miss — fetch from Stripe async (non-blocking)
+                        logger.debug(f"[STRIPE_CACHE] MISS for {stripe_customer_id} — fetching from Stripe")
+                        try:
+                            raw = await asyncio.wait_for(
+                                stripe.Subscription.list_async(
+                                    customer=stripe_customer_id,
+                                    limit=1
+                                ),
+                                timeout=5.0
+                            )
+                        except asyncio.TimeoutError:
+                            # Stripe is slow — fall back to MongoDB state, skip cache update
+                            logger.warning(f"[STRIPE_CACHE] Stripe timeout for {stripe_customer_id} — using MongoDB state")
+                            raw = None
+
+                        if raw is not None:
+                            subscriptions = raw
+                            # Cache only the minimal fields actually consumed below
+                            if raw.data:
+                                s = raw.data[0]
+                                await set_cached(redis_key, {
+                                    "status": s.status,
+                                    "trial_end": s.trial_end,
+                                    "cancel_at_period_end": getattr(s, "cancel_at_period_end", False),
+                                }, ttl_seconds=30)
+                        else:
+                            # Timeout path — use empty result so MongoDB state is preserved
+                            class _EmptyResult:
+                                data = []
+                            subscriptions = _EmptyResult()
+
                     if subscriptions.data:
                         stripe_subscription = subscriptions.data[0]
                         
