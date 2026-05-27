@@ -1490,6 +1490,7 @@ class SessionInsights(BaseModel):
     """Insights generated from session analysis"""
     insights: List[str]
     highlight_stat: Dict[str, Any]
+    causal_sentence: Optional[str] = None  # S2.1 narrative for reveal ceremony
 
     class Config:
         populate_by_name = True
@@ -1501,6 +1502,7 @@ class AnalyzeSessionResponse(BaseModel):
     success: bool
     breakthroughs: List[SpeakingBreakthrough]
     session_insights: SessionInsights
+    previous_strand_values: Optional[Dict[str, Any]] = None  # S2.1 for reveal delta animation
 
     class Config:
         populate_by_name = True

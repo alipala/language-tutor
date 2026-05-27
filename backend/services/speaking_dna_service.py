@@ -17,6 +17,9 @@ from services.audio_analysis_service import audio_analysis_service
 
 logger = logging.getLogger(__name__)
 
+# ── S2.1 causal sentence fallback ───────────────────────────────────────────
+_CAUSAL_FALLBACK = "Six sessions of practice moved your DNA. Keep going."
+
 
 class SpeakingDNAService:
     """
@@ -214,6 +217,9 @@ class SpeakingDNAService:
 
             logger.info(f"[DNA] Analyzing session for user {user_id}, language {language}")
 
+            # S2.1 — capture previous strand values for the reveal ceremony delta animation
+            previous_strand_values = existing_profile.get("dna_strands", {}) if existing_profile else {}
+
             # Extract acoustic metrics from first 60 seconds (if audio available)
             acoustic_metrics = None
             if session_data.get("audio_base64"):
@@ -363,10 +369,22 @@ class SpeakingDNAService:
                 acoustic_metrics=acoustic_metrics  # Add acoustic metrics to weekly snapshot
             )
 
+            # S2.1 — generate causal sentence for the reveal ceremony
+            causal_sentence = await self._generate_causal_sentence(
+                previous_strands=previous_strand_values,
+                updated_strands=updated_strands,
+                session_data=session_data,
+                language=language,
+            )
+
+            session_insights = self._generate_session_insights(session_metrics, updated_strands)
+            session_insights["causal_sentence"] = causal_sentence
+
             return {
                 "profile": profile_update,
                 "breakthroughs": breakthroughs,
-                "session_insights": self._generate_session_insights(session_metrics, updated_strands)
+                "session_insights": session_insights,
+                "previous_strand_values": previous_strand_values,
             }
 
         except Exception as e:
@@ -1562,6 +1580,76 @@ This learner hasn't built their Speaking DNA profile yet. Use this session to:
 
 Session type: {session_type}
 """
+
+    # =========================================================================
+    # S2.1 CAUSAL SENTENCE GENERATION
+    # =========================================================================
+
+    async def _generate_causal_sentence(
+        self,
+        previous_strands: Dict[str, Any],
+        updated_strands: Dict[str, Any],
+        session_data: Dict[str, Any],
+        language: str,
+    ) -> Optional[str]:
+        """Generate a one-sentence narrative explaining the biggest strand delta."""
+        try:
+            # Compute deltas for the four ceremony strands
+            STRAND_SCORE = {
+                "rhythm":     lambda s: s.get("consistency_score", 0) * 100,
+                "confidence": lambda s: s.get("score", 0) * 100,
+                "vocabulary": lambda s: s.get("new_word_attempt_rate", 0) * 100,
+                "accuracy":   lambda s: s.get("grammar_accuracy", 0) * 100,
+            }
+            deltas: Dict[str, float] = {}
+            for strand, scorer in STRAND_SCORE.items():
+                prev = scorer(previous_strands.get(strand, {}))
+                curr = scorer(updated_strands.get(strand, {}))
+                if prev or curr:
+                    deltas[strand] = round(curr - prev, 1)
+
+            if not deltas:
+                return _CAUSAL_FALLBACK
+
+            biggest_strand = max(deltas, key=lambda k: abs(deltas[k]))
+            biggest_delta  = deltas[biggest_strand]
+
+            if abs(biggest_delta) < 2:
+                return _CAUSAL_FALLBACK
+
+            # Build a minimal prompt — keep the model call lightweight
+            topics = ", ".join(session_data.get("topics_discussed", [])) or "general conversation"
+            session_type = session_data.get("session_type", "learning")
+
+            from openai_client import get_async_openai
+            response = await get_async_openai().chat.completions.create(
+                model="gpt-4.1-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You write one concise English sentence (max 20 words) explaining "
+                            "why a language learner's DNA strand changed during a practice session. "
+                            "Be specific and encouraging. No emojis."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Strand: {biggest_strand}, delta: {biggest_delta:+.0f} points. "
+                            f"Session type: {session_type}. Topics: {topics}. "
+                            f"Language: {language}. Write the causal sentence."
+                        ),
+                    },
+                ],
+                temperature=0.4,
+                max_tokens=60,
+            )
+            sentence = response.choices[0].message.content.strip().rstrip(".")
+            return sentence if sentence else _CAUSAL_FALLBACK
+        except Exception as e:
+            logger.warning(f"[DNA] Causal sentence generation failed (non-fatal): {e}")
+            return _CAUSAL_FALLBACK
 
     # =========================================================================
     # WEEKLY SNAPSHOT CREATION

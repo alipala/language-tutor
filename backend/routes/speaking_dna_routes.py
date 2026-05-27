@@ -137,7 +137,8 @@ async def analyze_session(
         return AnalyzeSessionResponse(
             success=True,
             breakthroughs=result["breakthroughs"],
-            session_insights=result["session_insights"]
+            session_insights=result["session_insights"],
+            previous_strand_values=result.get("previous_strand_values"),
         )
 
     except HTTPException:
