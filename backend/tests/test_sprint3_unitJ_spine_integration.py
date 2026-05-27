@@ -20,14 +20,14 @@ def read(path: pathlib.Path) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# strands.ts — constants module
+# strands.tsx — constants module
 # ─────────────────────────────────────────────────────────────────────────────
 
-STRANDS_TS = MOBILE / "src" / "constants" / "strands.ts"
+STRANDS_TS = MOBILE / "src" / "constants" / "strands.tsx"
 
 
 def test_strands_file_exists():
-    assert STRANDS_TS.exists(), "src/constants/strands.ts must exist"
+    assert STRANDS_TS.exists(), "src/constants/strands.tsx must exist"
 
 
 def test_strands_exports_strand_key_type():
