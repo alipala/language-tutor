@@ -96,6 +96,18 @@ class SpeakingDNAService:
             "learning": 0.3,
             "emotional": 0.0
         },
+        # S3.6 — Voice Journal: daily 90-second audio ritual.
+        # Full audio captured → all acoustic strands update.
+        # Vocabulary/Accuracy lower (monologue, no AI correction feedback).
+        # Learning lower (no challenge/correction loop).
+        "voice_journal": {
+            "rhythm": 1.0,
+            "confidence": 1.0,
+            "emotional": 1.0,
+            "vocabulary": 0.4,
+            "accuracy": 0.4,
+            "learning": 0.3,
+        },
     }
 
     # Thresholds for breakthrough detection
@@ -405,16 +417,69 @@ class SpeakingDNAService:
             session_insights = self._generate_session_insights(session_metrics, updated_strands)
             session_insights["causal_sentence"] = causal_sentence
 
+            # S3.4 — compute per-strand delta for the session summary animation
+            strand_deltas = self._compute_strand_deltas(previous_strand_values, updated_strands)
+
             return {
                 "profile": profile_update,
                 "breakthroughs": breakthroughs,
                 "session_insights": session_insights,
                 "previous_strand_values": previous_strand_values,
+                "strand_deltas": strand_deltas,
             }
 
         except Exception as e:
             logger.error(f"[DNA] Error analyzing session: {str(e)}", exc_info=True)
             raise
+
+    # =========================================================================
+    # S3.4 — STRAND DELTA COMPUTATION
+    # =========================================================================
+
+    def _compute_strand_deltas(
+        self,
+        previous_strands: Dict[str, Any],
+        updated_strands: Dict[str, Any],
+    ) -> Dict[str, Dict[str, float]]:
+        """
+        S3.4 — Compute per-strand numeric deltas for the session-summary animation.
+
+        Extracts the canonical 0-1 score from each strand object (same logic as the
+        mobile strandScore helper) and returns a dict of the form:
+          { "rhythm": {"previous": 0.42, "current": 0.55, "delta": 0.13}, ... }
+
+        Only the four display strands (rhythm, confidence, vocabulary, accuracy) are
+        included; the emotional and learning strands are omitted from the summary UI.
+
+        Returns an empty dict when either mapping is empty (first session ever).
+        """
+        if not previous_strands or not updated_strands:
+            return {}
+
+        def _score(strands: Dict, key: str) -> float:
+            s = strands.get(key) or {}
+            if key == "rhythm":
+                return float(s.get("consistency_score") or 0.0)
+            if key == "confidence":
+                return float(s.get("score") or 0.0)
+            if key == "vocabulary":
+                return float(s.get("new_word_attempt_rate") or 0.0)
+            if key == "accuracy":
+                return float(s.get("grammar_accuracy") or 0.0)
+            return 0.0
+
+        deltas: Dict[str, Dict[str, float]] = {}
+        for key in ("rhythm", "confidence", "vocabulary", "accuracy"):
+            prev = round(_score(previous_strands, key), 4)
+            curr = round(_score(updated_strands, key), 4)
+            deltas[key] = {
+                "previous": prev,
+                "current": curr,
+                "delta": round(curr - prev, 4),
+            }
+
+        logger.debug(f"[DNA] S3.4 strand_deltas computed: {deltas}")
+        return deltas
 
     def _extract_session_metrics(
         self,

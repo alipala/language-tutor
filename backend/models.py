@@ -1503,6 +1503,10 @@ class AnalyzeSessionResponse(BaseModel):
     breakthroughs: List[SpeakingBreakthrough]
     session_insights: SessionInsights
     previous_strand_values: Optional[Dict[str, Any]] = None  # S2.1 for reveal delta animation
+    # S3.4: per-strand delta dict {"rhythm": {"previous": 0.42, "current": 0.55, "delta": 0.13}, ...}
+    strand_deltas: Optional[Dict[str, Any]] = None
+    # S3.5: first breakthrough of this session (if any) for the sealed reveal card
+    breakthrough_unlocked: Optional[Dict[str, Any]] = None
 
     class Config:
         populate_by_name = True

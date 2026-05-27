@@ -134,11 +134,18 @@ async def analyze_session(
         )
         logger.info(f"[CACHE] ✅ Invalidated TaalCoach cache after DNA analysis")
 
+        # S3.5: surface first breakthrough (if any) as breakthrough_unlocked for the
+        # sealed reveal card.  Only one breakthrough is shown per session.
+        _breakthroughs = result.get("breakthroughs") or []
+        _breakthrough_unlocked = _breakthroughs[0] if _breakthroughs else None
+
         return AnalyzeSessionResponse(
             success=True,
-            breakthroughs=result["breakthroughs"],
+            breakthroughs=_breakthroughs,
             session_insights=result["session_insights"],
             previous_strand_values=result.get("previous_strand_values"),
+            strand_deltas=result.get("strand_deltas"),       # S3.4
+            breakthrough_unlocked=_breakthrough_unlocked,    # S3.5
         )
 
     except HTTPException:
