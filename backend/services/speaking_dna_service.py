@@ -248,6 +248,10 @@ class SpeakingDNAService:
             )
             logger.info(f"[DNA] Extracted metrics: WPM={session_metrics.get('words_per_minute', 0):.1f}")
 
+            # S3.1 / S3.2: derive pinning flags from session payload
+            has_audio      = bool(session_data.get("audio_base64"))
+            has_challenges = session_data.get("challenges_offered", 0) > 0
+
             # Calculate strand updates
             updated_strands = await self._calculate_strand_updates(
                 existing_profile,
@@ -255,7 +259,9 @@ class SpeakingDNAService:
                 session_data.get("session_type", "learning"),
                 user_id,
                 language,
-                session_data
+                session_data,
+                has_audio=has_audio,
+                has_challenges=has_challenges,
             )
 
             # Detect any breakthroughs
@@ -542,27 +548,45 @@ class SpeakingDNAService:
         session_type: str,
         user_id: str,
         language: str,
-        session_data: Dict = None
+        session_data: Dict = None,
+        has_audio: bool = True,
+        has_challenges: bool = True,
     ) -> Dict:
         """
         Calculate updated DNA strands using weighted moving average.
 
         Uses exponential moving average to smooth updates while still
         being responsive to recent sessions.
+
+        S3.1 — has_audio=False: Rhythm, Confidence, Emotional are pinned to their
+        existing values instead of blending toward acoustic defaults. This prevents
+        silent drift for sessions that carry no audio (every regular conversation,
+        news, freestyle). Product decision: pin-not-skip (writes existing value back
+        so EMA history stays aligned across all strands).
+
+        S3.2 — has_challenges=False: Learning strand is pinned to its existing value.
+        When challenges_offered==0 the EMA would blend toward 0/0=0, dragging
+        challenge_acceptance downward for conversation-heavy users. Product decision
+        (Option A): skip Learning EMA for non-challenge sessions.
         """
         weights = self.SESSION_WEIGHTS.get(session_type, self.SESSION_WEIGHTS["learning"])
         alpha = 0.3  # Learning rate for exponential moving average
 
         existing_strands = existing_profile.get("dna_strands", {}) if existing_profile else {}
 
-        # Calculate each strand
-        updated = {
-            "rhythm": self._update_rhythm_strand(existing_strands.get("rhythm"), session_metrics, alpha, weights["rhythm"]),
-            "confidence": self._update_confidence_strand(existing_strands.get("confidence"), session_metrics, alpha, weights["confidence"]),
-            "vocabulary": self._update_vocabulary_strand(existing_strands.get("vocabulary"), session_metrics, alpha, weights["vocabulary"]),
-            "accuracy": self._update_accuracy_strand(existing_strands.get("accuracy"), session_metrics, alpha, weights["accuracy"]),
-            "learning": self._update_learning_strand(existing_strands.get("learning"), session_metrics, alpha, weights["learning"]),
-            "emotional": await self._update_emotional_strand(
+        # ── S3.1: acoustic strand pinning ────────────────────────────────────
+        if not has_audio:
+            logger.info(
+                f"[DNA] Acoustic strands pinned (no audio). user_id={user_id} "
+                f"language={language} session_type={session_type}"
+            )
+            rhythm_result     = existing_strands.get("rhythm")     or self._update_rhythm_strand(None, session_metrics, alpha, weights["rhythm"])
+            confidence_result = existing_strands.get("confidence") or self._update_confidence_strand(None, session_metrics, alpha, weights["confidence"])
+            emotional_result  = existing_strands.get("emotional")  or await self._update_emotional_strand(None, session_metrics, alpha, weights["emotional"], user_id, language, session_data)
+        else:
+            rhythm_result     = self._update_rhythm_strand(existing_strands.get("rhythm"), session_metrics, alpha, weights["rhythm"])
+            confidence_result = self._update_confidence_strand(existing_strands.get("confidence"), session_metrics, alpha, weights["confidence"])
+            emotional_result  = await self._update_emotional_strand(
                 existing_strands.get("emotional"),
                 session_metrics,
                 alpha,
@@ -571,6 +595,24 @@ class SpeakingDNAService:
                 language,
                 session_data
             )
+
+        # ── S3.2: learning strand pinning ─────────────────────────────────────
+        if not has_challenges:
+            logger.info(
+                f"[DNA] Learning strand skipped (no challenges). user_id={user_id} "
+                f"language={language} session_type={session_type}"
+            )
+            learning_result = existing_strands.get("learning") or self._update_learning_strand(None, session_metrics, alpha, weights["learning"])
+        else:
+            learning_result = self._update_learning_strand(existing_strands.get("learning"), session_metrics, alpha, weights["learning"])
+
+        updated = {
+            "rhythm":     rhythm_result,
+            "confidence": confidence_result,
+            "vocabulary": self._update_vocabulary_strand(existing_strands.get("vocabulary"), session_metrics, alpha, weights["vocabulary"]),
+            "accuracy":   self._update_accuracy_strand(existing_strands.get("accuracy"), session_metrics, alpha, weights["accuracy"]),
+            "learning":   learning_result,
+            "emotional":  emotional_result,
         }
 
         return updated

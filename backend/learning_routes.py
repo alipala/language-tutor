@@ -2065,6 +2065,19 @@ async def skip_voice_check(
         completed_sessions = plan.get("completed_sessions", 0)
         voice_checks_completed = plan.get("voice_checks_completed", [])
 
+        # S2.4 — write to voice_checks_completed so the modal doesn't re-fire,
+        # and to voice_checks_skipped for analytics differentiation
+        if session_number not in voice_checks_completed:
+            updated_completed = voice_checks_completed + [session_number]
+            await learning_plans_collection.update_one(
+                {"id": plan_id},
+                {
+                    "$set": {"voice_checks_completed": updated_completed},
+                    "$addToSet": {"voice_checks_skipped": session_number},
+                }
+            )
+            voice_checks_completed = updated_completed
+
         next_check = voice_check_service.get_next_voice_check(
             completed_sessions=completed_sessions,
             duration_months=duration_months,

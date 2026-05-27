@@ -575,15 +575,18 @@ async def _run_dna_and_optimizer_background(
     # DNA analysis
     try:
         from services.speaking_dna_service import speaking_dna_service
+        # S3.1: no audio in learning-plan sessions — acoustic strands will be pinned
+        # S3.2: challenges_offered=0 so Learning strand will be pinned
         dna_session_data = {
             "session_id": plan_id,
             "session_type": "learning",
             "duration_seconds": int(duration_minutes * 60),
             "user_turns": user_turns,
             "corrections_received": background_analyses,
-            "challenges_offered": 2,
-            "challenges_accepted": 1,
+            "challenges_offered": 0,
+            "challenges_accepted": 0,
             "topics_discussed": [language],
+            # no audio_base64 — triggers acoustic strand pinning via S3.1
         }
         dna_result = await speaking_dna_service.analyze_session_for_dna(
             user_id=user_id, language=language, session_data=dna_session_data
