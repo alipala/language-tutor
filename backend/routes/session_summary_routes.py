@@ -837,10 +837,11 @@ async def store_session_summary(
     # 🔍 DEBUG: Check what's in conversation_data
     if conversation_data:
         print(f"[SESSION_SUMMARY] 🔍 Conversation data keys: {list(conversation_data.keys())}")
-        if "sentences_for_analysis" in conversation_data:
-            print(f"[SESSION_SUMMARY] 🔍 Found sentences_for_analysis: {len(conversation_data['sentences_for_analysis'])} sentences")
+        sfa_val = conversation_data.get("sentences_for_analysis")
+        if sfa_val is not None:
+            print(f"[SESSION_SUMMARY] 🔍 Found sentences_for_analysis: {len(sfa_val)} sentences")
         else:
-            print(f"[SESSION_SUMMARY] ⚠️ 'sentences_for_analysis' NOT in conversation_data!")
+            print(f"[SESSION_SUMMARY] ⚠️ 'sentences_for_analysis' is null or absent")
 
     try:
         from database import database
@@ -1308,6 +1309,7 @@ async def store_session_summary(
                 "session_stats": enhanced_stats.get("session_stats"),
                 "comparison": enhanced_stats.get("comparison"),
                 "overall_progress": enhanced_stats.get("overall_progress"),
+                "structured_summary": structured_summary if structured_summary else None,
                 "dna_breakthroughs": [],   # populated by background task
                 "dna_insights": {},        # populated by background task
                 "recommended_challenges": recommended_challenges  # 🎯 NEW: Post-session challenge recommendations
@@ -1332,7 +1334,8 @@ async def store_session_summary(
                 "flashcard_generation_success": False,
                 "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
                 "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison
-                "overall_progress": enhanced_stats.get("overall_progress")  # 🎯 NEW: Overall progress
+                "overall_progress": enhanced_stats.get("overall_progress"),  # 🎯 NEW: Overall progress
+                "structured_summary": structured_summary if structured_summary else None,
             }
 
     except HTTPException:
