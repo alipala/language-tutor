@@ -91,6 +91,9 @@ class HubResponse(BaseModel):
     # Why the silver (challenge) mission was picked — e.g. "grammar"
     silver_reason: str = ""
 
+    # S3.7: weakest DNA strand key for spine integration (null when no DNA data)
+    weakest_strand: Optional[str] = None
+
     # Path A — predicted forecast of tomorrow's missions (read-only).
     # Optional: absent if prediction failed (preview falls back to static copy).
     next_missions_preview: Optional[Dict[str, Any]] = None
@@ -254,6 +257,34 @@ async def _get_dna_summary(user_id: str, language: Optional[str]) -> Optional[Di
     return doc
 
 
+def _weakest_strand_key(dna_summary: Optional[Dict]) -> Optional[str]:
+    """Return the StrandKey with the lowest score from a dna_summary dict."""
+    if not dna_summary:
+        return None
+    strands = dna_summary.get("dna_strands", {})
+    if not strands:
+        return None
+    _SCORE_FIELDS = {
+        "rhythm": "consistency_score",
+        "confidence": "score",
+        "vocabulary": "diversity_score",
+        "accuracy": "grammar_accuracy",
+        "learning": "challenge_acceptance",
+        "emotional": "positivity_score",
+    }
+    lowest_key: Optional[str] = None
+    lowest_score: float = float("inf")
+    for key, field in _SCORE_FIELDS.items():
+        strand = strands.get(key)
+        if not strand:
+            continue
+        score = float(strand.get(field, 0) or 0)
+        if score < lowest_score:
+            lowest_score = score
+            lowest_key = key
+    return lowest_key
+
+
 async def _get_flashcard_sets(user_id: str) -> List[Dict]:
     # Mirror `_get_learning_plans`: project the document's UUID `id` so it
     # matches `/api/flashcards/set/{id}/...` lookups, with a stringified `_id`
@@ -393,6 +424,7 @@ async def get_hub_today(
         flashcard_sets=flashcards,
         missions=missions,
         silver_reason=silver_reason,
+        weakest_strand=_weakest_strand_key(dna_summary),
         next_missions_preview=next_preview,
         timezone=tz,
         local_date=local_date,
