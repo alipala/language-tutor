@@ -343,6 +343,16 @@ class SpeakingDNAService:
                 await self.db.speaking_breakthroughs.insert_many(breakthrough_docs)
                 logger.info(f"[DNA] Stored {len(breakthrough_docs)} breakthroughs")
 
+                # S1.7 — Fire push notification for the first breakthrough in this batch.
+                # One push per session; cooldown enforced inside the helper.
+                try:
+                    await _send_breakthrough_push(
+                        user_id=user_id,
+                        breakthrough=breakthroughs[0],
+                    )
+                except Exception as _push_err:
+                    logger.warning(f"[DNA] Breakthrough push failed (non-fatal): {_push_err}")
+
             # Create/update weekly snapshot for evolution tracking (with acoustic metrics)
             await self._create_weekly_snapshot(
                 user_id=user_id,
@@ -1830,6 +1840,121 @@ Session type: {session_type}
         except Exception as e:
             logger.error(f"[DNA] Error marking breakthrough celebrated: {str(e)}", exc_info=True)
             return False
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# S1.7 — Breakthrough push notification helper
+# ──────────────────────────────────────────────────────────────────────────────
+
+_BREAKTHROUGH_COPY: Dict[str, Dict[str, str]] = {
+    "confidence_breakthrough": {
+        "title": "Your confidence hit a new high!",
+        "body":  "Open MyTaco to reveal what changed.",
+    },
+    "vocabulary_milestone": {
+        "title": "You unlocked a vocab milestone!",
+        "body":  "See what changed in your DNA tab.",
+    },
+    "accuracy_breakthrough": {
+        "title": "Your accuracy just leveled up.",
+        "body":  "Open MyTaco to see the detail.",
+    },
+    "rhythm_breakthrough": {
+        "title": "Your rhythm is more natural now.",
+        "body":  "Open MyTaco to see the detail.",
+    },
+}
+_BREAKTHROUGH_COPY_DEFAULT = {
+    "title": "You hit a breakthrough!",
+    "body":  "Open MyTaco to reveal what changed.",
+}
+
+_COOLDOWN_HOURS = 24
+
+
+async def _send_breakthrough_push(user_id: str, breakthrough: Dict[str, Any]) -> None:
+    """
+    Send a push notification for a breakthrough.
+
+    Enforces a per-user 24-hour cooldown via a Redis key; if Redis is
+    unavailable the push is sent anyway (fail-open, not fail-closed).
+    Respects the user's notification preferences — no push if push_token absent
+    or notifications disabled.
+    """
+    bt_type = breakthrough.get("breakthrough_type", "")
+    copy = _BREAKTHROUGH_COPY.get(bt_type, _BREAKTHROUGH_COPY_DEFAULT)
+
+    # ── Cooldown check ───────────────────────────────────────────────────────
+    cooldown_key = f"breakthrough_push_cooldown:{user_id}"
+    try:
+        from redis_client import redis_client as _redis
+        if _redis and await _redis.exists(cooldown_key):
+            logger.info(
+                f"[BREAKTHROUGH_PUSH] Cooldown active for user {user_id} — skipping push"
+            )
+            logger.info(f"[TELEMETRY] breakthrough_push_cooldown_skipped user={user_id} type={bt_type}")
+            return
+    except Exception as _redis_err:
+        logger.warning(f"[BREAKTHROUGH_PUSH] Redis unavailable for cooldown check: {_redis_err} — proceeding")
+
+    # ── Fetch user push token and notification preferences ───────────────────
+    try:
+        user = await database.users.find_one(
+            {"_id": ObjectId(user_id)},
+            {"push_token": 1, "notifications_enabled": 1},
+        )
+    except Exception:
+        user = await database.users.find_one(
+            {"id": user_id},
+            {"push_token": 1, "notifications_enabled": 1},
+        )
+
+    if not user:
+        logger.warning(f"[BREAKTHROUGH_PUSH] User {user_id} not found — skipping push")
+        return
+
+    push_token = user.get("push_token")
+    if not push_token:
+        logger.info(f"[BREAKTHROUGH_PUSH] User {user_id} has no push token — skipping")
+        return
+
+    if user.get("notifications_enabled") is False:
+        logger.info(f"[BREAKTHROUGH_PUSH] Notifications disabled for user {user_id} — skipping")
+        return
+
+    # ── Send ─────────────────────────────────────────────────────────────────
+    from notification_service import send_push_notification
+
+    bt_id = breakthrough.get("_id", "")
+    success = await send_push_notification(
+        push_token=push_token,
+        title=copy["title"],
+        body=copy["body"],
+        data={
+            "type": "breakthrough",
+            "deep_link": "mytacoai://dna/breakthroughs",
+            "breakthrough_id": str(bt_id),
+            "breakthrough_type": bt_type,
+        },
+        user_id=user_id,
+        priority="high",
+    )
+
+    if success:
+        logger.info(
+            f"[BREAKTHROUGH_PUSH] ✅ Sent to user {user_id}, type={bt_type}"
+        )
+        logger.info(f"[TELEMETRY] breakthrough_push_sent user={user_id} type={bt_type}")
+
+        # Set cooldown key (expires after 24 hours)
+        try:
+            from redis_client import redis_client as _redis
+            if _redis:
+                await _redis.setex(cooldown_key, _COOLDOWN_HOURS * 3600, "1")
+        except Exception as _redis_err:
+            logger.warning(f"[BREAKTHROUGH_PUSH] Could not set cooldown key: {_redis_err}")
+    else:
+        logger.warning(f"[BREAKTHROUGH_PUSH] Push send returned false for user {user_id}")
 
 
 # Singleton instance
