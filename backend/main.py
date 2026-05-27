@@ -279,6 +279,10 @@ app.include_router(transcription_router)
 app.include_router(guest_analysis_router)
 app.include_router(final_assessment_router)
 
+# S3.6 — Voice Journal: daily 90-second voice prompt ritual
+from routes.voice_journal_routes import router as voice_journal_router
+app.include_router(voice_journal_router)
+
 
 # NEWS FEATURE: News generation runs in the scheduler Railway service (run_scheduler.py).
 # It was removed from this process in Phase B to prevent N×duplication under multi-worker.
