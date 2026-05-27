@@ -790,23 +790,25 @@ async def _hydrate_progress(
 ) -> List[DailyMission]:
     """
     Attach live progress to each mission.
-    Runs 3 DB reads in parallel:
-      - daily_stats total_sessions    → bronze
+    Runs parallel DB reads:
+      - daily_stats learning_plan_sessions OR voice_journal_entries → bronze
       - challenge_sessions count      → silver (completed 10-Q sessions today)
       - flashcard_sets reviewed count → gold
+    S3.6: voice journal entry satisfies bronze regardless of bronze_id type.
     """
     challenge_type = next(
         (m["challenge_type"] for m in missions if m["id"] == "challenge"),
         "micro_quiz",
     )
 
-    (today_learning_plan_sessions, today_news_sessions, completed_challenge_sessions, reviewed_sets, today_freestyle) = \
+    (today_learning_plan_sessions, today_news_sessions, completed_challenge_sessions, reviewed_sets, today_freestyle, today_journal) = \
         await asyncio.gather(
             _get_today_learning_plan_sessions(user_id, local_date),
             _get_today_news_sessions(user_id, local_date),
             _get_completed_challenge_sessions_today(user_id, local_date, challenge_type),
             _get_reviewed_flashcard_count(user_id, local_date),
             _get_today_freestyle_sessions(user_id, local_date),
+            _get_today_voice_journal(user_id, local_date),
         )
 
     # Build flashcard subtitle live (works from cache too)
@@ -836,10 +838,12 @@ async def _hydrate_progress(
         target = m["target"]
 
         if m["id"] == "plan_session":
-            current = min(1, today_learning_plan_sessions)
+            # S3.6: voice journal also satisfies the bronze "speak today" mission
+            current = min(1, today_learning_plan_sessions + today_journal)
 
         elif m["id"] == "news_session":
-            current = min(1, today_news_sessions)
+            # S3.6: voice journal also satisfies the bronze "speak today" mission
+            current = min(1, today_news_sessions + today_journal)
 
         elif m["id"] == "challenge":
             current = min(target, completed_challenge_sessions)
@@ -896,6 +900,15 @@ async def _get_today_news_sessions(user_id: str, local_date: str) -> int:
         "conversation_type": "news",
         "created_at": {"$gte": day_start, "$lte": day_end},
     })
+
+
+async def _get_today_voice_journal(user_id: str, local_date: str) -> int:
+    """Return 1 if the user has completed a voice journal entry today, 0 otherwise."""
+    count = await database.voice_journal_entries.count_documents({
+        "user_id": user_id,
+        "entry_date": local_date,
+    })
+    return 1 if count > 0 else 0
 
 
 async def _get_completed_challenge_sessions_today(
