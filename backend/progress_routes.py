@@ -99,6 +99,75 @@ async def _embed_conversation_background(
         print(f"[VECTOR_EMBED_BG] ❌ Failed to embed conversation {session_id}: {e}")
         # Non-fatal - app continues without embedding
 
+async def _run_transcript_dna_background(
+    user_id: str,
+    language: str,
+    session_type: str,
+    session_id: str,
+    analysis_job_id: str,
+    user_turns: list,
+    duration_minutes: float,
+):
+    """
+    S3.3 — Background DNA update from transcript-only sessions (freestyle/news/custom_topic).
+
+    Updates Vocabulary and Accuracy strands using transcript signal.
+    Acoustic strands (Rhythm/Confidence/Emotional) and Learning are pinned via
+    S3.1 (has_audio=False) and S3.2 (has_challenges=False).
+
+    Waits for the sentence-analysis job to complete before reading corrections_received,
+    which feeds Accuracy. Times out after 45 seconds and proceeds with partial data.
+    """
+    import asyncio
+    import time
+
+    # Wait for sentence analysis to complete so corrections_received is populated
+    if analysis_job_id:
+        from database import database
+        jobs_collection = database.sentence_analysis_jobs
+        deadline = time.monotonic() + 45.0
+        while time.monotonic() < deadline:
+            job = await jobs_collection.find_one(
+                {"job_id": analysis_job_id},
+                {"status": 1, "analyses": 1}
+            )
+            if job and job.get("status") == "completed":
+                corrections_received = job.get("analyses", [])
+                break
+            await asyncio.sleep(1.5)
+        else:
+            print(f"[TRANSCRIPT_DNA] ⚠️ Sentence analysis timeout for job {analysis_job_id}; proceeding with partial data")
+            corrections_received = []
+    else:
+        corrections_received = []
+
+    try:
+        from services.speaking_dna_service import speaking_dna_service
+
+        session_data = {
+            "session_id": session_id,
+            "session_type": session_type,
+            "duration_seconds": int(duration_minutes * 60),
+            "user_turns": user_turns,
+            "corrections_received": corrections_received,
+            "challenges_offered": 0,   # S3.2: no challenges → Learning pinned
+            "challenges_accepted": 0,
+            # no audio_base64 → S3.1: acoustic strands pinned
+        }
+
+        dna_result = await speaking_dna_service.analyze_session_for_dna(
+            user_id=user_id,
+            language=language,
+            session_data=session_data,
+        )
+        print(
+            f"[TRANSCRIPT_DNA] ✅ DNA updated for user={user_id} lang={language} "
+            f"type={session_type} breakthroughs={len(dna_result.get('breakthroughs', []))}"
+        )
+    except Exception as e:
+        print(f"[TRANSCRIPT_DNA] ❌ Failed for user={user_id} session={session_id}: {e}")
+
+
 async def _run_sentence_analysis_background(
     job_id: str,
     user_id: str,
@@ -1050,6 +1119,24 @@ async def save_conversation(
                 )
                 print(f"[BATCH_SAVE] 🚀 Scheduled background analysis for job {analysis_job_id}")
 
+            # S3.3 — Transcript DNA update for premium users (existing session path)
+            _dna_session_type = conversation_type if conversation_type in (
+                "freestyle", "news", "custom_topic", "practice"
+            ) else "practice"
+            if current_user.subscription_status in ["active", "trialing"]:
+                user_turns = [msg.dict() for msg in conversation_messages if msg.role == "user"]
+                background_tasks.add_task(
+                    _run_transcript_dna_background,
+                    user_id=str(current_user.id),
+                    language=request.language,
+                    session_type=_dna_session_type,
+                    session_id=str(existing_session["_id"]),
+                    analysis_job_id=analysis_job_id,
+                    user_turns=user_turns,
+                    duration_minutes=request.duration_minutes,
+                )
+                print(f"[TRANSCRIPT_DNA] 🚀 Scheduled DNA update for existing session {existing_session['_id']}")
+
             # Deduct minutes from user subscription quota (server-side, idempotent)
             await _deduct_practice_minutes(
                 user_id=str(current_user.id),
@@ -1057,6 +1144,8 @@ async def save_conversation(
                 duration_minutes=request.duration_minutes,
                 selected_duration=selected_duration
             )
+
+            _dna_cache_invalidate = current_user.subscription_status in ["active", "trialing"]
 
             # 🎯 Check Redis cache for enhanced statistics
             from redis_client import get_cached
@@ -1076,6 +1165,7 @@ async def save_conversation(
                     "session_stats": cached_stats.get("session_stats", {}),
                     "comparison": cached_stats.get("comparison", {}),
                     "overall_progress": cached_stats.get("overall_progress", {}),
+                    "dna_cache_invalidate": _dna_cache_invalidate,
                     "action": "updated"
                 }
             else:
@@ -1098,6 +1188,7 @@ async def save_conversation(
                     "comparison": {"has_previous_session": False},  # Will be available in cache soon
                     "overall_progress": {"total_sessions": 0, "total_minutes": 0},  # Will be available in cache soon
                     "stats_loading": True,  # NEW: Indicates stats are being calculated
+                    "dna_cache_invalidate": _dna_cache_invalidate,
                     "action": "updated"
                 }
         else:
@@ -1257,6 +1348,24 @@ async def save_conversation(
             )
             print(f"[SESSION_STATS_CACHE] 🚀 Scheduled statistics caching for session {result.inserted_id}")
 
+            # S3.3 — Transcript DNA update for premium users (new session path)
+            _dna_session_type = conversation_type if conversation_type in (
+                "freestyle", "news", "custom_topic", "practice"
+            ) else "practice"
+            if current_user.subscription_status in ["active", "trialing"]:
+                user_turns = [msg.dict() for msg in conversation_messages if msg.role == "user"]
+                background_tasks.add_task(
+                    _run_transcript_dna_background,
+                    user_id=str(current_user.id),
+                    language=request.language,
+                    session_type=_dna_session_type,
+                    session_id=str(result.inserted_id),
+                    analysis_job_id=analysis_job_id,
+                    user_turns=user_turns,
+                    duration_minutes=request.duration_minutes,
+                )
+                print(f"[TRANSCRIPT_DNA] 🚀 Scheduled DNA update for new session {result.inserted_id}")
+
             # Deduct minutes from user subscription quota (server-side, idempotent)
             await _deduct_practice_minutes(
                 user_id=str(current_user.id),
@@ -1264,6 +1373,8 @@ async def save_conversation(
                 duration_minutes=request.duration_minutes,
                 selected_duration=selected_duration
             )
+
+            _dna_cache_invalidate = current_user.subscription_status in ["active", "trialing"]
 
             # 🎯 Check Redis cache for enhanced statistics
             from redis_client import get_cached
@@ -1285,6 +1396,7 @@ async def save_conversation(
                     "session_stats": cached_stats.get("session_stats", {}),
                     "comparison": cached_stats.get("comparison", {}),
                     "overall_progress": cached_stats.get("overall_progress", {}),
+                    "dna_cache_invalidate": _dna_cache_invalidate,
                     "action": "created"
                 }
             else:
@@ -1309,6 +1421,7 @@ async def save_conversation(
                     "comparison": {"has_previous_session": False},  # Will be available in cache soon
                     "overall_progress": {"total_sessions": 0, "total_minutes": 0},  # Will be available in cache soon
                     "stats_loading": True,  # NEW: Indicates stats are being calculated
+                    "dna_cache_invalidate": _dna_cache_invalidate,
                     "action": "created"
                 }
         

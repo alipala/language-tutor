@@ -76,7 +76,26 @@ class SpeakingDNAService:
             "accuracy": 0.8,
             "learning": 0.5,
             "emotional": 1.0
-        }
+        },
+        # S3.3 — transcript-only session types from save-conversation.
+        # Acoustic weights are 0 (belt-and-suspenders alongside S3.1 has_audio=False pinning).
+        # Vocabulary/Accuracy carry signal from transcript; Learning is lower (no challenge data).
+        "custom_topic": {
+            "rhythm": 0.0,
+            "confidence": 0.0,
+            "vocabulary": 0.5,
+            "accuracy": 0.5,
+            "learning": 0.3,
+            "emotional": 0.0
+        },
+        "practice": {
+            "rhythm": 0.0,
+            "confidence": 0.0,
+            "vocabulary": 0.5,
+            "accuracy": 0.5,
+            "learning": 0.3,
+            "emotional": 0.0
+        },
     }
 
     # Thresholds for breakthrough detection
