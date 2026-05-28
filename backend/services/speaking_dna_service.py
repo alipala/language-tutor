@@ -77,20 +77,20 @@ class SpeakingDNAService:
             "learning": 0.5,
             "emotional": 1.0
         },
-        # S3.3 — transcript-only session types from save-conversation.
-        # Acoustic weights are 0 (belt-and-suspenders alongside S3.1 has_audio=False pinning).
-        # Vocabulary/Accuracy carry signal from transcript; Learning is lower (no challenge data).
+        # S3.3 — transcript-only session types: rhythm+confidence now update
+        # from text signals (WPM, latency, fillers). Emotional stays 0 (pinned,
+        # needs audio tone). Vocabulary/Accuracy are primary signals here.
         "custom_topic": {
-            "rhythm": 0.0,
-            "confidence": 0.0,
+            "rhythm": 0.5,
+            "confidence": 0.6,
             "vocabulary": 0.5,
             "accuracy": 0.5,
             "learning": 0.3,
             "emotional": 0.0
         },
         "practice": {
-            "rhythm": 0.0,
-            "confidence": 0.0,
+            "rhythm": 0.5,
+            "confidence": 0.6,
             "vocabulary": 0.5,
             "accuracy": 0.5,
             "learning": 0.3,
@@ -658,19 +658,23 @@ class SpeakingDNAService:
 
         existing_strands = existing_profile.get("dna_strands", {}) if existing_profile else {}
 
-        # ── S3.1: acoustic strand pinning ────────────────────────────────────
+        # ── S3.1: acoustic strand handling ───────────────────────────────────
+        # Rhythm and Confidence update every session using text-based signals
+        # (WPM, response latency, filler rate, self-corrections) — acoustic
+        # features (pitch, jitter) simply won't be present but the code
+        # handles that gracefully via None-checks and fallback weights.
+        # Emotional is still pinned when no audio — it requires tone/pitch
+        # that cannot be inferred from transcript alone.
         if not has_audio:
             logger.info(
-                f"[DNA] Acoustic strands pinned (no audio). user_id={user_id} "
-                f"language={language} session_type={session_type}"
+                f"[DNA] Emotional strand pinned (no audio); rhythm+confidence update from text signals. "
+                f"user_id={user_id} language={language} session_type={session_type}"
             )
-            rhythm_result     = existing_strands.get("rhythm")     or self._update_rhythm_strand(None, session_metrics, alpha, weights["rhythm"])
-            confidence_result = existing_strands.get("confidence") or self._update_confidence_strand(None, session_metrics, alpha, weights["confidence"])
-            emotional_result  = existing_strands.get("emotional")  or await self._update_emotional_strand(None, session_metrics, alpha, weights["emotional"], user_id, language, session_data)
+            emotional_result = existing_strands.get("emotional") or await self._update_emotional_strand(
+                None, session_metrics, alpha, weights["emotional"], user_id, language, session_data
+            )
         else:
-            rhythm_result     = self._update_rhythm_strand(existing_strands.get("rhythm"), session_metrics, alpha, weights["rhythm"])
-            confidence_result = self._update_confidence_strand(existing_strands.get("confidence"), session_metrics, alpha, weights["confidence"])
-            emotional_result  = await self._update_emotional_strand(
+            emotional_result = await self._update_emotional_strand(
                 existing_strands.get("emotional"),
                 session_metrics,
                 alpha,
@@ -679,6 +683,10 @@ class SpeakingDNAService:
                 language,
                 session_data
             )
+
+        # Always update rhythm and confidence (text-based signals available in all sessions)
+        rhythm_result     = self._update_rhythm_strand(existing_strands.get("rhythm"), session_metrics, alpha, weights["rhythm"])
+        confidence_result = self._update_confidence_strand(existing_strands.get("confidence"), session_metrics, alpha, weights["confidence"])
 
         # ── S3.2: learning strand pinning ─────────────────────────────────────
         if not has_challenges:
