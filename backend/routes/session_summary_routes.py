@@ -267,6 +267,50 @@ async def generate_structured_session_summary(
     return _fallback
 
 
+async def _generate_and_persist_structured_summary_background(
+    plan_id: str,
+    session_number: int,
+    plan: Dict[str, Any],
+    conversation_data: Optional[Dict[str, Any]],
+    basic_summary: Optional[str],
+) -> None:
+    """
+    Generate structured summary via GPT (async, off the hot path) then persist it.
+    Runs as a background task so the session-summary response is not blocked.
+    """
+    try:
+        structured_summary = await generate_structured_session_summary(
+            plan=plan,
+            conversation_data=conversation_data,
+            basic_summary=basic_summary,
+            session_number=session_number,
+            plan_id=plan_id,
+        )
+        logger.info(
+            f"[STRUCTURED_SUMMARY_BG] ✅ Generated for plan {plan_id} session {session_number}: "
+            f"summary_len={len(structured_summary.get('compressed_summary', ''))}"
+        )
+    except Exception as gen_err:
+        logger.warning(f"[STRUCTURED_SUMMARY_BG] ⚠️ Generation failed, using fallback: {gen_err}")
+        week_focus = plan.get("plan_content", {}).get("weekly_schedule", [{}])[
+            max(0, (session_number - 1) // 4)
+        ].get("focus", "General language practice")
+        structured_summary = {
+            "compressed_summary": (
+                basic_summary[:120] if basic_summary else f"Session {session_number} completed."
+            ),
+            "breakthrough_moment": "",
+            "focus_next_session": week_focus,
+            "_generated_by": "fallback_bg",
+        }
+
+    await _persist_structured_summary_background(
+        plan_id=plan_id,
+        session_number=session_number,
+        structured_summary=structured_summary,
+    )
+
+
 async def _persist_structured_summary_background(
     plan_id: str,
     session_number: int,
@@ -938,40 +982,19 @@ async def store_session_summary(
 
         background_analyses = []  # Empty - will be populated by background job
 
-        # ── Structured session summary (gpt-4.1-mini, background) ────────────
-        # Generate a rich structured summary now (fast enough to await inline)
-        # then persist the full object to session_details in the background.
-        structured_summary: Dict[str, Any] = {}
-        try:
-            structured_summary = await generate_structured_session_summary(
-                plan=plan,
-                conversation_data=conversation_data,
-                basic_summary=basic_summary,
-                session_number=completed_sessions,
-                plan_id=plan_id,
-            )
-            print(
-                f"[SESSION_SUMMARY] ✅ Structured summary generated: "
-                f"vocab={len(structured_summary.get('vocabulary_practiced', []))}, "
-                f"confidence={structured_summary.get('student_confidence', 'unknown')}, "
-                f"summary_len={len(structured_summary.get('compressed_summary', ''))}"
-            )
-        except Exception as _ss_err:
-            logger.warning(f"[SESSION_SUMMARY] ⚠️ Structured summary failed (non-fatal): {_ss_err}")
-            # Ensure we always have at least a compressed_summary so the mobile UI never shows "Session complete."
-            structured_summary = {
-                "compressed_summary": basic_summary[:120] if basic_summary else f"Session {completed_sessions} completed.",
-                "focus_next_session": "",
-            }
-
-        # Persist the structured summary onto the week's session_details (background)
-        if structured_summary:
-            background_tasks.add_task(
-                _persist_structured_summary_background,
-                plan_id=plan_id,
-                session_number=completed_sessions,
-                structured_summary=structured_summary,
-            )
+        # ── Structured session summary (gpt-4.1-mini, fully async) ──────────
+        # Fire-and-forget: generate + persist off the hot path so the response
+        # returns immediately (~0ms instead of ~8s). Client polls
+        # GET /api/learning/session-structured-summary/{session_id} for the result.
+        background_tasks.add_task(
+            _generate_and_persist_structured_summary_background,
+            plan_id=plan_id,
+            session_number=completed_sessions,
+            plan=plan,
+            conversation_data=conversation_data,
+            basic_summary=basic_summary,
+        )
+        structured_summary: Dict[str, Any] = {}  # always null in the immediate response
 
         # Get existing session summaries or initialize empty list
         session_summaries = plan.get("session_summaries", [])
@@ -1352,6 +1375,68 @@ async def store_session_summary(
             status_code=500,
             detail=f"Error storing session summary: {str(e)}"
         )
+
+
+@router.get("/api/learning/session-structured-summary/{session_id}")
+async def get_session_structured_summary(
+    session_id: str,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Poll for the structured summary generated in the background.
+
+    Returns {"ready": true, "structured_summary": {...}} once the GPT background
+    task has completed and persisted the result, or {"ready": false} while it's
+    still in-flight.
+
+    session_id format: plan_{plan_id}_session_{N}
+    """
+    try:
+        from database import database
+        plans_collection = database.learning_plans
+
+        # Decode session_id → plan_id + session_number
+        # Format: "plan_{uuid}_session_{N}"
+        parts = session_id.split("_session_")
+        if len(parts) != 2:
+            raise HTTPException(status_code=400, detail="Invalid session_id format")
+
+        plan_id = parts[0].removeprefix("plan_")
+        try:
+            session_number = int(parts[1])
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid session_number in session_id")
+
+        plan = await plans_collection.find_one(
+            {"id": plan_id, "user_id": str(current_user.id)},
+            {"plan_content.weekly_schedule": 1}
+        )
+        if not plan:
+            raise HTTPException(status_code=404, detail="Plan not found")
+
+        sessions_per_week = 4
+        week_index = (session_number - 1) // sessions_per_week
+        session_in_week = (session_number - 1) % sessions_per_week
+
+        weekly_schedule = plan.get("plan_content", {}).get("weekly_schedule", [])
+        if week_index >= len(weekly_schedule):
+            return {"ready": False}
+
+        session_details = weekly_schedule[week_index].get("session_details", [])
+        if session_in_week >= len(session_details):
+            return {"ready": False}
+
+        ss = session_details[session_in_week].get("structured_summary")
+        if not ss:
+            return {"ready": False}
+
+        return {"ready": True, "structured_summary": ss}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[STRUCTURED_SUMMARY_POLL] Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/api/learning/sentence-analysis-status/{job_id}")
