@@ -34,78 +34,92 @@ class SpeakingDNAService:
     """
 
     # DNA Strand Weights for different session types
+    # S4: pronunciation and fluency weights added for the 6-strand model.
+    #   pronunciation — acoustic-only, pinned unless has_audio=True; voice_check / speaking_assessment get full weight
+    #   fluency       — transcript-based, every session; lower weight for acoustic-heavy types
     SESSION_WEIGHTS = {
         "learning": {
             "rhythm": 0.8,
             "confidence": 1.0,
+            "pronunciation": 0.0,   # pinned (no audio in learning sessions)
             "vocabulary": 0.7,
             "accuracy": 1.0,
+            "fluency": 0.9,
             "learning": 1.0,
             "emotional": 0.9
         },
         "freestyle": {
             "rhythm": 1.0,
             "confidence": 1.0,
+            "pronunciation": 0.0,
             "vocabulary": 1.0,
             "accuracy": 0.7,
+            "fluency": 1.0,
             "learning": 0.6,
             "emotional": 1.0
         },
         "news": {
             "rhythm": 0.9,
             "confidence": 0.9,
+            "pronunciation": 0.0,
             "vocabulary": 1.0,
             "accuracy": 0.8,
+            "fluency": 0.8,
             "learning": 0.7,
             "emotional": 0.8
         },
-        # Voice check: pure acoustic baseline — heavy weight on rhythm/confidence/emotional
-        # (no vocabulary/accuracy since there are no AI interactions, just speaking)
+        # Voice check: pure acoustic baseline — pronunciation gets full weight here.
+        # Fluency/accuracy/vocabulary carry light signal (30-second monologue, no AI corrections).
         "voice_check": {
             "rhythm": 1.0,
             "confidence": 1.0,
+            "pronunciation": 1.0,   # primary acoustic update
             "vocabulary": 0.3,
             "accuracy": 0.3,
+            "fluency": 0.8,
             "learning": 0.3,
             "emotional": 1.0
         },
         "speaking_assessment": {
             "rhythm": 1.0,
             "confidence": 1.0,
+            "pronunciation": 1.0,   # assessment carries real pronunciation signal
             "vocabulary": 0.6,
             "accuracy": 0.8,
+            "fluency": 1.0,
             "learning": 0.5,
             "emotional": 1.0
         },
         # S3.3 — transcript-only session types from save-conversation.
-        # Acoustic weights are 0 (belt-and-suspenders alongside S3.1 has_audio=False pinning).
-        # Vocabulary/Accuracy carry signal from transcript; Learning is lower (no challenge data).
         "custom_topic": {
             "rhythm": 0.0,
             "confidence": 0.0,
+            "pronunciation": 0.0,
             "vocabulary": 0.5,
             "accuracy": 0.5,
+            "fluency": 0.5,
             "learning": 0.3,
             "emotional": 0.0
         },
         "practice": {
             "rhythm": 0.0,
             "confidence": 0.0,
+            "pronunciation": 0.0,
             "vocabulary": 0.5,
             "accuracy": 0.5,
+            "fluency": 0.5,
             "learning": 0.3,
             "emotional": 0.0
         },
         # S3.6 — Voice Journal: daily 90-second audio ritual.
-        # Full audio captured → all acoustic strands update.
-        # Vocabulary/Accuracy lower (monologue, no AI correction feedback).
-        # Learning lower (no challenge/correction loop).
         "voice_journal": {
             "rhythm": 1.0,
             "confidence": 1.0,
+            "pronunciation": 0.8,
             "emotional": 1.0,
             "vocabulary": 0.4,
             "accuracy": 0.4,
+            "fluency": 0.7,
             "learning": 0.3,
         },
     }
@@ -251,25 +265,59 @@ class SpeakingDNAService:
             # S2.1 — capture previous strand values for the reveal ceremony delta animation
             previous_strand_values = existing_profile.get("dna_strands", {}) if existing_profile else {}
 
-            # Extract acoustic metrics from first 60 seconds (if audio available)
+            # Extract acoustic metrics + Azure pronunciation assessment in parallel (if audio available)
             acoustic_metrics = None
+            azure_pronunciation_result = None
             if session_data.get("audio_base64"):
-                try:
-                    logger.info("[DNA] Extracting acoustic metrics from session audio")
-                    acoustic_metrics = await audio_analysis_service.extract_acoustic_metrics(
-                        audio_base64=session_data["audio_base64"],
-                        audio_format=session_data.get("audio_format", "wav"),
-                        language=language,
-                        max_duration=60.0  # Only analyze first 60 seconds
-                    )
-                    logger.info(
-                        f"[DNA] Acoustic metrics extracted: "
-                        f"pitch={acoustic_metrics.get('pitch_mean', 0):.1f}Hz, "
-                        f"jitter={acoustic_metrics.get('jitter', 0):.4f}"
-                    )
-                except Exception as e:
-                    logger.warning(f"[DNA] Acoustic analysis failed: {str(e)} - continuing without acoustic metrics")
-                    acoustic_metrics = None
+                import asyncio as _asyncio
+                from pronunciation_assessment_service import pronunciation_service as _pron_svc
+
+                session_type_for_audio = session_data.get("session_type", "learning")
+                # Only call Azure for session types that carry pronunciation signal
+                _AZURE_SESSION_TYPES = {"voice_check", "speaking_assessment", "voice_journal"}
+                run_azure = session_type_for_audio in _AZURE_SESSION_TYPES and _pron_svc.enabled
+
+                async def _extract_acoustic():
+                    try:
+                        logger.info("[DNA] Extracting acoustic metrics from session audio")
+                        result = await audio_analysis_service.extract_acoustic_metrics(
+                            audio_base64=session_data["audio_base64"],
+                            audio_format=session_data.get("audio_format", "wav"),
+                            language=language,
+                            max_duration=60.0
+                        )
+                        logger.info(
+                            f"[DNA] Acoustic metrics extracted: "
+                            f"pitch={result.get('pitch_mean', 0):.1f}Hz, "
+                            f"jitter={result.get('jitter', 0):.4f}"
+                        )
+                        return result
+                    except Exception as e:
+                        logger.warning(f"[DNA] Acoustic analysis failed: {e} - continuing without acoustic metrics")
+                        return None
+
+                async def _azure_assess():
+                    if not run_azure:
+                        return None
+                    try:
+                        logger.info(f"[DNA] Running Azure Pronunciation Assessment for {session_type_for_audio}")
+                        result = await _pron_svc.assess_from_base64(
+                            audio_base64=session_data["audio_base64"],
+                            language=language,
+                        )
+                        logger.info(
+                            f"[DNA] Azure Pronunciation Assessment: "
+                            f"pron={result.get('pronunciation_score')}, "
+                            f"fluency={result.get('fluency_score')}"
+                        )
+                        return result
+                    except Exception as e:
+                        logger.warning(f"[DNA] Azure Pronunciation Assessment failed (non-fatal): {e}")
+                        return None
+
+                acoustic_metrics, azure_pronunciation_result = await _asyncio.gather(
+                    _extract_acoustic(), _azure_assess()
+                )
 
             # Extract metrics from session (including acoustic if available)
             session_metrics = self._extract_session_metrics(
@@ -293,6 +341,7 @@ class SpeakingDNAService:
                 session_data,
                 has_audio=has_audio,
                 has_challenges=has_challenges,
+                azure_pronunciation_result=azure_pronunciation_result,
             )
 
             # Detect any breakthroughs
@@ -462,14 +511,19 @@ class SpeakingDNAService:
                 return float(s.get("consistency_score") or 0.0)
             if key == "confidence":
                 return float(s.get("score") or 0.0)
+            if key == "pronunciation":
+                return float(s.get("score") or 0.0)
             if key == "vocabulary":
                 return float(s.get("new_word_attempt_rate") or 0.0)
             if key == "accuracy":
                 return float(s.get("grammar_accuracy") or 0.0)
+            if key == "fluency":
+                return float(s.get("score") or 0.0)
             return 0.0
 
+        # S4: include all 6 display strands
         deltas: Dict[str, Dict[str, float]] = {}
-        for key in ("rhythm", "confidence", "vocabulary", "accuracy"):
+        for key in ("rhythm", "confidence", "pronunciation", "vocabulary", "accuracy", "fluency"):
             prev = round(_score(previous_strands, key), 4)
             curr = round(_score(updated_strands, key), 4)
             deltas[key] = {
@@ -635,6 +689,7 @@ class SpeakingDNAService:
         session_data: Dict = None,
         has_audio: bool = True,
         has_challenges: bool = True,
+        azure_pronunciation_result: Optional[Dict] = None,
     ) -> Dict:
         """
         Calculate updated DNA strands using weighted moving average.
@@ -642,34 +697,38 @@ class SpeakingDNAService:
         Uses exponential moving average to smooth updates while still
         being responsive to recent sessions.
 
-        S3.1 — has_audio=False: Rhythm, Confidence, Emotional are pinned to their
-        existing values instead of blending toward acoustic defaults. This prevents
-        silent drift for sessions that carry no audio (every regular conversation,
-        news, freestyle). Product decision: pin-not-skip (writes existing value back
-        so EMA history stays aligned across all strands).
+        S3.1 — has_audio=False: Rhythm, Confidence, Pronunciation, Emotional are
+        pinned to their existing values. Prevents silent drift for sessions that
+        carry no audio (every regular conversation, news, freestyle).
 
-        S3.2 — has_challenges=False: Learning strand is pinned to its existing value.
-        When challenges_offered==0 the EMA would blend toward 0/0=0, dragging
-        challenge_acceptance downward for conversation-heavy users. Product decision
-        (Option A): skip Learning EMA for non-challenge sessions.
+        S3.2 — has_challenges=False: Learning strand is pinned.
+
+        S4   — Pronunciation strand is acoustic-only (voice_check / speaking_assessment).
+               Fluency strand is transcript-based and runs every session.
         """
         weights = self.SESSION_WEIGHTS.get(session_type, self.SESSION_WEIGHTS["learning"])
         alpha = 0.3  # Learning rate for exponential moving average
 
         existing_strands = existing_profile.get("dna_strands", {}) if existing_profile else {}
 
-        # ── S3.1: acoustic strand pinning ────────────────────────────────────
+        # ── S3.1 / S4: acoustic strand pinning ───────────────────────────────
         if not has_audio:
             logger.info(
                 f"[DNA] Acoustic strands pinned (no audio). user_id={user_id} "
                 f"language={language} session_type={session_type}"
             )
-            rhythm_result     = existing_strands.get("rhythm")     or self._update_rhythm_strand(None, session_metrics, alpha, weights["rhythm"])
-            confidence_result = existing_strands.get("confidence") or self._update_confidence_strand(None, session_metrics, alpha, weights["confidence"])
-            emotional_result  = existing_strands.get("emotional")  or await self._update_emotional_strand(None, session_metrics, alpha, weights["emotional"], user_id, language, session_data)
+            rhythm_result        = existing_strands.get("rhythm")        or self._update_rhythm_strand(None, session_metrics, alpha, weights["rhythm"])
+            confidence_result    = existing_strands.get("confidence")    or self._update_confidence_strand(None, session_metrics, alpha, weights["confidence"])
+            pronunciation_result = existing_strands.get("pronunciation") or self._update_pronunciation_strand(None, None, session_type)
+            emotional_result     = existing_strands.get("emotional")     or await self._update_emotional_strand(None, session_metrics, alpha, weights["emotional"], user_id, language, session_data)
         else:
             rhythm_result     = self._update_rhythm_strand(existing_strands.get("rhythm"), session_metrics, alpha, weights["rhythm"])
             confidence_result = self._update_confidence_strand(existing_strands.get("confidence"), session_metrics, alpha, weights["confidence"])
+            pronunciation_result = self._update_pronunciation_strand(
+                existing_strands.get("pronunciation"),
+                azure_pronunciation_result,
+                session_type,
+            )
             emotional_result  = await self._update_emotional_strand(
                 existing_strands.get("emotional"),
                 session_metrics,
@@ -691,12 +750,14 @@ class SpeakingDNAService:
             learning_result = self._update_learning_strand(existing_strands.get("learning"), session_metrics, alpha, weights["learning"])
 
         updated = {
-            "rhythm":     rhythm_result,
-            "confidence": confidence_result,
-            "vocabulary": self._update_vocabulary_strand(existing_strands.get("vocabulary"), session_metrics, alpha, weights["vocabulary"]),
-            "accuracy":   self._update_accuracy_strand(existing_strands.get("accuracy"), session_metrics, alpha, weights["accuracy"]),
-            "learning":   learning_result,
-            "emotional":  emotional_result,
+            "rhythm":        rhythm_result,
+            "confidence":    confidence_result,
+            "pronunciation": pronunciation_result,
+            "vocabulary":    self._update_vocabulary_strand(existing_strands.get("vocabulary"), session_metrics, alpha, weights["vocabulary"]),
+            "accuracy":      self._update_accuracy_strand(existing_strands.get("accuracy"), session_metrics, alpha, weights["accuracy"]),
+            "fluency":       self._update_fluency_strand(existing_strands.get("fluency"), session_metrics, alpha, weights.get("fluency", 0.8)),
+            "learning":      learning_result,
+            "emotional":     emotional_result,
         }
 
         return updated
@@ -1096,6 +1157,163 @@ class SpeakingDNAService:
             "common_errors": common_errors,
             "improving_areas": improving_areas,
             "description": description
+        }
+
+    # ── S4: Fluency strand (transcript-based, every session) ─────────────────
+
+    def _update_fluency_strand(self, existing: Optional[Dict], metrics: Dict, alpha: float, weight: float) -> Dict:
+        """
+        S4 — Fluency strand: transcript-based, updated every session.
+
+        Components:
+          filler_component    = 1 - min(filler_rate_per_minute / 10, 1)   [0-1]
+          variance_component  = 1 - min(latency_std / 2000, 1)            [0-1]
+          pause_component     = acoustic_speaking_ratio if available,
+                                else derived from latency_avg              [0-1]
+
+        score = 0.5 * filler_component + 0.3 * variance_component + 0.2 * pause_component
+        EMA alpha=0.15 (slower update than transcript strands — fluency changes gradually).
+        """
+        filler_rate  = metrics.get("filler_rate_per_minute", 2.0)
+        latency_std  = metrics.get("response_latency_std_ms", 500)
+        latency_avg  = metrics.get("response_latency_avg_ms", 2000)
+
+        # Component 1: filler density (0 fillers = 1.0, 10+/min = 0.0)
+        filler_component = max(0.0, 1.0 - min(filler_rate / 10.0, 1.0))
+
+        # Component 2: response latency variance (low variance = more fluent)
+        variance_component = max(0.0, 1.0 - min(latency_std / 2000.0, 1.0))
+
+        # Component 3: pause/flow from acoustic or latency proxy
+        acoustic_speaking_ratio = metrics.get("acoustic_speaking_ratio")
+        if acoustic_speaking_ratio is not None:
+            pause_component = float(acoustic_speaking_ratio)  # 0-1 (0.7-0.9 is natural)
+        else:
+            # Proxy: high avg latency → more pauses → lower fluency
+            pause_component = max(0.0, 1.0 - min(latency_avg / 5000.0, 1.0))
+
+        raw_score = (
+            0.5 * filler_component +
+            0.3 * variance_component +
+            0.2 * pause_component
+        )
+        raw_score = max(0.0, min(1.0, raw_score))
+
+        # EMA — lower alpha for fluency (gradual change)
+        fluency_alpha = 0.15
+        if existing:
+            score = existing.get("score", raw_score) * (1 - fluency_alpha * weight) + raw_score * fluency_alpha * weight
+        else:
+            score = raw_score
+
+        score = round(max(0.0, min(1.0, score)), 2)
+
+        # Qualitative level
+        if score >= 0.75:
+            level = "natural"
+            description = "Speech flows naturally with minimal hesitation"
+        elif score >= 0.55:
+            level = "developing"
+            description = "Generally fluent with occasional pauses or fillers"
+        elif score >= 0.35:
+            level = "building"
+            description = "Developing fluency — pauses and fillers are common"
+        else:
+            level = "early"
+            description = "Frequent pauses and hesitations — keep practising"
+
+        return {
+            "score": score,
+            "level": level,
+            "filler_rate": round(filler_rate, 2),
+            "wpm_variance": round(latency_std, 0),
+            "pause_score": round(pause_component, 2),
+            "description": description,
+        }
+
+    # ── S4: Pronunciation strand (acoustic-only, voice_check / speaking_assessment) ──
+
+    def _update_pronunciation_strand(
+        self,
+        existing: Optional[Dict],
+        azure_result: Optional[Dict],
+        session_type: str,
+    ) -> Dict:
+        """
+        S4 — Pronunciation strand: acoustic-only, updated only when Azure result available.
+
+        Pin guard: if azure_result is None the existing value is returned unchanged
+        (same pin-not-skip semantics as other acoustic strands).
+
+        EMA alpha=0.25 — acoustic strand, faster update (voice check is deliberate).
+        """
+        if azure_result is None:
+            if existing:
+                logger.info(f"[DNA] Pronunciation pinned (no Azure result). session_type={session_type}")
+                return existing
+            # No existing + no result → safe defaults (strand not yet measured)
+            return {
+                "score": 0.0,
+                "phoneme_accuracy": 0.0,
+                "prosody_score": 0.0,
+                "completeness_score": 0.0,
+                "fluency_score": 0.0,
+                "voice_checks_count": 0,
+                "last_updated_session_type": None,
+                "description": "Not yet measured — complete a voice check to unlock",
+            }
+
+        pron_alpha = 0.25
+        new_score        = azure_result.get("pronunciation_score", 0) / 100.0
+        new_phoneme      = azure_result.get("accuracy_score", 0) / 100.0
+        new_prosody      = azure_result.get("prosody_score", 0) / 100.0
+        new_completeness = azure_result.get("completeness_score", 0) / 100.0
+        new_fluency      = azure_result.get("fluency_score", 0) / 100.0
+
+        if existing and existing.get("voice_checks_count", 0) > 0:
+            score        = existing.get("score", new_score) * (1 - pron_alpha) + new_score * pron_alpha
+            phoneme      = existing.get("phoneme_accuracy", new_phoneme) * (1 - pron_alpha) + new_phoneme * pron_alpha
+            prosody      = existing.get("prosody_score", new_prosody) * (1 - pron_alpha) + new_prosody * pron_alpha
+            completeness = existing.get("completeness_score", new_completeness) * (1 - pron_alpha) + new_completeness * pron_alpha
+            fluency      = existing.get("fluency_score", new_fluency) * (1 - pron_alpha) + new_fluency * pron_alpha
+            voice_checks_count = existing.get("voice_checks_count", 0) + 1
+        else:
+            score        = new_score
+            phoneme      = new_phoneme
+            prosody      = new_prosody
+            completeness = new_completeness
+            fluency      = new_fluency
+            voice_checks_count = 1
+
+        score        = round(max(0.0, min(1.0, score)), 2)
+        phoneme      = round(max(0.0, min(1.0, phoneme)), 2)
+        prosody      = round(max(0.0, min(1.0, prosody)), 2)
+        completeness = round(max(0.0, min(1.0, completeness)), 2)
+        fluency      = round(max(0.0, min(1.0, fluency)), 2)
+
+        if score >= 0.80:
+            description = "Excellent pronunciation — clear and natural"
+        elif score >= 0.65:
+            description = "Good pronunciation with minor accent patterns"
+        elif score >= 0.45:
+            description = "Developing — some phonemes need practice"
+        else:
+            description = "Early stage — focus on individual sounds"
+
+        logger.info(
+            f"[DNA] Pronunciation updated via {session_type}: "
+            f"score={score:.2f}, phoneme={phoneme:.2f}, prosody={prosody:.2f}"
+        )
+
+        return {
+            "score": score,
+            "phoneme_accuracy": phoneme,
+            "prosody_score": prosody,
+            "completeness_score": completeness,
+            "fluency_score": fluency,
+            "voice_checks_count": voice_checks_count,
+            "last_updated_session_type": session_type,
+            "description": description,
         }
 
     def _update_learning_strand(self, existing: Optional[Dict], metrics: Dict, alpha: float, weight: float) -> Dict:
@@ -1720,12 +1938,14 @@ Session type: {session_type}
     ) -> Optional[str]:
         """Generate a one-sentence narrative explaining the biggest strand delta."""
         try:
-            # Compute deltas for the four ceremony strands
+            # Compute deltas for the six ceremony strands (S4: pronunciation + fluency added)
             STRAND_SCORE = {
-                "rhythm":     lambda s: s.get("consistency_score", 0) * 100,
-                "confidence": lambda s: s.get("score", 0) * 100,
-                "vocabulary": lambda s: s.get("new_word_attempt_rate", 0) * 100,
-                "accuracy":   lambda s: s.get("grammar_accuracy", 0) * 100,
+                "rhythm":        lambda s: s.get("consistency_score", 0) * 100,
+                "confidence":    lambda s: s.get("score", 0) * 100,
+                "pronunciation": lambda s: s.get("score", 0) * 100,
+                "vocabulary":    lambda s: s.get("new_word_attempt_rate", 0) * 100,
+                "accuracy":      lambda s: s.get("grammar_accuracy", 0) * 100,
+                "fluency":       lambda s: s.get("score", 0) * 100,
             }
             deltas: Dict[str, float] = {}
             for strand, scorer in STRAND_SCORE.items():
