@@ -193,10 +193,6 @@ async def generate_structured_session_summary(
         "_generated_by": "fallback",
     }
 
-    if not client:
-        logger.warning("[STRUCTURED_SUMMARY] OpenAI client not available — returning fallback")
-        return _fallback
-
     try:
         prompt = _build_structured_summary_prompt(
             language=language,
