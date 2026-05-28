@@ -150,7 +150,7 @@ async def create_learning_plan(
     Authentication is required for assessment data processing.
     🔥 FIXED: Now handles missing required fields and different request formats gracefully
     """
-    
+
     # 🔥 CRITICAL FIX: Debug logging to see exactly what frontend sends
     print(f"[LEARNING_PLAN_DEBUG] 🔍 Raw request data received:")
     print(f"[LEARNING_PLAN_DEBUG] {json.dumps(request_data, indent=2, default=str)}")
@@ -569,7 +569,6 @@ async def create_learning_plan(
         f"Creating learning plan for: language={plan_request.language}, "
         f"level={plan_request.proficiency_level}, goals={goals_text}"
     )
-
     try:
         # ──────────────────────────────────────────────────────────────────────
         # GPT-4.1: Generate deeply personalised plan content
@@ -578,6 +577,7 @@ async def create_learning_plan(
         # Falls back to programmatic defaults on any failure so the plan is
         # always created successfully.
         # ──────────────────────────────────────────────────────────────────────
+        openai_client = get_async_openai()
         if openai_client and assessment_data:
             logger.info("[LEARNING_PLAN] 🤖 Calling gpt-4.1 to generate personalised plan content")
 
@@ -880,7 +880,7 @@ Using ALL the information above, provide:
         print(f"[LEARNING_PLAN]    Total weeks: {len(weekly_schedule)}")
         print(f"[LEARNING_PLAN]    Total sessions: {total_sessions}")
         print(f"[LEARNING_PLAN]    Sessions per week: 4")
-        
+
         # Calculate voice check schedule for Speaking DNA acoustic analysis
         voice_check_schedule = voice_check_service.calculate_voice_check_schedule(plan_request.duration_months)
 
@@ -911,7 +911,7 @@ Using ALL the information above, provide:
             "voice_check_schedule": voice_check_schedule,
             "voice_checks_completed": []
         }
-        
+
         # ATOMIC SAVE: Use the safe learning plan service with duplicate prevention
         if current_user and plan_request.assessment_data:
             print(f"[ATOMIC_SAVE] 🔄 Starting atomic save of assessment + learning plan")

@@ -127,14 +127,14 @@ class SubscriptionService:
             annual_price=0.0,
             monthly_sessions=-1,  # Unlimited sessions — minutes are the only gate (15 min/month)
             annual_sessions=-1,
-            monthly_assessments=1,
-            annual_assessments=1,  # Same as monthly for free tier
+            monthly_assessments=-1,  # Unlimited — no assessment gate for any user
+            annual_assessments=-1,
             # Minute limits are the sole usage gate
             monthly_minutes=15,
             annual_minutes=15,
             features=[
                 "15 minutes speaking practice monthly",
-                "1 speaking assessment monthly",
+                "Speaking assessments",
                 "Basic progress tracking"
             ],
             is_free=True
@@ -700,8 +700,7 @@ class SubscriptionService:
                 return True, ""
 
             elif feature_type == "assessment":
-                if status.limits and status.limits.assessments_remaining == 0:
-                    return False, f"You've used all {status.limits.assessments_limit} assessments for this {status.period}. Upgrade to unlock more!"
+                # Assessments are unlimited for all users — no gate
                 return True, ""
 
             elif feature_type == "learning_plan_progression":

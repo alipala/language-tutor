@@ -92,13 +92,8 @@ async def check_can_assess(current_user: Optional[UserResponse] = Depends(get_op
     if not current_user:
         return {"can_access": True, "message": ""}
 
-    try:
-        from subscription_service import SubscriptionService
-        can_access, message = await SubscriptionService.can_access_feature(current_user.id, "assessment")
-        return {"can_access": can_access, "message": message if not can_access else ""}
-    except Exception as e:
-        print(f"[CAN_ASSESS] Error checking limits: {str(e)}")
-        return {"can_access": True, "message": ""}
+    # Assessment limits removed — all users can assess without restriction
+    return {"can_access": True, "message": ""}
 
 
 @router.get("/api/speaking/assessment-prompt")
@@ -245,30 +240,7 @@ async def get_assessment_prompt(
 async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request)):
     temp_audio_path = None  # Initialize early so finally block is safe regardless of exit path
     try:
-        # CRITICAL FIX: Check assessment limits BEFORE processing the assessment
-        if current_user:
-            try:
-                print(f"[ASSESSMENT_LIMIT_CHECK] Checking assessment limits for user {current_user.id}")
-
-                from subscription_service import SubscriptionService
-                can_access, access_message = await SubscriptionService.can_access_feature(current_user.id, "assessment")
-
-                if not can_access:
-                    print(f"[ASSESSMENT_LIMIT_CHECK] Assessment blocked: {access_message}")
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=access_message
-                    )
-
-                print(f"[ASSESSMENT_LIMIT_CHECK] Assessment limit check passed")
-
-            except HTTPException:
-                # Re-raise HTTP exceptions (limit exceeded)
-                raise
-            except Exception as limit_error:
-                print(f"[ASSESSMENT_LIMIT_CHECK] Error checking limits: {str(limit_error)}")
-                # Continue with assessment if limit check fails (don't block user)
-                pass
+        # Assessment limits removed — all users can assess without restriction
 
         # 🔥 NEW: Save audio to temp file for both transcription AND Azure pronunciation assessment
         recognized_text = None
