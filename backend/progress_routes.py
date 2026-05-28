@@ -2373,7 +2373,10 @@ async def get_sentence_analysis_status(
     elif job["status"] == "processing":
         # Estimate based on time elapsed
         if job.get("started_at"):
-            elapsed = (datetime.now(timezone.utc) - job["started_at"]).total_seconds()
+            started = job["started_at"]
+            if started.tzinfo is None:
+                started = started.replace(tzinfo=timezone.utc)
+            elapsed = (datetime.now(timezone.utc) - started).total_seconds()
             # Assume 20 seconds total processing time
             progress = min(int((elapsed / 20) * 100), 95)
         else:

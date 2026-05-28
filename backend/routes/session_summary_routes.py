@@ -954,13 +954,19 @@ async def store_session_summary(
                 session_number=completed_sessions,
                 plan_id=plan_id,
             )
-            logger.info(
+            print(
                 f"[SESSION_SUMMARY] ✅ Structured summary generated: "
                 f"vocab={len(structured_summary.get('vocabulary_practiced', []))}, "
-                f"confidence={structured_summary.get('student_confidence', 'unknown')}"
+                f"confidence={structured_summary.get('student_confidence', 'unknown')}, "
+                f"summary_len={len(structured_summary.get('compressed_summary', ''))}"
             )
         except Exception as _ss_err:
             logger.warning(f"[SESSION_SUMMARY] ⚠️ Structured summary failed (non-fatal): {_ss_err}")
+            # Ensure we always have at least a compressed_summary so the mobile UI never shows "Session complete."
+            structured_summary = {
+                "compressed_summary": basic_summary[:120] if basic_summary else f"Session {completed_sessions} completed.",
+                "focus_next_session": "",
+            }
 
         # Persist the structured summary onto the week's session_details (background)
         if structured_summary:
@@ -1388,7 +1394,10 @@ async def get_sentence_analysis_status(
     elif job["status"] == "processing":
         # Estimate based on time elapsed
         if job.get("started_at"):
-            elapsed = (datetime.now(timezone.utc) - job["started_at"]).total_seconds()
+            started = job["started_at"]
+            if started.tzinfo is None:
+                started = started.replace(tzinfo=timezone.utc)
+            elapsed = (datetime.now(timezone.utc) - started).total_seconds()
             # Assume 20 seconds total processing time
             progress = min(int((elapsed / 20) * 100), 95)
         else:
