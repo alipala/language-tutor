@@ -111,17 +111,6 @@ class SpeakingDNAService:
             "learning": 0.3,
             "emotional": 0.0
         },
-        # S3.6 — Voice Journal: daily 90-second audio ritual.
-        "voice_journal": {
-            "rhythm": 1.0,
-            "confidence": 1.0,
-            "pronunciation": 0.8,
-            "emotional": 1.0,
-            "vocabulary": 0.4,
-            "accuracy": 0.4,
-            "fluency": 0.7,
-            "learning": 0.3,
-        },
     }
 
     # Thresholds for breakthrough detection
@@ -274,7 +263,7 @@ class SpeakingDNAService:
 
                 session_type_for_audio = session_data.get("session_type", "learning")
                 # Only call Azure for session types that carry pronunciation signal
-                _AZURE_SESSION_TYPES = {"voice_check", "speaking_assessment", "voice_journal"}
+                _AZURE_SESSION_TYPES = {"voice_check", "speaking_assessment"}
                 run_azure = session_type_for_audio in _AZURE_SESSION_TYPES and _pron_svc.enabled
 
                 async def _extract_acoustic():
