@@ -285,6 +285,30 @@ async def get_dna_evolution(
 
 
 # ============================================================================
+# Voice Check Evolution Endpoint
+# ============================================================================
+
+@router.get("/voice-check-evolution/{language}")
+async def get_voice_check_evolution(
+    language: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get acoustic strand evolution using Voice Check events as data points."""
+    try:
+        user_id = str(current_user.id)
+        result = await speaking_dna_service.get_voice_check_evolution(
+            user_id=user_id,
+            language=language,
+        )
+        # Sanitize float values to ensure JSON compliance
+        result = sanitize_floats(result)
+        return {"voice_check_evolution": result, "checks_tracked": len(result)}
+    except Exception as e:
+        logger.error(f"[DNA API] Error getting voice check evolution: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
 # Acoustic Evolution Endpoint
 # ============================================================================
 

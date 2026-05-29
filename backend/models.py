@@ -1401,25 +1401,14 @@ class SpeakingDNAProfile(BaseModel):
 
 
 class DNAHistorySnapshot(BaseModel):
-    """Weekly DNA snapshot for evolution tracking"""
-    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
-    user_id: str
-    language: str
-    week_start: datetime
-    week_number: int  # Week number since user started
-
-    # Simplified strand snapshots
-    strand_snapshots: Dict[str, Dict[str, Any]]  # Simplified strand data
-
-    # Week statistics
-    week_stats: Dict[str, Any]  # sessions_completed, total_minutes, breakthroughs_count
-
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    """Session-level DNA snapshot for evolution tracking"""
+    session_number: int
+    timestamp: Optional[datetime] = None
+    strand_scores: Dict[str, float] = {}  # vocabulary, accuracy, fluency values (0-1 floats)
 
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
 
 
 class SpeakingBreakthrough(BaseModel):

@@ -445,14 +445,24 @@ class SpeakingDNAService:
                 except Exception as _push_err:
                     logger.warning(f"[DNA] Breakthrough push failed (non-fatal): {_push_err}")
 
-            # Create/update weekly snapshot for evolution tracking (with acoustic metrics)
-            await self._create_weekly_snapshot(
+            # Weekly snapshot disabled — replaced by session-level history
+            # await self._create_weekly_snapshot(
+            #     user_id=user_id,
+            #     language=language,
+            #     strands=updated_strands,
+            #     session_duration_minutes=session_metrics.get("session_duration_minutes", 5),
+            #     breakthroughs_count=len(breakthroughs),
+            #     acoustic_metrics=acoustic_metrics  # Add acoustic metrics to weekly snapshot
+            # )
+
+            # Append session-level history (transcript each session, acoustic on voice checks)
+            await self._append_session_history(
                 user_id=user_id,
                 language=language,
-                strands=updated_strands,
-                session_duration_minutes=session_metrics.get("session_duration_minutes", 5),
-                breakthroughs_count=len(breakthroughs),
-                acoustic_metrics=acoustic_metrics  # Add acoustic metrics to weekly snapshot
+                updated_strands=updated_strands,
+                session_number=sessions_analyzed,
+                session_type=session_data.get("session_type", "learning"),
+                voice_checks_count=updated_strands.get("pronunciation", {}).get("voice_checks_count", 0),
             )
 
             # S2.1 — generate causal sentence for the reveal ceremony
@@ -2100,6 +2110,90 @@ Session type: {session_type}
             logger.error(f"[DNA] Error creating weekly snapshot (non-fatal): {str(e)}", exc_info=True)
             # Don't raise - weekly snapshots are nice-to-have, not critical
 
+    async def _append_session_history(
+        self,
+        user_id: str,
+        language: str,
+        updated_strands: Dict,
+        session_number: int,
+        session_type: str,
+        voice_checks_count: int,
+    ) -> None:
+        """
+        Append per-session and per-voice-check history points to each strand.
+
+        Transcript strands (vocabulary, accuracy, fluency): one entry per session.
+        Acoustic strands (rhythm, confidence, pronunciation): one entry per voice check only.
+
+        History arrays are capped at 50 entries (oldest popped).
+        """
+        TRANSCRIPT_STRANDS = {"vocabulary", "accuracy", "fluency"}
+        ACOUSTIC_STRANDS   = {"rhythm", "confidence", "pronunciation"}
+
+        now = datetime.utcnow()
+
+        def _score(strands: Dict, key: str) -> float:
+            s = strands.get(key) or {}
+            if key == "rhythm":
+                return float(s.get("consistency_score") or 0.0)
+            if key == "confidence":
+                return float(s.get("score") or 0.0)
+            if key == "pronunciation":
+                return float(s.get("score") or 0.0)
+            if key == "vocabulary":
+                return float(s.get("new_word_attempt_rate") or 0.0)
+            if key == "accuracy":
+                return float(s.get("grammar_accuracy") or 0.0)
+            if key == "fluency":
+                return float(s.get("score") or 0.0)
+            return 0.0
+
+        is_voice_check = session_type in {"voice_check", "speaking_assessment"}
+
+        try:
+            update_ops: Dict[str, Any] = {}
+
+            for strand_key in TRANSCRIPT_STRANDS:
+                value = round(_score(updated_strands, strand_key), 4)
+                entry = {
+                    "session_number": session_number,
+                    "value": value,
+                    "timestamp": now,
+                }
+                # Push to array, slice to last 50
+                field = f"dna_strands.{strand_key}.history"
+                update_ops[field] = entry
+
+            if is_voice_check:
+                for strand_key in ACOUSTIC_STRANDS:
+                    value = round(_score(updated_strands, strand_key), 4)
+                    entry = {
+                        "voice_check_number": voice_checks_count,
+                        "value": value,
+                        "timestamp": now,
+                    }
+                    field = f"dna_strands.{strand_key}.voice_check_history"
+                    update_ops[field] = entry
+
+            if not update_ops:
+                return
+
+            # Use $push with $each + $slice to cap array at 50
+            push_ops = {}
+            for field, entry in update_ops.items():
+                push_ops[field] = {"$each": [entry], "$slice": -50}
+
+            await self.db.speaking_dna_profiles.update_one(
+                {"user_id": user_id, "language": language},
+                {"$push": push_ops}
+            )
+            logger.info(
+                f"[DNA] Session history appended: session_number={session_number}, "
+                f"is_voice_check={is_voice_check}, strands_updated={list(update_ops.keys())}"
+            )
+        except Exception as e:
+            logger.error(f"[DNA] Error appending session history (non-fatal): {e}", exc_info=True)
+
     # =========================================================================
     # PROFILE RETRIEVAL & EVOLUTION
     # =========================================================================
@@ -2125,30 +2219,110 @@ Session type: {session_type}
         self,
         user_id: str,
         language: str,
-        weeks: int = 12
+        weeks: int = 12,  # kept for API compat but now means "last N transcript points"
     ) -> List[Dict]:
-        """Get DNA evolution history for visualization."""
+        """
+        Get DNA evolution history for visualization.
+
+        Returns session-level history for transcript strands (vocabulary, accuracy, fluency).
+        The `weeks` param is repurposed as max_points for the last N sessions (default 12).
+        """
         try:
-            history = await self.db.speaking_dna_history.find({
+            profile = await self.db.speaking_dna_profiles.find_one({
                 "user_id": user_id,
-                "language": language
-            }).sort("week_start", -1).limit(weeks).to_list(weeks)
+                "language": language,
+            })
+            if not profile:
+                return []
 
-            # Convert ObjectIds and dates to strings for API response
-            for entry in history:
-                entry["_id"] = str(entry["_id"])
-                # Convert datetime objects to ISO strings for JavaScript parsing
-                if "week_start" in entry and entry["week_start"]:
-                    entry["week_start"] = entry["week_start"].isoformat()
-                if "created_at" in entry and entry["created_at"]:
-                    entry["created_at"] = entry["created_at"].isoformat()
-                if "updated_at" in entry and entry["updated_at"]:
-                    entry["updated_at"] = entry["updated_at"].isoformat()
+            strands = profile.get("dna_strands", {})
+            TRANSCRIPT_STRANDS = ["vocabulary", "accuracy", "fluency"]
 
-            return list(reversed(history))  # Chronological order
+            # Build unified timeline: each unique session_number is one point
+            # Aggregate from all transcript strand histories
+            session_map: Dict[int, Dict] = {}  # session_number -> {strand: value, timestamp}
 
+            for strand_key in TRANSCRIPT_STRANDS:
+                history = strands.get(strand_key, {}).get("history", [])
+                for entry in history:
+                    sn = entry.get("session_number")
+                    if sn is None:
+                        continue
+                    if sn not in session_map:
+                        session_map[sn] = {
+                            "session_number": sn,
+                            "timestamp": entry.get("timestamp"),
+                            "strand_scores": {},
+                        }
+                    session_map[sn]["strand_scores"][strand_key] = entry.get("value", 0.0)
+                    # Use most recent timestamp for this session
+                    ts = entry.get("timestamp")
+                    if ts and (not session_map[sn]["timestamp"] or ts > session_map[sn]["timestamp"]):
+                        session_map[sn]["timestamp"] = ts
+
+            # Sort chronologically, cap to last `weeks` points
+            result = sorted(session_map.values(), key=lambda x: x["session_number"])
+            result = result[-weeks:]  # last N points
+
+            # Serialize timestamps
+            for entry in result:
+                ts = entry.get("timestamp")
+                if ts and hasattr(ts, "isoformat"):
+                    entry["timestamp"] = ts.isoformat()
+
+            return result
         except Exception as e:
-            logger.error(f"[DNA] Error getting evolution: {str(e)}", exc_info=True)
+            logger.error(f"[DNA] Error getting evolution: {e}", exc_info=True)
+            return []
+
+    async def get_voice_check_evolution(
+        self,
+        user_id: str,
+        language: str,
+    ) -> List[Dict]:
+        """
+        Get acoustic strand evolution using Voice Check events only.
+
+        Returns one data point per Voice Check for rhythm, confidence, pronunciation.
+        """
+        try:
+            profile = await self.db.speaking_dna_profiles.find_one({
+                "user_id": user_id,
+                "language": language,
+            })
+            if not profile:
+                return []
+
+            strands = profile.get("dna_strands", {})
+            ACOUSTIC_STRANDS = ["rhythm", "confidence", "pronunciation"]
+
+            # Build unified timeline: each unique voice_check_number is one point
+            vc_map: Dict[int, Dict] = {}
+
+            for strand_key in ACOUSTIC_STRANDS:
+                history = strands.get(strand_key, {}).get("voice_check_history", [])
+                for entry in history:
+                    vcn = entry.get("voice_check_number")
+                    if vcn is None:
+                        continue
+                    if vcn not in vc_map:
+                        vc_map[vcn] = {
+                            "voice_check_number": vcn,
+                            "timestamp": entry.get("timestamp"),
+                            "strand_scores": {},
+                        }
+                    vc_map[vcn]["strand_scores"][strand_key] = entry.get("value", 0.0)
+
+            result = sorted(vc_map.values(), key=lambda x: x["voice_check_number"])
+
+            for entry in result:
+                ts = entry.get("timestamp")
+                if ts and hasattr(ts, "isoformat"):
+                    entry["timestamp"] = ts.isoformat()
+
+            return result
+        except Exception as e:
+            logger.error(f"[DNA] Error getting voice check evolution: {e}", exc_info=True)
             return []
 
     async def get_acoustic_evolution(
