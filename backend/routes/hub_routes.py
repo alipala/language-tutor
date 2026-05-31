@@ -289,6 +289,22 @@ async def _get_progress_stats(user_id: str, local_date: Optional[str] = None) ->
     if local_date:
         weekly = await _get_weekly_totals(user_id, local_date)
 
+    # CHAL.1 — per-language recent level signal.
+    # Sourced from stats.lifetime.by_language.<lang>.highest_level which is
+    # already tracked at stats_service.py:249 (updated whenever a higher level
+    # is played in a given language). Used by the mobile Silver-mission press
+    # handler so a Dutch-learning user without a plan no longer gets a default
+    # English/B1 challenge — they get Dutch at the level they've actually
+    # played before, falling back to A1 in code when nothing exists. Pure
+    # read-side projection: no schema change, no new write, additive.
+    recent_level_by_language: Dict[str, str] = {}
+    for lang, lang_data in (lifetime.get("by_language") or {}).items():
+        if not isinstance(lang_data, dict):
+            continue
+        lvl = lang_data.get("highest_level")
+        if isinstance(lvl, str) and lvl:
+            recent_level_by_language[lang.lower()] = lvl
+
     return {
         "current_streak":          stats.get("current_streak", 0),
         "longest_streak":          stats.get("longest_streak", 0),
@@ -307,6 +323,9 @@ async def _get_progress_stats(user_id: str, local_date: Optional[str] = None) ->
         # Phase 3 additive — weekly totals for the launchpad
         "weekly_xp":       weekly["weekly_xp"],
         "weekly_sessions": weekly["weekly_sessions"],
+        # CHAL.1 additive — per-language "what level did the user last play"
+        # so a no-plan user's Silver press routes to the right CEFR level.
+        "recent_level_by_language": recent_level_by_language,
     }
 
 
