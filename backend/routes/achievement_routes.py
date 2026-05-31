@@ -308,13 +308,29 @@ async def complete_challenge_session(
             # Fetch updated session for stats processing
             session = await challenge_sessions_collection.find_one({"_id": session_id})
 
-        # NEW: Process session completion for statistics
-        try:
-            await process_session_completion(session)
-            print(f"[STATS] ✅ Statistics updated for session {session_id}")
-        except Exception as e:
-            print(f"[STATS] ❌ Error updating statistics: {str(e)}")
-            # Don't fail the request if stats update fails
+        # Process session completion for statistics — gated on the explicit
+        # `abandoned` flag declared by the client (mobile's quit-path sets this
+        # to True only when the user opened a tile and quit without answering
+        # any questions). The audit row is already persisted above; what we
+        # gate here is the downstream stats / streak orchestration so a
+        # 0-engagement abandon never advances the user's totals.
+        #
+        # Server-side hardening: honor the skip ONLY when the totals
+        # corroborate it (total_challenges == 0). A future mis-flagging
+        # client cannot silently discard a session that contained real work.
+        is_corroborated_abandon = bool(request.abandoned) and total_challenges == 0
+        if is_corroborated_abandon:
+            print(
+                f"[STATS] ⏭️  Skipping stats/streak for session {session_id} — "
+                f"client-flagged abandon (challenges=0, xp={request.total_xp})"
+            )
+        else:
+            try:
+                await process_session_completion(session)
+                print(f"[STATS] ✅ Statistics updated for session {session_id}")
+            except Exception as e:
+                print(f"[STATS] ❌ Error updating statistics: {str(e)}")
+                # Don't fail the request if stats update fails
 
         # Unlock achievements
         unlocked_achievements = []
@@ -346,13 +362,27 @@ async def complete_challenge_session(
                     print(f"🏆 Achievement unlocked: {achievement_id} for user {current_user.id}")
 
         # ===== FIRST SESSION WELCOME NOTIFICATION =====
-        # Check if this is the user's first completed session
+        # Check if this is the user's first completed session.
+        #
+        # IMPORTANT: the mobile quit-path also hits /complete-session with
+        # zeros (correct_answers=0, wrong_answers=0, total_xp=0) so it can
+        # persist the abandoned-session record. Without this gate, a user
+        # who taps a challenge tile and backs out without answering would
+        # receive a misleading "Great First Session! 🎉 You earned 0 XP!"
+        # push notification.
+        #
+        # We treat a session as "real" when it was NOT a corroborated
+        # abandon (mirrors the stats-orchestration gate above). A wrong
+        # answer still counts as a real first session — the user engaged
+        # even though they earned 0 XP — so they still get the welcome.
+        is_real_first_session = not is_corroborated_abandon
+
         total_sessions = await challenge_sessions_collection.count_documents({
             "user_id": current_user.id,
             "is_active": False  # Only count completed sessions
         })
 
-        if total_sessions == 1:  # First session just completed
+        if is_real_first_session and total_sessions == 1:  # First REAL session just completed
             print(f"🎉 First session completed for user {current_user.id}!")
 
             # Check notification preferences

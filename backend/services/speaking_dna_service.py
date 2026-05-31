@@ -374,6 +374,35 @@ class SpeakingDNAService:
                     }
                     logger.info("[DNA] Created initial baseline assessment")
 
+            # ── Phase 0 — DNA-acceleration fuel ──────────────────────
+            # Compute per-strand deltas BEFORE persisting so we can store the
+            # freshest delta on the profile itself. The hub then reads it via
+            # _get_dna_summary() and can show "this session pushed Fluency +X"
+            # without needing the background task to be synchronous.
+            #
+            # last_session_delta = full per-strand {previous, current, delta}
+            # top_strand / top_delta = the strand with the largest positive delta
+            #   (handy for one-line UI like "Your Fluency climbed +3 today").
+            last_session_delta_strands = self._compute_strand_deltas(
+                previous_strand_values, updated_strands
+            )
+            top_strand_key: Optional[str] = None
+            top_strand_delta: float = 0.0
+            for _strand_key, _vals in last_session_delta_strands.items():
+                _d = float(_vals.get("delta", 0.0))
+                if _d > top_strand_delta:
+                    top_strand_delta = _d
+                    top_strand_key = _strand_key
+
+            last_session_delta_doc = {
+                "session_id": session_data.get("session_id"),
+                "session_type": session_data.get("session_type", "learning"),
+                "computed_at": now,
+                "strands": last_session_delta_strands,
+                "top_strand": top_strand_key,
+                "top_delta": round(top_strand_delta, 4),
+            }
+
             profile_update = {
                 "user_id": user_id,
                 "language": language,
@@ -381,7 +410,8 @@ class SpeakingDNAService:
                 "overall_profile": overall_profile,
                 "sessions_analyzed": sessions_analyzed,
                 "total_speaking_minutes": total_minutes,
-                "updated_at": now
+                "updated_at": now,
+                "last_session_delta": last_session_delta_doc,
             }
 
             # Add baseline assessment if we have acoustic metrics
@@ -465,8 +495,10 @@ class SpeakingDNAService:
             session_insights = self._generate_session_insights(session_metrics, updated_strands)
             session_insights["causal_sentence"] = causal_sentence
 
-            # S3.4 — compute per-strand delta for the session summary animation
-            strand_deltas = self._compute_strand_deltas(previous_strand_values, updated_strands)
+            # S3.4 — per-strand delta for the session summary animation.
+            # Phase 0: reuse the already-computed dict from the
+            # last_session_delta block above instead of recomputing.
+            strand_deltas = last_session_delta_strands
 
             return {
                 "profile": profile_update,

@@ -1029,6 +1029,17 @@ class ChallengeSessionComplete(BaseModel):
     # Optional: Challenge IDs for completion tracking (Freestyle Practice)
     challenge_ids: Optional[List[str]] = None
 
+    # Client-declared "tap-and-bounce" flag — true only when the user opened a
+    # challenge tile and quit without answering any questions. The audit row is
+    # still persisted; what gets gated is the downstream stats / streak /
+    # welcome-push processing so a 0-engagement abandon never advances the
+    # user's totals. Default False keeps every existing client (including
+    # older mobile builds that don't know this field) working as before.
+    # Server-side hardening: corroborated by total_challenges == 0 in the
+    # caller, so a future mis-flagging client cannot silently discard a
+    # session that contained real work.
+    abandoned: Optional[bool] = False
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True

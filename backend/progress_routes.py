@@ -1047,6 +1047,19 @@ async def save_conversation(
                     }}
                 )
                 print(f"[PROGRESS] ✅ XP applied (existing session): daily_stats +{xp_earned_total} XP, lifetime +{xp_earned_total} XP (base {session_xp_pre} + bonus {bonus_xp_pre})")
+
+                # Keep users.stats.current_streak honest for the voice product.
+                # Challenges write the streak via process_session_completion; the
+                # conversation path bypasses that orchestrator so without this the
+                # Hub's streak field stays stale for voice-only users. Guarded by
+                # engagement (is_streak_eligible) + forward-only date window.
+                from services.stats_service import maybe_update_streak_for_voice_session
+                await maybe_update_streak_for_voice_session(
+                    user_id=str(current_user.id),
+                    local_date=local_date,
+                    timezone_str=getattr(request, 'user_timezone', None) or 'UTC',
+                    engaged=is_streak_eligible,
+                )
             except Exception as stats_err:
                 print(f"[PROGRESS] ⚠️ Error updating stats for XP (non-fatal): {stats_err}")
 
@@ -1263,6 +1276,16 @@ async def save_conversation(
                     }}
                 )
                 print(f"[PROGRESS] ✅ XP applied (new session): daily_stats +{xp_earned_total} XP, lifetime +{xp_earned_total} XP (base {session_xp_pre} + bonus {bonus_xp_pre})")
+
+                # Keep users.stats.current_streak honest for the voice product —
+                # see notes at the existing-session insertion above. Same guards.
+                from services.stats_service import maybe_update_streak_for_voice_session
+                await maybe_update_streak_for_voice_session(
+                    user_id=str(current_user.id),
+                    local_date=local_date,
+                    timezone_str=getattr(request, 'user_timezone', None) or 'UTC',
+                    engaged=is_streak_eligible,
+                )
             except Exception as stats_err:
                 print(f"[PROGRESS] ⚠️ Error updating stats for XP (non-fatal): {stats_err}")
 

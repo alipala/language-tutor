@@ -1175,6 +1175,26 @@ async def store_session_summary(
                     }}
                 )
                 print(f"[SESSION_SUMMARY] ✅ lifetime XP updated: +{total_xp_delta} XP")
+
+                # Keep users.stats.current_streak honest for learning-plan
+                # sessions. Challenges write the streak via
+                # process_session_completion; learning-plan sessions bypass
+                # that orchestrator, so without this the Hub streak stays
+                # stale for users on plans.
+                #
+                # Engagement gate mirrors the BulletproofTracker rule used
+                # a few lines above (session_completed = duration met the
+                # user's selected length). Forward-only date guard inside
+                # the helper rejects any historical replay so this write
+                # site's known retry path cannot move the streak backwards.
+                from services.stats_service import maybe_update_streak_for_voice_session
+                session_engaged = bool(session_duration_minutes >= float(selected_duration))
+                await maybe_update_streak_for_voice_session(
+                    user_id=str(current_user.id),
+                    local_date=local_date,
+                    timezone_str=user_tz,
+                    engaged=session_engaged,
+                )
             except Exception as stats_err:
                 print(f"[SESSION_SUMMARY] ⚠️ Error updating daily_stats: {stats_err}")
 
