@@ -193,10 +193,6 @@ async def generate_structured_session_summary(
         "_generated_by": "fallback",
     }
 
-    if not client:
-        logger.warning("[STRUCTURED_SUMMARY] OpenAI client not available — returning fallback")
-        return _fallback
-
     try:
         prompt = _build_structured_summary_prompt(
             language=language,
@@ -269,6 +265,50 @@ async def generate_structured_session_summary(
         logger.warning(f"[STRUCTURED_SUMMARY] gpt-4.1-mini call failed: {e} — fallback")
 
     return _fallback
+
+
+async def _generate_and_persist_structured_summary_background(
+    plan_id: str,
+    session_number: int,
+    plan: Dict[str, Any],
+    conversation_data: Optional[Dict[str, Any]],
+    basic_summary: Optional[str],
+) -> None:
+    """
+    Generate structured summary via GPT (async, off the hot path) then persist it.
+    Runs as a background task so the session-summary response is not blocked.
+    """
+    try:
+        structured_summary = await generate_structured_session_summary(
+            plan=plan,
+            conversation_data=conversation_data,
+            basic_summary=basic_summary,
+            session_number=session_number,
+            plan_id=plan_id,
+        )
+        logger.info(
+            f"[STRUCTURED_SUMMARY_BG] ✅ Generated for plan {plan_id} session {session_number}: "
+            f"summary_len={len(structured_summary.get('compressed_summary', ''))}"
+        )
+    except Exception as gen_err:
+        logger.warning(f"[STRUCTURED_SUMMARY_BG] ⚠️ Generation failed, using fallback: {gen_err}")
+        week_focus = plan.get("plan_content", {}).get("weekly_schedule", [{}])[
+            max(0, (session_number - 1) // 4)
+        ].get("focus", "General language practice")
+        structured_summary = {
+            "compressed_summary": (
+                basic_summary[:120] if basic_summary else f"Session {session_number} completed."
+            ),
+            "breakthrough_moment": "",
+            "focus_next_session": week_focus,
+            "_generated_by": "fallback_bg",
+        }
+
+    await _persist_structured_summary_background(
+        plan_id=plan_id,
+        session_number=session_number,
+        structured_summary=structured_summary,
+    )
 
 
 async def _persist_structured_summary_background(
@@ -575,15 +615,18 @@ async def _run_dna_and_optimizer_background(
     # DNA analysis
     try:
         from services.speaking_dna_service import speaking_dna_service
+        # S3.1: no audio in learning-plan sessions — acoustic strands will be pinned
+        # S3.2: challenges_offered=0 so Learning strand will be pinned
         dna_session_data = {
             "session_id": plan_id,
             "session_type": "learning",
             "duration_seconds": int(duration_minutes * 60),
             "user_turns": user_turns,
             "corrections_received": background_analyses,
-            "challenges_offered": 2,
-            "challenges_accepted": 1,
+            "challenges_offered": 0,
+            "challenges_accepted": 0,
             "topics_discussed": [language],
+            # no audio_base64 — triggers acoustic strand pinning via S3.1
         }
         dna_result = await speaking_dna_service.analyze_session_for_dna(
             user_id=user_id, language=language, session_data=dna_session_data
@@ -837,10 +880,11 @@ async def store_session_summary(
     # 🔍 DEBUG: Check what's in conversation_data
     if conversation_data:
         print(f"[SESSION_SUMMARY] 🔍 Conversation data keys: {list(conversation_data.keys())}")
-        if "sentences_for_analysis" in conversation_data:
-            print(f"[SESSION_SUMMARY] 🔍 Found sentences_for_analysis: {len(conversation_data['sentences_for_analysis'])} sentences")
+        sfa_val = conversation_data.get("sentences_for_analysis")
+        if sfa_val is not None:
+            print(f"[SESSION_SUMMARY] 🔍 Found sentences_for_analysis: {len(sfa_val)} sentences")
         else:
-            print(f"[SESSION_SUMMARY] ⚠️ 'sentences_for_analysis' NOT in conversation_data!")
+            print(f"[SESSION_SUMMARY] ⚠️ 'sentences_for_analysis' is null or absent")
 
     try:
         from database import database
@@ -938,34 +982,19 @@ async def store_session_summary(
 
         background_analyses = []  # Empty - will be populated by background job
 
-        # ── Structured session summary (gpt-4.1-mini, background) ────────────
-        # Generate a rich structured summary now (fast enough to await inline)
-        # then persist the full object to session_details in the background.
-        structured_summary: Dict[str, Any] = {}
-        try:
-            structured_summary = await generate_structured_session_summary(
-                plan=plan,
-                conversation_data=conversation_data,
-                basic_summary=basic_summary,
-                session_number=completed_sessions,
-                plan_id=plan_id,
-            )
-            logger.info(
-                f"[SESSION_SUMMARY] ✅ Structured summary generated: "
-                f"vocab={len(structured_summary.get('vocabulary_practiced', []))}, "
-                f"confidence={structured_summary.get('student_confidence', 'unknown')}"
-            )
-        except Exception as _ss_err:
-            logger.warning(f"[SESSION_SUMMARY] ⚠️ Structured summary failed (non-fatal): {_ss_err}")
-
-        # Persist the structured summary onto the week's session_details (background)
-        if structured_summary:
-            background_tasks.add_task(
-                _persist_structured_summary_background,
-                plan_id=plan_id,
-                session_number=completed_sessions,
-                structured_summary=structured_summary,
-            )
+        # ── Structured session summary (gpt-4.1-mini, fully async) ──────────
+        # Fire-and-forget: generate + persist off the hot path so the response
+        # returns immediately (~0ms instead of ~8s). Client polls
+        # GET /api/learning/session-structured-summary/{session_id} for the result.
+        background_tasks.add_task(
+            _generate_and_persist_structured_summary_background,
+            plan_id=plan_id,
+            session_number=completed_sessions,
+            plan=plan,
+            conversation_data=conversation_data,
+            basic_summary=basic_summary,
+        )
+        structured_summary: Dict[str, Any] = {}  # always null in the immediate response
 
         # Get existing session summaries or initialize empty list
         session_summaries = plan.get("session_summaries", [])
@@ -1146,6 +1175,26 @@ async def store_session_summary(
                     }}
                 )
                 print(f"[SESSION_SUMMARY] ✅ lifetime XP updated: +{total_xp_delta} XP")
+
+                # Keep users.stats.current_streak honest for learning-plan
+                # sessions. Challenges write the streak via
+                # process_session_completion; learning-plan sessions bypass
+                # that orchestrator, so without this the Hub streak stays
+                # stale for users on plans.
+                #
+                # Engagement gate mirrors the BulletproofTracker rule used
+                # a few lines above (session_completed = duration met the
+                # user's selected length). Forward-only date guard inside
+                # the helper rejects any historical replay so this write
+                # site's known retry path cannot move the streak backwards.
+                from services.stats_service import maybe_update_streak_for_voice_session
+                session_engaged = bool(session_duration_minutes >= float(selected_duration))
+                await maybe_update_streak_for_voice_session(
+                    user_id=str(current_user.id),
+                    local_date=local_date,
+                    timezone_str=user_tz,
+                    engaged=session_engaged,
+                )
             except Exception as stats_err:
                 print(f"[SESSION_SUMMARY] ⚠️ Error updating daily_stats: {stats_err}")
 
@@ -1308,6 +1357,7 @@ async def store_session_summary(
                 "session_stats": enhanced_stats.get("session_stats"),
                 "comparison": enhanced_stats.get("comparison"),
                 "overall_progress": enhanced_stats.get("overall_progress"),
+                "structured_summary": structured_summary if structured_summary else None,
                 "dna_breakthroughs": [],   # populated by background task
                 "dna_insights": {},        # populated by background task
                 "recommended_challenges": recommended_challenges  # 🎯 NEW: Post-session challenge recommendations
@@ -1332,7 +1382,8 @@ async def store_session_summary(
                 "flashcard_generation_success": False,
                 "session_stats": enhanced_stats.get("session_stats"),  # 🎯 NEW: Enhanced statistics
                 "comparison": enhanced_stats.get("comparison"),  # 🎯 NEW: Comparison
-                "overall_progress": enhanced_stats.get("overall_progress")  # 🎯 NEW: Overall progress
+                "overall_progress": enhanced_stats.get("overall_progress"),  # 🎯 NEW: Overall progress
+                "structured_summary": structured_summary if structured_summary else None,
             }
 
     except HTTPException:
@@ -1344,6 +1395,68 @@ async def store_session_summary(
             status_code=500,
             detail=f"Error storing session summary: {str(e)}"
         )
+
+
+@router.get("/api/learning/session-structured-summary/{session_id}")
+async def get_session_structured_summary(
+    session_id: str,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Poll for the structured summary generated in the background.
+
+    Returns {"ready": true, "structured_summary": {...}} once the GPT background
+    task has completed and persisted the result, or {"ready": false} while it's
+    still in-flight.
+
+    session_id format: plan_{plan_id}_session_{N}
+    """
+    try:
+        from database import database
+        plans_collection = database.learning_plans
+
+        # Decode session_id → plan_id + session_number
+        # Format: "plan_{uuid}_session_{N}"
+        parts = session_id.split("_session_")
+        if len(parts) != 2:
+            raise HTTPException(status_code=400, detail="Invalid session_id format")
+
+        plan_id = parts[0].removeprefix("plan_")
+        try:
+            session_number = int(parts[1])
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid session_number in session_id")
+
+        plan = await plans_collection.find_one(
+            {"id": plan_id, "user_id": str(current_user.id)},
+            {"plan_content.weekly_schedule": 1}
+        )
+        if not plan:
+            raise HTTPException(status_code=404, detail="Plan not found")
+
+        sessions_per_week = 4
+        week_index = (session_number - 1) // sessions_per_week
+        session_in_week = (session_number - 1) % sessions_per_week
+
+        weekly_schedule = plan.get("plan_content", {}).get("weekly_schedule", [])
+        if week_index >= len(weekly_schedule):
+            return {"ready": False}
+
+        session_details = weekly_schedule[week_index].get("session_details", [])
+        if session_in_week >= len(session_details):
+            return {"ready": False}
+
+        ss = session_details[session_in_week].get("structured_summary")
+        if not ss:
+            return {"ready": False}
+
+        return {"ready": True, "structured_summary": ss}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[STRUCTURED_SUMMARY_POLL] Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/api/learning/sentence-analysis-status/{job_id}")
@@ -1382,7 +1495,10 @@ async def get_sentence_analysis_status(
     elif job["status"] == "processing":
         # Estimate based on time elapsed
         if job.get("started_at"):
-            elapsed = (datetime.now(timezone.utc) - job["started_at"]).total_seconds()
+            started = job["started_at"]
+            if started.tzinfo is None:
+                started = started.replace(tzinfo=timezone.utc)
+            elapsed = (datetime.now(timezone.utc) - started).total_seconds()
             # Assume 20 seconds total processing time
             progress = min(int((elapsed / 20) * 100), 95)
         else:

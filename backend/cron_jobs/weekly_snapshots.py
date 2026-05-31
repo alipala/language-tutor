@@ -1,3 +1,7 @@
+# DEPRECATED: Weekly snapshots replaced by session-level history.
+# This cron job is kept for reference but should no longer be scheduled.
+# See speaking_dna_service._append_session_history() for the new approach.
+
 """
 Weekly Snapshots Cron Job
 =========================
@@ -81,21 +85,21 @@ async def create_weekly_snapshots_for_all_users():
             try:
                 user_id = profile["user_id"]
                 language = profile["language"]
-                strands = profile.get("dna_strands", {})
 
                 print(f"[CRON] [{i}/{len(profiles)}] Processing user {user_id[:8]}... ({language})")
 
-                # Create/update weekly snapshot
-                await speaking_dna_service._create_weekly_snapshot(
-                    user_id=user_id,
-                    language=language,
-                    strands=strands,
-                    session_duration_minutes=0,  # No new session, just snapshot
-                    breakthroughs_count=0
-                )
+                # DEPRECATED: Weekly snapshot creation disabled.
+                # Session-level history is now appended in speaking_dna_service._append_session_history().
+                # await speaking_dna_service._create_weekly_snapshot(
+                #     user_id=user_id,
+                #     language=language,
+                #     strands=strands,
+                #     session_duration_minutes=0,  # No new session, just snapshot
+                #     breakthroughs_count=0
+                # )
 
                 success_count += 1
-                print(f"[CRON]   ✅ Success")
+                print(f"[CRON]   ✅ Success (no-op: weekly snapshots deprecated)")
 
             except Exception as e:
                 error_count += 1

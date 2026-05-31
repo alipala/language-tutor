@@ -1029,6 +1029,17 @@ class ChallengeSessionComplete(BaseModel):
     # Optional: Challenge IDs for completion tracking (Freestyle Practice)
     challenge_ids: Optional[List[str]] = None
 
+    # Client-declared "tap-and-bounce" flag — true only when the user opened a
+    # challenge tile and quit without answering any questions. The audit row is
+    # still persisted; what gets gated is the downstream stats / streak /
+    # welcome-push processing so a 0-engagement abandon never advances the
+    # user's totals. Default False keeps every existing client (including
+    # older mobile builds that don't know this field) working as before.
+    # Server-side hardening: corroborated by total_challenges == 0 in the
+    # caller, so a future mis-flagging client cannot silently discard a
+    # session that contained real work.
+    abandoned: Optional[bool] = False
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
@@ -1401,25 +1412,14 @@ class SpeakingDNAProfile(BaseModel):
 
 
 class DNAHistorySnapshot(BaseModel):
-    """Weekly DNA snapshot for evolution tracking"""
-    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
-    user_id: str
-    language: str
-    week_start: datetime
-    week_number: int  # Week number since user started
-
-    # Simplified strand snapshots
-    strand_snapshots: Dict[str, Dict[str, Any]]  # Simplified strand data
-
-    # Week statistics
-    week_stats: Dict[str, Any]  # sessions_completed, total_minutes, breakthroughs_count
-
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    """Session-level DNA snapshot for evolution tracking"""
+    session_number: int
+    timestamp: Optional[datetime] = None
+    strand_scores: Dict[str, float] = {}  # vocabulary, accuracy, fluency values (0-1 floats)
 
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
 
 
 class SpeakingBreakthrough(BaseModel):
@@ -1490,6 +1490,7 @@ class SessionInsights(BaseModel):
     """Insights generated from session analysis"""
     insights: List[str]
     highlight_stat: Dict[str, Any]
+    causal_sentence: Optional[str] = None  # S2.1 narrative for reveal ceremony
 
     class Config:
         populate_by_name = True
@@ -1501,6 +1502,11 @@ class AnalyzeSessionResponse(BaseModel):
     success: bool
     breakthroughs: List[SpeakingBreakthrough]
     session_insights: SessionInsights
+    previous_strand_values: Optional[Dict[str, Any]] = None  # S2.1 for reveal delta animation
+    # S3.4: per-strand delta dict {"rhythm": {"previous": 0.42, "current": 0.55, "delta": 0.13}, ...}
+    strand_deltas: Optional[Dict[str, Any]] = None
+    # S3.5: first breakthrough of this session (if any) for the sealed reveal card
+    breakthrough_unlocked: Optional[Dict[str, Any]] = None
 
     class Config:
         populate_by_name = True

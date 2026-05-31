@@ -273,6 +273,77 @@ async def update_lifetime_stats(session_data: Dict[str, Any]) -> None:
 # STREAK MANAGEMENT
 # ============================================================================
 
+async def maybe_update_streak_for_voice_session(
+    user_id: str,
+    local_date: str,
+    timezone_str: str,
+    *,
+    engaged: bool,
+) -> None:
+    """
+    Forward-only, engagement-gated wrapper around ``update_streak``.
+
+    Purpose: keep ``users.stats.current_streak`` honest for conversation /
+    news / custom-topic / learning-plan sessions, which (unlike challenges)
+    do not flow through ``process_session_completion`` and therefore never
+    call ``update_streak`` directly today. Without this, the Hub's streak
+    field is stale for voice-only users.
+
+    Two guards mirror the just-shipped challenge-side ``abandoned`` gate:
+
+    1. **Engagement floor** — the caller passes ``engaged`` based on a
+       real signal at the save site (e.g. ``is_streak_eligible`` for
+       free conversations, ``session_duration_minutes >= selected_duration``
+       for learning-plan sessions). An empty/abandoned conversation must
+       arrive with ``engaged=False`` and is silently skipped.
+
+    2. **Forward-only date guard** — accepts the call only when
+       ``local_date`` is today or yesterday in the user's timezone.
+       Tolerates the just-before-midnight save boundary (session starts
+       23:59 today, save fires 00:01 tomorrow → diff=1, allowed).
+       Rejects any historical replay / backfill / retry of an older
+       session, so a stray write can never move ``last_practice_date``
+       backwards or trigger a spurious reset.
+
+    Failures are non-fatal: the wrapper logs and returns rather than
+    raising, so the caller's save-path is never broken by a streak
+    bookkeeping problem.
+    """
+    if not engaged:
+        print(
+            f"[STREAK] ⏭️  Skipping non-engaged session for user {user_id} "
+            f"(local_date={local_date})"
+        )
+        return
+
+    try:
+        today_local = get_current_local_date(timezone_str=timezone_str)
+        today_dt    = datetime.strptime(today_local, "%Y-%m-%d")
+        session_dt  = datetime.strptime(local_date,  "%Y-%m-%d")
+        day_diff    = (today_dt - session_dt).days
+    except Exception as parse_err:
+        print(
+            f"[STREAK] ⏭️  Skipping streak update — could not parse dates "
+            f"(local_date={local_date}, tz={timezone_str}): {parse_err}"
+        )
+        return
+
+    if not (0 <= day_diff <= 1):
+        # Historical (>=2 days old) or future-dated payload. Refuse.
+        print(
+            f"[STREAK] ⏭️  Skipping out-of-window session for user {user_id} "
+            f"(local_date={local_date}, today={today_local}, day_diff={day_diff})"
+        )
+        return
+
+    try:
+        await update_streak(user_id, local_date, timezone_str)
+    except Exception as e:
+        # Defensive — update_streak() already swallows its own exceptions,
+        # but we belt-and-brace so the caller's save flow never breaks.
+        print(f"[STREAK] ⚠️  Non-fatal failure in voice-session streak update: {e}")
+
+
 async def update_streak(user_id: str, local_date: str, timezone_str: str) -> None:
     """
     Update user's streak based on practice date.

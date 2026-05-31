@@ -91,6 +91,21 @@ class HubResponse(BaseModel):
     # Why the silver (challenge) mission was picked — e.g. "grammar"
     silver_reason: str = ""
 
+    # Phase 0 — which of the 4 priority sources picked Silver today.
+    # One of "P1" | "P2" | "P3" | "P4" | "default". Already stored on the
+    # missions doc (missions_routes._generate_missions_for_today L717-718);
+    # we just surface it. Lets the UI tune the tone of the "why" line
+    # ("based on your last session" vs "based on your assessment").
+    silver_source: str = ""
+
+    # Phase 0 — server-side all-missions-complete flag. Authoritative trigger
+    # for the celebration. Mobile keeps its client-side recompute as fallback
+    # so older builds and this field's absence both remain safe.
+    all_complete: bool = False
+
+    # S3.7: weakest DNA strand key for spine integration (null when no DNA data)
+    weakest_strand: Optional[str] = None
+
     # Path A — predicted forecast of tomorrow's missions (read-only).
     # Optional: absent if prediction failed (preview falls back to static copy).
     next_missions_preview: Optional[Dict[str, Any]] = None
@@ -147,6 +162,46 @@ async def _get_daily_stats(user_id: str, local_date: str) -> Dict:
     return doc
 
 
+async def _get_weekly_totals(user_id: str, local_date: str) -> Dict[str, int]:
+    """
+    Phase 3 — read-time aggregation of weekly XP + sessions.
+
+    Walks the daily_stats docs whose local_date falls in the current ISO
+    week (Monday → today) in the user's timezone. No schema change, no
+    cron, no migration. Additive: the resulting dict is folded into
+    progress_stats by _get_progress_stats.
+
+    `local_date` is the hub's IANA-aware today (already computed by the
+    handler). We derive Monday-of-that-week purely by date arithmetic on
+    the date strings, so it's timezone-agnostic from this function's
+    perspective.
+
+    Returns {"weekly_xp": int, "weekly_sessions": int}. Empty week → zeros.
+    """
+    try:
+        today_dt   = datetime.strptime(local_date, "%Y-%m-%d")
+        # Monday of the current ISO week (weekday() returns 0 for Monday).
+        week_start = today_dt - timedelta(days=today_dt.weekday())
+        week_dates = [
+            (week_start + timedelta(days=i)).strftime("%Y-%m-%d")
+            for i in range(today_dt.weekday() + 1)  # Monday through today, inclusive
+        ]
+
+        cursor = daily_stats_collection.find(
+            {"user_id": user_id, "local_date": {"$in": week_dates}},
+            {"total_xp": 1, "total_sessions": 1}
+        )
+        weekly_xp = 0
+        weekly_sessions = 0
+        async for doc in cursor:
+            weekly_xp       += int(doc.get("total_xp") or 0)
+            weekly_sessions += int(doc.get("total_sessions") or 0)
+        return {"weekly_xp": weekly_xp, "weekly_sessions": weekly_sessions}
+    except Exception as e:
+        print(f"[HUB] weekly totals failed: {e}")
+        return {"weekly_xp": 0, "weekly_sessions": 0}
+
+
 async def _get_subscription(user_id: str) -> Dict:
     """Calls the same SubscriptionService used by /api/stripe/subscription-status."""
     try:
@@ -167,7 +222,7 @@ async def _get_subscription(user_id: str) -> Dict:
         }
 
 
-async def _get_progress_stats(user_id: str) -> Dict:
+async def _get_progress_stats(user_id: str, local_date: Optional[str] = None) -> Dict:
     """
     Aggregate lifetime progress from the denormalized user.stats.lifetime doc.
 
@@ -184,6 +239,12 @@ async def _get_progress_stats(user_id: str) -> Dict:
     - Challenge XP = sum of by_language[lang].total_xp (challenge sessions are
       the only events that write per-language XP).
     - Conversation XP = total_xp - challenge_xp (remainder).
+
+    Phase 2 — adds `streak_incremented_today: bool` so the celebration can
+    honestly show "+1 today" only when the streak actually grew. Computed
+    by comparing the canonical write-side anchor (`stats.last_practice_date`)
+    to today's local date passed by the caller. Additive; defaults to False
+    when `local_date` is not supplied (older callers).
     """
     user = await users_collection.find_one(
         {"_id": ObjectId(user_id)},
@@ -213,9 +274,41 @@ async def _get_progress_stats(user_id: str) -> Dict:
     challenge_count    = lifetime.get("total_challenges", 0)
     conversation_count = lifetime.get("total_sessions", 0)
 
+    # Phase 2 — honest "streak incremented today" signal. True iff the
+    # write-side anchor (stats.last_practice_date) equals today's local date
+    # in the user's timezone. Used by the celebration to render "+1 today"
+    # only when the streak actually grew; never fabricated.
+    last_practice_date = stats.get("last_practice_date")
+    streak_incremented_today = bool(local_date and last_practice_date == local_date)
+
+    # Phase 3 — additive weekly aggregation for the launchpad "On a roll?"
+    # surface and the optional weekly goal indicator. Read-time over
+    # daily_stats, current ISO week. Zero schema change. Missing local_date
+    # → returns zeros and the launchpad UI degrades gracefully.
+    weekly = {"weekly_xp": 0, "weekly_sessions": 0}
+    if local_date:
+        weekly = await _get_weekly_totals(user_id, local_date)
+
+    # CHAL.1 — per-language recent level signal.
+    # Sourced from stats.lifetime.by_language.<lang>.highest_level which is
+    # already tracked at stats_service.py:249 (updated whenever a higher level
+    # is played in a given language). Used by the mobile Silver-mission press
+    # handler so a Dutch-learning user without a plan no longer gets a default
+    # English/B1 challenge — they get Dutch at the level they've actually
+    # played before, falling back to A1 in code when nothing exists. Pure
+    # read-side projection: no schema change, no new write, additive.
+    recent_level_by_language: Dict[str, str] = {}
+    for lang, lang_data in (lifetime.get("by_language") or {}).items():
+        if not isinstance(lang_data, dict):
+            continue
+        lvl = lang_data.get("highest_level")
+        if isinstance(lvl, str) and lvl:
+            recent_level_by_language[lang.lower()] = lvl
+
     return {
         "current_streak":          stats.get("current_streak", 0),
         "longest_streak":          stats.get("longest_streak", 0),
+        "streak_incremented_today": streak_incremented_today,
         "total_sessions":          conversation_count or stats.get("total_sessions", 0),
         "total_minutes":           lifetime.get("total_time_minutes") or stats.get("total_minutes", 0),
         "total_xp":                total_xp,
@@ -227,6 +320,12 @@ async def _get_progress_stats(user_id: str) -> Dict:
         },
         "challenge_count":    challenge_count,
         "conversation_count": conversation_count,
+        # Phase 3 additive — weekly totals for the launchpad
+        "weekly_xp":       weekly["weekly_xp"],
+        "weekly_sessions": weekly["weekly_sessions"],
+        # CHAL.1 additive — per-language "what level did the user last play"
+        # so a no-plan user's Silver press routes to the right CEFR level.
+        "recent_level_by_language": recent_level_by_language,
     }
 
 
@@ -239,19 +338,159 @@ async def _get_journey_state(user_id: str) -> Dict:
         return {"stage": "exploring", "days_since_last_activity": 0, "dna_improvement_trend": "stable"}
 
 
+def _compute_weekly_deltas(dna_strands: Optional[Dict]) -> Dict[str, Dict[str, Any]]:
+    """
+    Phase 3 — per-strand weekly window-diff from the in-document history arrays.
+
+    Honesty rules (never fabricate acceleration):
+      - Transcript strands (vocabulary, accuracy, fluency) read `history`
+        (one entry per session). We require >=2 history points within the
+        last 7 days AND the latest > the oldest in the window. Only entries
+        with positive delta are emitted.
+      - Acoustic strands (rhythm, confidence, pronunciation) read
+        `voice_check_history` (sparse — one entry per voice check). If <2
+        entries in the 7-day window, we omit the strand entirely rather
+        than infer a trend from a single point. Same positive-delta rule.
+      - Any flat or negative result is omitted. Cold-start strands omitted.
+
+    Returns: {strand_key: {"delta": float, "points": int, "window_days": 7}}.
+    """
+    if not dna_strands:
+        return {}
+
+    out: Dict[str, Dict[str, Any]] = {}
+    window_days = 7
+    now = datetime.utcnow()
+    cutoff = now - timedelta(days=window_days)
+
+    TRANSCRIPT_STRANDS = ("vocabulary", "accuracy", "fluency")
+    ACOUSTIC_STRANDS   = ("rhythm", "confidence", "pronunciation")
+
+    def _in_window(entries: List[Dict]) -> List[Dict]:
+        """Filter to last 7d using `timestamp` if present, else accept all."""
+        kept: List[Dict] = []
+        for e in entries or []:
+            ts = e.get("timestamp")
+            if not ts:
+                # If timestamp is missing, fall through and accept (older
+                # entries predating the field). We sort by index later.
+                kept.append(e)
+                continue
+            if isinstance(ts, str):
+                try:
+                    ts = datetime.fromisoformat(ts.replace("Z", "+00:00")).replace(tzinfo=None)
+                except Exception:
+                    kept.append(e)
+                    continue
+            if isinstance(ts, datetime) and ts >= cutoff:
+                kept.append(e)
+        return kept
+
+    for strand_key in TRANSCRIPT_STRANDS + ACOUSTIC_STRANDS:
+        strand_doc = dna_strands.get(strand_key) or {}
+        if strand_key in ACOUSTIC_STRANDS:
+            history = strand_doc.get("voice_check_history") or []
+        else:
+            history = strand_doc.get("history") or []
+
+        windowed = _in_window(history)
+        # Honesty: <2 points in the window → can't infer a trend.
+        # Acoustic sparsity gets the same rule as transcript (no special case),
+        # which means most users will simply not see acoustic strands in the
+        # weekly_deltas dict — that's the correct, honest behavior.
+        if len(windowed) < 2:
+            continue
+
+        try:
+            oldest_val = float(windowed[0].get("value") or 0.0)
+            latest_val = float(windowed[-1].get("value") or 0.0)
+            delta = round(latest_val - oldest_val, 4)
+        except Exception:
+            continue
+
+        if delta <= 0:
+            # Flat or declining → omit. Never fabricate "faster".
+            continue
+
+        out[strand_key] = {
+            "delta":       delta,
+            "points":      len(windowed),
+            "window_days": window_days,
+        }
+
+    return out
+
+
 async def _get_dna_summary(user_id: str, language: Optional[str]) -> Optional[Dict]:
-    """Return only the strand scores — not the full profile — to keep payload small."""
+    """Return only the strand scores — not the full profile — to keep payload small.
+
+    Phase 0: also project `last_session_delta`. Written by
+    SpeakingDNAService.analyze_session_for_dna() on every session of every type
+    (background task chained off save-conversation / session-summary).
+    Shape on the profile doc:
+      last_session_delta: {
+        session_id, session_type, computed_at,
+        strands: { rhythm: {previous, current, delta}, ... 6 strands ... },
+        top_strand: str | null,
+        top_delta:  float (0-1)
+      }
+    Surfaced here so the hub can power "Your <strand> climbed +X today"
+    without needing the background DNA task to be synchronous.
+
+    Phase 3: computes `weekly_deltas` from the in-document strand history
+    arrays. Honesty rules enforced inside _compute_weekly_deltas: never
+    fabricate "faster"; sparse acoustic data is omitted rather than
+    inferred from one point.
+    """
     query: Dict[str, Any] = {"user_id": user_id}
     if language:
         query["language"] = language.lower()
     doc = await speaking_dna_profiles_collection.find_one(
         query,
-        {"dna_strands": 1, "overall_profile": 1, "sessions_analyzed": 1}
+        {
+            "dna_strands": 1,
+            "overall_profile": 1,
+            "sessions_analyzed": 1,
+            "last_session_delta": 1,
+        }
     )
     if not doc:
         return None
     doc.pop("_id", None)
+
+    # Phase 3 — add the additive weekly_deltas dict computed from the
+    # already-projected dna_strands history arrays. No extra DB read.
+    doc["weekly_deltas"] = _compute_weekly_deltas(doc.get("dna_strands"))
+
     return doc
+
+
+def _weakest_strand_key(dna_summary: Optional[Dict]) -> Optional[str]:
+    """Return the StrandKey with the lowest score from a dna_summary dict."""
+    if not dna_summary:
+        return None
+    strands = dna_summary.get("dna_strands", {})
+    if not strands:
+        return None
+    _SCORE_FIELDS = {
+        "rhythm": "consistency_score",
+        "confidence": "score",
+        "vocabulary": "diversity_score",
+        "accuracy": "grammar_accuracy",
+        "learning": "challenge_acceptance",
+        "emotional": "positivity_score",
+    }
+    lowest_key: Optional[str] = None
+    lowest_score: float = float("inf")
+    for key, field in _SCORE_FIELDS.items():
+        strand = strands.get(key)
+        if not strand:
+            continue
+        score = float(strand.get(field, 0) or 0)
+        if score < lowest_score:
+            lowest_score = score
+            lowest_key = key
+    return lowest_key
 
 
 async def _get_flashcard_sets(user_id: str) -> List[Dict]:
@@ -278,10 +517,14 @@ async def _get_or_generate_missions(
     user_id: str, local_date: str, timezone: str, language: Optional[str]
 ) -> tuple:
     """Load cached missions and attach live progress inline.
-    Returns (missions_list, silver_reason) tuple.
+    Returns (missions_list, silver_reason, silver_source) tuple.
 
     Cache versioning: bump MISSIONS_CACHE_VERSION whenever mission generation
     logic changes so existing cached docs are automatically regenerated.
+
+    Phase 0: also returns silver_source (already stored on the missions doc
+    by _generate_missions_for_today) and passes silver_reason through to
+    _hydrate_progress so each Silver mission carries its reason field inline.
     """
     from routes.missions_routes import (
         _generate_missions_for_today,
@@ -302,16 +545,18 @@ async def _get_or_generate_missions(
     if cache_valid:
         raw = cached["missions"]
         silver_reason: str = cached.get("silver_reason", "")
+        silver_source: str = cached.get("silver_source", "")
     else:
         if cached:
             print(f"[MISSIONS] Cache version mismatch for {user_id} lang={lang_key} — regenerating")
         raw = await _generate_missions_for_today(user_id, local_date, timezone, language)
-        # After generation the doc now exists — read the reason back
+        # After generation the doc now exists — read reason + source back
         doc = await coll.find_one({"user_id": user_id, "local_date": local_date, "language": lang_key})
         silver_reason = doc.get("silver_reason", "") if doc else ""
+        silver_source = doc.get("silver_source", "") if doc else ""
 
-    hydrated = await _hydrate_progress(user_id, local_date, raw)
-    return [m.dict() for m in hydrated], silver_reason
+    hydrated = await _hydrate_progress(user_id, local_date, raw, silver_reason=silver_reason)
+    return [m.dict() for m in hydrated], silver_reason, silver_source
 
 
 # ─────────────────────────────────────────────────────────────
@@ -354,7 +599,7 @@ async def get_hub_today(
         _get_learning_plans(user_id),
         _get_daily_stats(user_id, local_date),
         _get_subscription(user_id),
-        _get_progress_stats(user_id),
+        _get_progress_stats(user_id, local_date),
         _get_journey_state(user_id),
         _get_flashcard_sets(user_id),
     )
@@ -371,7 +616,7 @@ async def get_hub_today(
             language = active.get("language")
 
     # DNA + missions can now run with resolved language
-    dna_summary, (missions, silver_reason) = await asyncio.gather(
+    dna_summary, (missions, silver_reason, silver_source) = await asyncio.gather(
         _get_dna_summary(user_id, language),
         _get_or_generate_missions(user_id, local_date, tz, language),
     )
@@ -380,6 +625,13 @@ async def get_hub_today(
     # Runs AFTER mission generation so the variety guard's "recent" window
     # includes today's just-written silver type.
     next_preview = await _safe_predict_next(user_id, language, local_date)
+
+    # Phase 0 — server-side all-missions-complete. Uses the same rule the
+    # standalone /api/missions/today endpoint uses (missions_routes.py:980).
+    # Mobile keeps its client-side fallback computation so older builds work.
+    all_complete = bool(missions) and all(
+        bool(m.get("progress", {}).get("done")) for m in missions
+    )
 
     return HubResponse(
         success=True,
@@ -393,6 +645,9 @@ async def get_hub_today(
         flashcard_sets=flashcards,
         missions=missions,
         silver_reason=silver_reason,
+        silver_source=silver_source,
+        all_complete=all_complete,
+        weakest_strand=_weakest_strand_key(dna_summary),
         next_missions_preview=next_preview,
         timezone=tz,
         local_date=local_date,

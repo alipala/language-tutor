@@ -125,16 +125,16 @@ class SubscriptionService:
             name="Try & Learn",
             monthly_price=0.0,
             annual_price=0.0,
-            monthly_sessions=3,
-            annual_sessions=3,  # Same as monthly for free tier
-            monthly_assessments=1,
-            annual_assessments=1,  # Same as monthly for free tier
-            # NEW: Minute limits for duration-based tracking
-            monthly_minutes=15,  # 3 sessions × 5 minutes
-            annual_minutes=15,   # Same as monthly for free tier
+            monthly_sessions=-1,  # Unlimited sessions — minutes are the only gate (15 min/month)
+            annual_sessions=-1,
+            monthly_assessments=-1,  # Unlimited — no assessment gate for any user
+            annual_assessments=-1,
+            # Minute limits are the sole usage gate
+            monthly_minutes=15,
+            annual_minutes=15,
             features=[
-                "3 practice sessions (5 minutes each) monthly",
-                "1 speaking assessment monthly",
+                "15 minutes speaking practice monthly",
+                "Speaking assessments",
                 "Basic progress tracking"
             ],
             is_free=True
@@ -144,11 +144,11 @@ class SubscriptionService:
             name="Fluency Builder",
             monthly_price=9.99,
             annual_price=59.99,
-            monthly_sessions=30,
-            annual_sessions=360,  # 30 sessions × 12 months
+            monthly_sessions=-1,  # Unlimited sessions — minutes are the only gate
+            annual_sessions=-1,
             monthly_assessments=2,
             annual_assessments=24,  # 2 assessments × 12 months
-            # NEW: Minute limits for duration-based tracking
+            # Minute limits are the sole usage gate
             monthly_minutes=150,  # 150 minutes monthly
             annual_minutes=1800,  # 1800 minutes annually
             features=[
@@ -577,7 +577,7 @@ class SubscriptionService:
             sessions_completed=sessions_completed,
             period_start=period_start,
             period_end=period_end,
-            is_unlimited=(sessions_limit == -1 and assessments_limit == -1 and minutes_limit == -1)
+            is_unlimited=(minutes_limit == -1)  # Sessions no longer gated; only minutes determine unlimited status
         )
     
     @classmethod
@@ -597,11 +597,8 @@ class SubscriptionService:
             status = await cls.get_user_subscription_status(user_id)
             
             # Check if user has remaining quota
-            if usage_type == "practice_session":
-                if status.limits and status.limits.sessions_remaining == 0:
-                    logger.warning(f"User {user_id} exceeded practice session limit")
-                    return False
-            elif usage_type == "assessment":
+            # Sessions are no longer gated by count — minutes are the sole limit for sessions.
+            if usage_type == "assessment":
                 if status.limits and status.limits.assessments_remaining == 0:
                     logger.warning(f"User {user_id} exceeded assessment limit")
                     return False
@@ -703,8 +700,7 @@ class SubscriptionService:
                 return True, ""
 
             elif feature_type == "assessment":
-                if status.limits and status.limits.assessments_remaining == 0:
-                    return False, f"You've used all {status.limits.assessments_limit} assessments for this {status.period}. Upgrade to unlock more!"
+                # Assessments are unlimited for all users — no gate
                 return True, ""
 
             elif feature_type == "learning_plan_progression":

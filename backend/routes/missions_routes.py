@@ -107,6 +107,14 @@ class DailyMission(BaseModel):
     challenge_type: Optional[str] = None
     progress: MissionProgress
 
+    # ── Phase 0 additive enrichment (Hub redesign) ─────────────────────────────
+    # All four fields are additive and Optional — every existing reader of this
+    # model (web, mobile, generated clients) continues to work unchanged.
+    skill_label: Optional[str] = None   # human label, e.g. "grammar" / "vocabulary"; null when N/A (Bronze plan/news, Gold flashcards)
+    skill_strand: Optional[str] = None  # DNA strand key — one of: accuracy | confidence | vocabulary | rhythm | fluency | pronunciation; null when N/A
+    reason: Optional[str] = None        # "why this mission was picked" — Silver: silver_reason; Bronze/Gold: null today (honest)
+    xp: Optional[int] = None            # canonical XP awarded on completion; populated for all 3 tiers from MISSION_TIER_XP
+
 
 class DailyMissionsResponse(BaseModel):
     success: bool = True
@@ -115,6 +123,47 @@ class DailyMissionsResponse(BaseModel):
     missions: List[DailyMission]
     all_complete: bool
     generated_at: str
+
+
+# ─────────────────────────────────────────────────────────────
+# Phase 0 — Canonical mission XP table (server-side authority)
+# ─────────────────────────────────────────────────────────────
+#
+# These are the same amounts hardcoded on mobile (DailyQuestsSection.tsx:126
+# `SLOT_XP = [50, 75, 60]`). Moving them server-side lets us tune them without
+# a mobile release and keeps the celebration's "XP earned today" honest.
+#
+# /api/missions/xp keeps trusting the client xp as a fallback during rollout
+# so older mobile builds and any in-flight requests do not break.
+
+MISSION_TIER_XP: Dict[str, int] = {
+    "bronze": 50,
+    "silver": 75,
+    "gold":   60,
+}
+
+
+# ─────────────────────────────────────────────────────────────
+# Phase 0 — challenge_type → DNA strand map (1:1 from P4 picker)
+# ─────────────────────────────────────────────────────────────
+#
+# Source of truth: the P4 fallback in _pick_silver_pick() picks a challenge
+# type from each DNA strand's lowest score. This reverses that mapping so
+# the hub can tell the UI which strand a Silver mission is training.
+# Keep this in sync with the P4 block (~L316-339) and CHALLENGE_REASON_LABEL.
+#
+# Not mapped: micro_quiz, brain_tickler — both are general/warm-up types with
+# no single canonical strand. Returning None lets the UI fall back to copy
+# that doesn't claim a specific strand.
+
+CHALLENGE_TO_STRAND: Dict[str, Optional[str]] = {
+    "error_spotting":  "accuracy",
+    "native_check":    "confidence",
+    "smart_flashcard": "vocabulary",
+    "story_builder":   "rhythm",
+    "micro_quiz":      None,
+    "brain_tickler":   None,
+}
 
 
 class PredictedMission(BaseModel):
@@ -787,13 +836,19 @@ async def _hydrate_progress(
     user_id: str,
     local_date: str,
     missions: List[Dict],
+    silver_reason: Optional[str] = None,
 ) -> List[DailyMission]:
     """
     Attach live progress to each mission.
-    Runs 3 DB reads in parallel:
-      - daily_stats total_sessions    → bronze
+    Runs parallel DB reads:
+      - daily_stats learning_plan_sessions OR news_sessions → bronze
       - challenge_sessions count      → silver (completed 10-Q sessions today)
       - flashcard_sets reviewed count → gold
+
+    Phase 0 additive enrichment: populates skill_label, skill_strand, reason,
+    and xp on every returned mission. silver_reason is optional so existing
+    callers (e.g. the standalone /api/missions/today endpoint) keep working;
+    when it isn't passed, the Silver mission's `reason` is left null.
     """
     challenge_type = next(
         (m["challenge_type"] for m in missions if m["id"] == "challenge"),
@@ -860,17 +915,38 @@ async def _hydrate_progress(
         # Use live subtitle for flashcard mission; carry through stored subtitle for others
         subtitle = flash_subtitle if m["id"] == "flashcards" and current < target else m.get("subtitle")
 
+        # ── Phase 0 enrichment ───────────────────────────────────
+        # skill_label + skill_strand are derived from challenge_type for both
+        # the Silver (`challenge`) and Gold (`challenge_gold`) tiers. Bronze
+        # (plan_session / news_session) and the freestyle / flashcards Gold
+        # variants have no targeted skill — those rows expose null.
+        ct = m.get("challenge_type")
+        skill_label  = CHALLENGE_REASON_LABEL.get(ct) if ct else None
+        skill_strand = CHALLENGE_TO_STRAND.get(ct)    if ct else None
+
+        # reason: Silver carries the existing personalized silver_reason; other
+        # tiers have no honest "why" string today so we keep them null rather
+        # than fabricate filler copy.
+        reason: Optional[str] = silver_reason if (m.get("tier") == "silver" and silver_reason) else None
+
+        # xp: canonical amount looked up by tier (server-side authority).
+        xp = MISSION_TIER_XP.get(m.get("tier", ""))
+
         result.append(DailyMission(
             id=m["id"],
             tier=m["tier"],
             title=m["title"],
             subtitle=subtitle,
-            challenge_type=m.get("challenge_type"),
+            challenge_type=ct,
             progress=MissionProgress(
                 current=current,
                 target=target,
                 done=(current >= target),
             ),
+            skill_label=skill_label,
+            skill_strand=skill_strand,
+            reason=reason,
+            xp=xp,
         ))
 
     return result
@@ -1023,12 +1099,19 @@ async def award_mission_xp(
     """
     user_id    = str(current_user.id)
     tier       = body.tier
-    xp         = max(0, body.xp)           # defensive clamp
     local_date = body.local_date
     timezone   = body.timezone
 
     if tier not in ("bronze", "silver", "gold"):
         return {"success": False, "reason": "invalid_tier"}
+
+    # ── Phase 0 — server-side XP authority ────────────────────
+    # Prefer the canonical amount from MISSION_TIER_XP. Fall back to whatever
+    # the client posted so rollout against older mobile builds keeps working
+    # (the client today sends [50, 75, 60] which matches the canonical table).
+    canonical_xp = MISSION_TIER_XP.get(tier)
+    xp = max(0, canonical_xp if canonical_xp is not None else body.xp)
+
     if xp <= 0:
         return {"success": False, "reason": "invalid_xp"}
 

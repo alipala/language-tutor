@@ -134,10 +134,18 @@ async def analyze_session(
         )
         logger.info(f"[CACHE] ✅ Invalidated TaalCoach cache after DNA analysis")
 
+        # S3.5: surface first breakthrough (if any) as breakthrough_unlocked for the
+        # sealed reveal card.  Only one breakthrough is shown per session.
+        _breakthroughs = result.get("breakthroughs") or []
+        _breakthrough_unlocked = _breakthroughs[0] if _breakthroughs else None
+
         return AnalyzeSessionResponse(
             success=True,
-            breakthroughs=result["breakthroughs"],
-            session_insights=result["session_insights"]
+            breakthroughs=_breakthroughs,
+            session_insights=result["session_insights"],
+            previous_strand_values=result.get("previous_strand_values"),
+            strand_deltas=result.get("strand_deltas"),       # S3.4
+            breakthrough_unlocked=_breakthrough_unlocked,    # S3.5
         )
 
     except HTTPException:
@@ -274,6 +282,30 @@ async def get_dna_evolution(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get DNA evolution: {str(e)}"
         )
+
+
+# ============================================================================
+# Voice Check Evolution Endpoint
+# ============================================================================
+
+@router.get("/voice-check-evolution/{language}")
+async def get_voice_check_evolution(
+    language: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get acoustic strand evolution using Voice Check events as data points."""
+    try:
+        user_id = str(current_user.id)
+        result = await speaking_dna_service.get_voice_check_evolution(
+            user_id=user_id,
+            language=language,
+        )
+        # Sanitize float values to ensure JSON compliance
+        result = sanitize_floats(result)
+        return {"voice_check_evolution": result, "checks_tracked": len(result)}
+    except Exception as e:
+        logger.error(f"[DNA API] Error getting voice check evolution: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================================================

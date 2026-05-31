@@ -359,6 +359,106 @@ class PronunciationAssessmentService:
             'assessment_method': 'estimated'
         }
 
+    async def assess_from_base64(
+        self,
+        audio_base64: str,
+        language: str,
+    ) -> Dict:
+        """
+        Assess pronunciation from in-memory base64-encoded audio (unscripted mode).
+
+        Used for voice check sessions where there is no reference text.
+        Azure evaluates naturalness, fluency, and prosody without scoring against
+        a reference script.
+
+        Args:
+            audio_base64: Base64-encoded audio bytes (WAV/PCM expected)
+            language: Target language name (e.g. 'dutch', 'english')
+
+        Returns:
+            Same dict shape as assess_pronunciation():
+            pronunciation_score, accuracy_score, fluency_score,
+            completeness_score, prosody_score, assessment_method
+        """
+        import base64
+        import io
+        import asyncio
+        import tempfile
+        import os
+
+        if not self.enabled:
+            logger.warning("[PronAssess] Azure disabled — returning fallback for voice check")
+            return self._fallback_assessment("")
+
+        try:
+            # Decode base64 to raw bytes
+            audio_bytes = base64.b64decode(audio_base64)
+
+            locale = self._get_language_code(language)
+
+            # Azure SDK requires a file path or a push audio stream.
+            # Write to a temp file, assess, then clean up.
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                tmp.write(audio_bytes)
+                tmp_path = tmp.name
+
+            try:
+                speech_config = speechsdk.SpeechConfig(
+                    subscription=self.speech_key,
+                    region=self.speech_region
+                )
+                speech_config.speech_recognition_language = locale
+
+                audio_config = speechsdk.AudioConfig(filename=tmp_path)
+
+                # Unscripted mode: empty reference_text, miscue disabled
+                pronunciation_config = speechsdk.PronunciationAssessmentConfig(
+                    reference_text="",
+                    grading_system=speechsdk.PronunciationAssessmentGradingSystem.HundredMark,
+                    granularity=speechsdk.PronunciationAssessmentGranularity.Phoneme,
+                    enable_miscue=False
+                )
+                try:
+                    pronunciation_config.enable_prosody_assessment()
+                except AttributeError:
+                    pass  # SDK version may not support prosody toggle
+
+                recognizer = speechsdk.SpeechRecognizer(
+                    speech_config=speech_config,
+                    audio_config=audio_config
+                )
+                pronunciation_config.apply_to(recognizer)
+
+                logger.info(f"[PronAssess] Starting unscripted assessment, language={locale}")
+                # run blocking SDK call off the event loop
+                result = await asyncio.to_thread(recognizer.recognize_once)
+
+                if result.reason == speechsdk.ResultReason.RecognizedSpeech:
+                    parsed = self._parse_pronunciation_result(result, language)
+                    parsed["assessment_method"] = "azure_unscripted"
+                    logger.info(
+                        f"[PronAssess] ✅ Unscripted assessment complete: "
+                        f"pron={parsed['pronunciation_score']}, "
+                        f"fluency={parsed['fluency_score']}"
+                    )
+                    return parsed
+                elif result.reason == speechsdk.ResultReason.NoMatch:
+                    logger.warning("[PronAssess] No speech recognised in voice-check audio")
+                    return self._create_low_score_result("No clear speech detected.")
+                else:
+                    cancellation = result.cancellation_details if hasattr(result, "cancellation_details") else None
+                    logger.error(
+                        f"[PronAssess] Recognition cancelled: "
+                        f"{cancellation.reason if cancellation else 'unknown'}"
+                    )
+                    return self._fallback_assessment("")
+            finally:
+                os.unlink(tmp_path)
+
+        except Exception as e:
+            logger.error(f"[PronAssess] assess_from_base64 failed: {e}", exc_info=True)
+            return self._fallback_assessment("")
+
 
 # Create singleton instance
 pronunciation_service = PronunciationAssessmentService()

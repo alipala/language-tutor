@@ -17,6 +17,9 @@ from services.audio_analysis_service import audio_analysis_service
 
 logger = logging.getLogger(__name__)
 
+# ── S2.1 causal sentence fallback ───────────────────────────────────────────
+_CAUSAL_FALLBACK = "Six sessions of practice moved your DNA. Keep going."
+
 
 class SpeakingDNAService:
     """
@@ -31,49 +34,83 @@ class SpeakingDNAService:
     """
 
     # DNA Strand Weights for different session types
+    # S4: pronunciation and fluency weights added for the 6-strand model.
+    #   pronunciation — acoustic-only, pinned unless has_audio=True; voice_check / speaking_assessment get full weight
+    #   fluency       — transcript-based, every session; lower weight for acoustic-heavy types
     SESSION_WEIGHTS = {
         "learning": {
             "rhythm": 0.8,
             "confidence": 1.0,
+            "pronunciation": 0.0,   # pinned (no audio in learning sessions)
             "vocabulary": 0.7,
             "accuracy": 1.0,
+            "fluency": 0.9,
             "learning": 1.0,
             "emotional": 0.9
         },
         "freestyle": {
             "rhythm": 1.0,
             "confidence": 1.0,
+            "pronunciation": 0.0,
             "vocabulary": 1.0,
             "accuracy": 0.7,
+            "fluency": 1.0,
             "learning": 0.6,
             "emotional": 1.0
         },
         "news": {
             "rhythm": 0.9,
             "confidence": 0.9,
+            "pronunciation": 0.0,
             "vocabulary": 1.0,
             "accuracy": 0.8,
+            "fluency": 0.8,
             "learning": 0.7,
             "emotional": 0.8
         },
-        # Voice check: pure acoustic baseline — heavy weight on rhythm/confidence/emotional
-        # (no vocabulary/accuracy since there are no AI interactions, just speaking)
+        # Voice check: pure acoustic baseline — pronunciation gets full weight here.
+        # Fluency/accuracy/vocabulary carry light signal (30-second monologue, no AI corrections).
         "voice_check": {
             "rhythm": 1.0,
             "confidence": 1.0,
+            "pronunciation": 1.0,   # primary acoustic update
             "vocabulary": 0.3,
             "accuracy": 0.3,
+            "fluency": 0.8,
             "learning": 0.3,
             "emotional": 1.0
         },
         "speaking_assessment": {
             "rhythm": 1.0,
             "confidence": 1.0,
+            "pronunciation": 1.0,   # assessment carries real pronunciation signal
             "vocabulary": 0.6,
             "accuracy": 0.8,
+            "fluency": 1.0,
             "learning": 0.5,
             "emotional": 1.0
-        }
+        },
+        # S3.3 — transcript-only session types from save-conversation.
+        "custom_topic": {
+            "rhythm": 0.0,
+            "confidence": 0.0,
+            "pronunciation": 0.0,
+            "vocabulary": 0.5,
+            "accuracy": 0.5,
+            "fluency": 0.5,
+            "learning": 0.3,
+            "emotional": 0.0
+        },
+        "practice": {
+            "rhythm": 0.0,
+            "confidence": 0.0,
+            "pronunciation": 0.0,
+            "vocabulary": 0.5,
+            "accuracy": 0.5,
+            "fluency": 0.5,
+            "learning": 0.3,
+            "emotional": 0.0
+        },
     }
 
     # Thresholds for breakthrough detection
@@ -214,25 +251,62 @@ class SpeakingDNAService:
 
             logger.info(f"[DNA] Analyzing session for user {user_id}, language {language}")
 
-            # Extract acoustic metrics from first 60 seconds (if audio available)
+            # S2.1 — capture previous strand values for the reveal ceremony delta animation
+            previous_strand_values = existing_profile.get("dna_strands", {}) if existing_profile else {}
+
+            # Extract acoustic metrics + Azure pronunciation assessment in parallel (if audio available)
             acoustic_metrics = None
+            azure_pronunciation_result = None
             if session_data.get("audio_base64"):
-                try:
-                    logger.info("[DNA] Extracting acoustic metrics from session audio")
-                    acoustic_metrics = await audio_analysis_service.extract_acoustic_metrics(
-                        audio_base64=session_data["audio_base64"],
-                        audio_format=session_data.get("audio_format", "wav"),
-                        language=language,
-                        max_duration=60.0  # Only analyze first 60 seconds
-                    )
-                    logger.info(
-                        f"[DNA] Acoustic metrics extracted: "
-                        f"pitch={acoustic_metrics.get('pitch_mean', 0):.1f}Hz, "
-                        f"jitter={acoustic_metrics.get('jitter', 0):.4f}"
-                    )
-                except Exception as e:
-                    logger.warning(f"[DNA] Acoustic analysis failed: {str(e)} - continuing without acoustic metrics")
-                    acoustic_metrics = None
+                import asyncio as _asyncio
+                from pronunciation_assessment_service import pronunciation_service as _pron_svc
+
+                session_type_for_audio = session_data.get("session_type", "learning")
+                # Only call Azure for session types that carry pronunciation signal
+                _AZURE_SESSION_TYPES = {"voice_check", "speaking_assessment"}
+                run_azure = session_type_for_audio in _AZURE_SESSION_TYPES and _pron_svc.enabled
+
+                async def _extract_acoustic():
+                    try:
+                        logger.info("[DNA] Extracting acoustic metrics from session audio")
+                        result = await audio_analysis_service.extract_acoustic_metrics(
+                            audio_base64=session_data["audio_base64"],
+                            audio_format=session_data.get("audio_format", "wav"),
+                            language=language,
+                            max_duration=60.0
+                        )
+                        logger.info(
+                            f"[DNA] Acoustic metrics extracted: "
+                            f"pitch={result.get('pitch_mean', 0):.1f}Hz, "
+                            f"jitter={result.get('jitter', 0):.4f}"
+                        )
+                        return result
+                    except Exception as e:
+                        logger.warning(f"[DNA] Acoustic analysis failed: {e} - continuing without acoustic metrics")
+                        return None
+
+                async def _azure_assess():
+                    if not run_azure:
+                        return None
+                    try:
+                        logger.info(f"[DNA] Running Azure Pronunciation Assessment for {session_type_for_audio}")
+                        result = await _pron_svc.assess_from_base64(
+                            audio_base64=session_data["audio_base64"],
+                            language=language,
+                        )
+                        logger.info(
+                            f"[DNA] Azure Pronunciation Assessment: "
+                            f"pron={result.get('pronunciation_score')}, "
+                            f"fluency={result.get('fluency_score')}"
+                        )
+                        return result
+                    except Exception as e:
+                        logger.warning(f"[DNA] Azure Pronunciation Assessment failed (non-fatal): {e}")
+                        return None
+
+                acoustic_metrics, azure_pronunciation_result = await _asyncio.gather(
+                    _extract_acoustic(), _azure_assess()
+                )
 
             # Extract metrics from session (including acoustic if available)
             session_metrics = self._extract_session_metrics(
@@ -242,6 +316,10 @@ class SpeakingDNAService:
             )
             logger.info(f"[DNA] Extracted metrics: WPM={session_metrics.get('words_per_minute', 0):.1f}")
 
+            # S3.1 / S3.2: derive pinning flags from session payload
+            has_audio      = bool(session_data.get("audio_base64"))
+            has_challenges = session_data.get("challenges_offered", 0) > 0
+
             # Calculate strand updates
             updated_strands = await self._calculate_strand_updates(
                 existing_profile,
@@ -249,7 +327,10 @@ class SpeakingDNAService:
                 session_data.get("session_type", "learning"),
                 user_id,
                 language,
-                session_data
+                session_data,
+                has_audio=has_audio,
+                has_challenges=has_challenges,
+                azure_pronunciation_result=azure_pronunciation_result,
             )
 
             # Detect any breakthroughs
@@ -293,6 +374,35 @@ class SpeakingDNAService:
                     }
                     logger.info("[DNA] Created initial baseline assessment")
 
+            # ── Phase 0 — DNA-acceleration fuel ──────────────────────
+            # Compute per-strand deltas BEFORE persisting so we can store the
+            # freshest delta on the profile itself. The hub then reads it via
+            # _get_dna_summary() and can show "this session pushed Fluency +X"
+            # without needing the background task to be synchronous.
+            #
+            # last_session_delta = full per-strand {previous, current, delta}
+            # top_strand / top_delta = the strand with the largest positive delta
+            #   (handy for one-line UI like "Your Fluency climbed +3 today").
+            last_session_delta_strands = self._compute_strand_deltas(
+                previous_strand_values, updated_strands
+            )
+            top_strand_key: Optional[str] = None
+            top_strand_delta: float = 0.0
+            for _strand_key, _vals in last_session_delta_strands.items():
+                _d = float(_vals.get("delta", 0.0))
+                if _d > top_strand_delta:
+                    top_strand_delta = _d
+                    top_strand_key = _strand_key
+
+            last_session_delta_doc = {
+                "session_id": session_data.get("session_id"),
+                "session_type": session_data.get("session_type", "learning"),
+                "computed_at": now,
+                "strands": last_session_delta_strands,
+                "top_strand": top_strand_key,
+                "top_delta": round(top_strand_delta, 4),
+            }
+
             profile_update = {
                 "user_id": user_id,
                 "language": language,
@@ -300,7 +410,8 @@ class SpeakingDNAService:
                 "overall_profile": overall_profile,
                 "sessions_analyzed": sessions_analyzed,
                 "total_speaking_minutes": total_minutes,
-                "updated_at": now
+                "updated_at": now,
+                "last_session_delta": last_session_delta_doc,
             }
 
             # Add baseline assessment if we have acoustic metrics
@@ -343,25 +454,117 @@ class SpeakingDNAService:
                 await self.db.speaking_breakthroughs.insert_many(breakthrough_docs)
                 logger.info(f"[DNA] Stored {len(breakthrough_docs)} breakthroughs")
 
-            # Create/update weekly snapshot for evolution tracking (with acoustic metrics)
-            await self._create_weekly_snapshot(
+                # S1.7 — Fire push notification for the first breakthrough in this batch.
+                # One push per session; cooldown enforced inside the helper.
+                try:
+                    await _send_breakthrough_push(
+                        user_id=user_id,
+                        breakthrough=breakthroughs[0],
+                    )
+                except Exception as _push_err:
+                    logger.warning(f"[DNA] Breakthrough push failed (non-fatal): {_push_err}")
+
+            # Weekly snapshot disabled — replaced by session-level history
+            # await self._create_weekly_snapshot(
+            #     user_id=user_id,
+            #     language=language,
+            #     strands=updated_strands,
+            #     session_duration_minutes=session_metrics.get("session_duration_minutes", 5),
+            #     breakthroughs_count=len(breakthroughs),
+            #     acoustic_metrics=acoustic_metrics  # Add acoustic metrics to weekly snapshot
+            # )
+
+            # Append session-level history (transcript each session, acoustic on voice checks)
+            await self._append_session_history(
                 user_id=user_id,
                 language=language,
-                strands=updated_strands,
-                session_duration_minutes=session_metrics.get("session_duration_minutes", 5),
-                breakthroughs_count=len(breakthroughs),
-                acoustic_metrics=acoustic_metrics  # Add acoustic metrics to weekly snapshot
+                updated_strands=updated_strands,
+                session_number=sessions_analyzed,
+                session_type=session_data.get("session_type", "learning"),
+                voice_checks_count=updated_strands.get("pronunciation", {}).get("voice_checks_count", 0),
             )
+
+            # S2.1 — generate causal sentence for the reveal ceremony
+            causal_sentence = await self._generate_causal_sentence(
+                previous_strands=previous_strand_values,
+                updated_strands=updated_strands,
+                session_data=session_data,
+                language=language,
+            )
+
+            session_insights = self._generate_session_insights(session_metrics, updated_strands)
+            session_insights["causal_sentence"] = causal_sentence
+
+            # S3.4 — per-strand delta for the session summary animation.
+            # Phase 0: reuse the already-computed dict from the
+            # last_session_delta block above instead of recomputing.
+            strand_deltas = last_session_delta_strands
 
             return {
                 "profile": profile_update,
                 "breakthroughs": breakthroughs,
-                "session_insights": self._generate_session_insights(session_metrics, updated_strands)
+                "session_insights": session_insights,
+                "previous_strand_values": previous_strand_values,
+                "strand_deltas": strand_deltas,
             }
 
         except Exception as e:
             logger.error(f"[DNA] Error analyzing session: {str(e)}", exc_info=True)
             raise
+
+    # =========================================================================
+    # S3.4 — STRAND DELTA COMPUTATION
+    # =========================================================================
+
+    def _compute_strand_deltas(
+        self,
+        previous_strands: Dict[str, Any],
+        updated_strands: Dict[str, Any],
+    ) -> Dict[str, Dict[str, float]]:
+        """
+        S3.4 — Compute per-strand numeric deltas for the session-summary animation.
+
+        Extracts the canonical 0-1 score from each strand object (same logic as the
+        mobile strandScore helper) and returns a dict of the form:
+          { "rhythm": {"previous": 0.42, "current": 0.55, "delta": 0.13}, ... }
+
+        Only the four display strands (rhythm, confidence, vocabulary, accuracy) are
+        included; the emotional and learning strands are omitted from the summary UI.
+
+        Returns an empty dict when either mapping is empty (first session ever).
+        """
+        if not previous_strands or not updated_strands:
+            return {}
+
+        def _score(strands: Dict, key: str) -> float:
+            s = strands.get(key) or {}
+            if key == "rhythm":
+                return float(s.get("consistency_score") or 0.0)
+            if key == "confidence":
+                return float(s.get("score") or 0.0)
+            if key == "pronunciation":
+                return float(s.get("score") or 0.0)
+            if key == "vocabulary":
+                return float(s.get("new_word_attempt_rate") or 0.0)
+            if key == "accuracy":
+                return float(s.get("grammar_accuracy") or 0.0)
+            if key == "fluency":
+                return float(s.get("score") or 0.0)
+            return 0.0
+
+        # S4: include all 6 display strands
+        deltas: Dict[str, Dict[str, float]] = {}
+        for key in ("rhythm", "confidence", "pronunciation", "vocabulary", "accuracy", "fluency"):
+            prev = round(_score(previous_strands, key), 4)
+            curr = round(_score(updated_strands, key), 4)
+            deltas[key] = {
+                "previous": prev,
+                "current": curr,
+                "delta": round(curr - prev, 4),
+            }
+
+        logger.debug(f"[DNA] S3.4 strand_deltas computed: {deltas}")
+        return deltas
 
     def _extract_session_metrics(
         self,
@@ -514,27 +717,50 @@ class SpeakingDNAService:
         session_type: str,
         user_id: str,
         language: str,
-        session_data: Dict = None
+        session_data: Dict = None,
+        has_audio: bool = True,
+        has_challenges: bool = True,
+        azure_pronunciation_result: Optional[Dict] = None,
     ) -> Dict:
         """
         Calculate updated DNA strands using weighted moving average.
 
         Uses exponential moving average to smooth updates while still
         being responsive to recent sessions.
+
+        S3.1 — has_audio=False: Rhythm, Confidence, Pronunciation, Emotional are
+        pinned to their existing values. Prevents silent drift for sessions that
+        carry no audio (every regular conversation, news, freestyle).
+
+        S3.2 — has_challenges=False: Learning strand is pinned.
+
+        S4   — Pronunciation strand is acoustic-only (voice_check / speaking_assessment).
+               Fluency strand is transcript-based and runs every session.
         """
         weights = self.SESSION_WEIGHTS.get(session_type, self.SESSION_WEIGHTS["learning"])
         alpha = 0.3  # Learning rate for exponential moving average
 
         existing_strands = existing_profile.get("dna_strands", {}) if existing_profile else {}
 
-        # Calculate each strand
-        updated = {
-            "rhythm": self._update_rhythm_strand(existing_strands.get("rhythm"), session_metrics, alpha, weights["rhythm"]),
-            "confidence": self._update_confidence_strand(existing_strands.get("confidence"), session_metrics, alpha, weights["confidence"]),
-            "vocabulary": self._update_vocabulary_strand(existing_strands.get("vocabulary"), session_metrics, alpha, weights["vocabulary"]),
-            "accuracy": self._update_accuracy_strand(existing_strands.get("accuracy"), session_metrics, alpha, weights["accuracy"]),
-            "learning": self._update_learning_strand(existing_strands.get("learning"), session_metrics, alpha, weights["learning"]),
-            "emotional": await self._update_emotional_strand(
+        # ── S3.1 / S4: acoustic strand pinning ───────────────────────────────
+        if not has_audio:
+            logger.info(
+                f"[DNA] Acoustic strands pinned (no audio). user_id={user_id} "
+                f"language={language} session_type={session_type}"
+            )
+            rhythm_result        = existing_strands.get("rhythm")        or self._update_rhythm_strand(None, session_metrics, alpha, weights["rhythm"])
+            confidence_result    = existing_strands.get("confidence")    or self._update_confidence_strand(None, session_metrics, alpha, weights["confidence"])
+            pronunciation_result = existing_strands.get("pronunciation") or self._update_pronunciation_strand(None, None, session_type)
+            emotional_result     = existing_strands.get("emotional")     or await self._update_emotional_strand(None, session_metrics, alpha, weights["emotional"], user_id, language, session_data)
+        else:
+            rhythm_result     = self._update_rhythm_strand(existing_strands.get("rhythm"), session_metrics, alpha, weights["rhythm"])
+            confidence_result = self._update_confidence_strand(existing_strands.get("confidence"), session_metrics, alpha, weights["confidence"])
+            pronunciation_result = self._update_pronunciation_strand(
+                existing_strands.get("pronunciation"),
+                azure_pronunciation_result,
+                session_type,
+            )
+            emotional_result  = await self._update_emotional_strand(
                 existing_strands.get("emotional"),
                 session_metrics,
                 alpha,
@@ -543,6 +769,26 @@ class SpeakingDNAService:
                 language,
                 session_data
             )
+
+        # ── S3.2: learning strand pinning ─────────────────────────────────────
+        if not has_challenges:
+            logger.info(
+                f"[DNA] Learning strand skipped (no challenges). user_id={user_id} "
+                f"language={language} session_type={session_type}"
+            )
+            learning_result = existing_strands.get("learning") or self._update_learning_strand(None, session_metrics, alpha, weights["learning"])
+        else:
+            learning_result = self._update_learning_strand(existing_strands.get("learning"), session_metrics, alpha, weights["learning"])
+
+        updated = {
+            "rhythm":        rhythm_result,
+            "confidence":    confidence_result,
+            "pronunciation": pronunciation_result,
+            "vocabulary":    self._update_vocabulary_strand(existing_strands.get("vocabulary"), session_metrics, alpha, weights["vocabulary"]),
+            "accuracy":      self._update_accuracy_strand(existing_strands.get("accuracy"), session_metrics, alpha, weights["accuracy"]),
+            "fluency":       self._update_fluency_strand(existing_strands.get("fluency"), session_metrics, alpha, weights.get("fluency", 0.8)),
+            "learning":      learning_result,
+            "emotional":     emotional_result,
         }
 
         return updated
@@ -942,6 +1188,163 @@ class SpeakingDNAService:
             "common_errors": common_errors,
             "improving_areas": improving_areas,
             "description": description
+        }
+
+    # ── S4: Fluency strand (transcript-based, every session) ─────────────────
+
+    def _update_fluency_strand(self, existing: Optional[Dict], metrics: Dict, alpha: float, weight: float) -> Dict:
+        """
+        S4 — Fluency strand: transcript-based, updated every session.
+
+        Components:
+          filler_component    = 1 - min(filler_rate_per_minute / 10, 1)   [0-1]
+          variance_component  = 1 - min(latency_std / 2000, 1)            [0-1]
+          pause_component     = acoustic_speaking_ratio if available,
+                                else derived from latency_avg              [0-1]
+
+        score = 0.5 * filler_component + 0.3 * variance_component + 0.2 * pause_component
+        EMA alpha=0.15 (slower update than transcript strands — fluency changes gradually).
+        """
+        filler_rate  = metrics.get("filler_rate_per_minute", 2.0)
+        latency_std  = metrics.get("response_latency_std_ms", 500)
+        latency_avg  = metrics.get("response_latency_avg_ms", 2000)
+
+        # Component 1: filler density (0 fillers = 1.0, 10+/min = 0.0)
+        filler_component = max(0.0, 1.0 - min(filler_rate / 10.0, 1.0))
+
+        # Component 2: response latency variance (low variance = more fluent)
+        variance_component = max(0.0, 1.0 - min(latency_std / 2000.0, 1.0))
+
+        # Component 3: pause/flow from acoustic or latency proxy
+        acoustic_speaking_ratio = metrics.get("acoustic_speaking_ratio")
+        if acoustic_speaking_ratio is not None:
+            pause_component = float(acoustic_speaking_ratio)  # 0-1 (0.7-0.9 is natural)
+        else:
+            # Proxy: high avg latency → more pauses → lower fluency
+            pause_component = max(0.0, 1.0 - min(latency_avg / 5000.0, 1.0))
+
+        raw_score = (
+            0.5 * filler_component +
+            0.3 * variance_component +
+            0.2 * pause_component
+        )
+        raw_score = max(0.0, min(1.0, raw_score))
+
+        # EMA — lower alpha for fluency (gradual change)
+        fluency_alpha = 0.15
+        if existing:
+            score = existing.get("score", raw_score) * (1 - fluency_alpha * weight) + raw_score * fluency_alpha * weight
+        else:
+            score = raw_score
+
+        score = round(max(0.0, min(1.0, score)), 2)
+
+        # Qualitative level
+        if score >= 0.75:
+            level = "natural"
+            description = "Speech flows naturally with minimal hesitation"
+        elif score >= 0.55:
+            level = "developing"
+            description = "Generally fluent with occasional pauses or fillers"
+        elif score >= 0.35:
+            level = "building"
+            description = "Developing fluency — pauses and fillers are common"
+        else:
+            level = "early"
+            description = "Frequent pauses and hesitations — keep practising"
+
+        return {
+            "score": score,
+            "level": level,
+            "filler_rate": round(filler_rate, 2),
+            "wpm_variance": round(latency_std, 0),
+            "pause_score": round(pause_component, 2),
+            "description": description,
+        }
+
+    # ── S4: Pronunciation strand (acoustic-only, voice_check / speaking_assessment) ──
+
+    def _update_pronunciation_strand(
+        self,
+        existing: Optional[Dict],
+        azure_result: Optional[Dict],
+        session_type: str,
+    ) -> Dict:
+        """
+        S4 — Pronunciation strand: acoustic-only, updated only when Azure result available.
+
+        Pin guard: if azure_result is None the existing value is returned unchanged
+        (same pin-not-skip semantics as other acoustic strands).
+
+        EMA alpha=0.25 — acoustic strand, faster update (voice check is deliberate).
+        """
+        if azure_result is None:
+            if existing:
+                logger.info(f"[DNA] Pronunciation pinned (no Azure result). session_type={session_type}")
+                return existing
+            # No existing + no result → safe defaults (strand not yet measured)
+            return {
+                "score": 0.0,
+                "phoneme_accuracy": 0.0,
+                "prosody_score": 0.0,
+                "completeness_score": 0.0,
+                "fluency_score": 0.0,
+                "voice_checks_count": 0,
+                "last_updated_session_type": None,
+                "description": "Not yet measured — complete a voice check to unlock",
+            }
+
+        pron_alpha = 0.25
+        new_score        = azure_result.get("pronunciation_score", 0) / 100.0
+        new_phoneme      = azure_result.get("accuracy_score", 0) / 100.0
+        new_prosody      = azure_result.get("prosody_score", 0) / 100.0
+        new_completeness = azure_result.get("completeness_score", 0) / 100.0
+        new_fluency      = azure_result.get("fluency_score", 0) / 100.0
+
+        if existing and existing.get("voice_checks_count", 0) > 0:
+            score        = existing.get("score", new_score) * (1 - pron_alpha) + new_score * pron_alpha
+            phoneme      = existing.get("phoneme_accuracy", new_phoneme) * (1 - pron_alpha) + new_phoneme * pron_alpha
+            prosody      = existing.get("prosody_score", new_prosody) * (1 - pron_alpha) + new_prosody * pron_alpha
+            completeness = existing.get("completeness_score", new_completeness) * (1 - pron_alpha) + new_completeness * pron_alpha
+            fluency      = existing.get("fluency_score", new_fluency) * (1 - pron_alpha) + new_fluency * pron_alpha
+            voice_checks_count = existing.get("voice_checks_count", 0) + 1
+        else:
+            score        = new_score
+            phoneme      = new_phoneme
+            prosody      = new_prosody
+            completeness = new_completeness
+            fluency      = new_fluency
+            voice_checks_count = 1
+
+        score        = round(max(0.0, min(1.0, score)), 2)
+        phoneme      = round(max(0.0, min(1.0, phoneme)), 2)
+        prosody      = round(max(0.0, min(1.0, prosody)), 2)
+        completeness = round(max(0.0, min(1.0, completeness)), 2)
+        fluency      = round(max(0.0, min(1.0, fluency)), 2)
+
+        if score >= 0.80:
+            description = "Excellent pronunciation — clear and natural"
+        elif score >= 0.65:
+            description = "Good pronunciation with minor accent patterns"
+        elif score >= 0.45:
+            description = "Developing — some phonemes need practice"
+        else:
+            description = "Early stage — focus on individual sounds"
+
+        logger.info(
+            f"[DNA] Pronunciation updated via {session_type}: "
+            f"score={score:.2f}, phoneme={phoneme:.2f}, prosody={prosody:.2f}"
+        )
+
+        return {
+            "score": score,
+            "phoneme_accuracy": phoneme,
+            "prosody_score": prosody,
+            "completeness_score": completeness,
+            "fluency_score": fluency,
+            "voice_checks_count": voice_checks_count,
+            "last_updated_session_type": session_type,
+            "description": description,
         }
 
     def _update_learning_strand(self, existing: Optional[Dict], metrics: Dict, alpha: float, weight: float) -> Dict:
@@ -1554,6 +1957,78 @@ Session type: {session_type}
 """
 
     # =========================================================================
+    # S2.1 CAUSAL SENTENCE GENERATION
+    # =========================================================================
+
+    async def _generate_causal_sentence(
+        self,
+        previous_strands: Dict[str, Any],
+        updated_strands: Dict[str, Any],
+        session_data: Dict[str, Any],
+        language: str,
+    ) -> Optional[str]:
+        """Generate a one-sentence narrative explaining the biggest strand delta."""
+        try:
+            # Compute deltas for the six ceremony strands (S4: pronunciation + fluency added)
+            STRAND_SCORE = {
+                "rhythm":        lambda s: s.get("consistency_score", 0) * 100,
+                "confidence":    lambda s: s.get("score", 0) * 100,
+                "pronunciation": lambda s: s.get("score", 0) * 100,
+                "vocabulary":    lambda s: s.get("new_word_attempt_rate", 0) * 100,
+                "accuracy":      lambda s: s.get("grammar_accuracy", 0) * 100,
+                "fluency":       lambda s: s.get("score", 0) * 100,
+            }
+            deltas: Dict[str, float] = {}
+            for strand, scorer in STRAND_SCORE.items():
+                prev = scorer(previous_strands.get(strand, {}))
+                curr = scorer(updated_strands.get(strand, {}))
+                if prev or curr:
+                    deltas[strand] = round(curr - prev, 1)
+
+            if not deltas:
+                return _CAUSAL_FALLBACK
+
+            biggest_strand = max(deltas, key=lambda k: abs(deltas[k]))
+            biggest_delta  = deltas[biggest_strand]
+
+            if abs(biggest_delta) < 2:
+                return _CAUSAL_FALLBACK
+
+            # Build a minimal prompt — keep the model call lightweight
+            topics = ", ".join(session_data.get("topics_discussed", [])) or "general conversation"
+            session_type = session_data.get("session_type", "learning")
+
+            from openai_client import get_async_openai
+            response = await get_async_openai().chat.completions.create(
+                model="gpt-4.1-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You write one concise English sentence (max 20 words) explaining "
+                            "why a language learner's DNA strand changed during a practice session. "
+                            "Be specific and encouraging. No emojis."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Strand: {biggest_strand}, delta: {biggest_delta:+.0f} points. "
+                            f"Session type: {session_type}. Topics: {topics}. "
+                            f"Language: {language}. Write the causal sentence."
+                        ),
+                    },
+                ],
+                temperature=0.4,
+                max_tokens=60,
+            )
+            sentence = response.choices[0].message.content.strip().rstrip(".")
+            return sentence if sentence else _CAUSAL_FALLBACK
+        except Exception as e:
+            logger.warning(f"[DNA] Causal sentence generation failed (non-fatal): {e}")
+            return _CAUSAL_FALLBACK
+
+    # =========================================================================
     # WEEKLY SNAPSHOT CREATION
     # =========================================================================
 
@@ -1656,6 +2131,90 @@ Session type: {session_type}
             logger.error(f"[DNA] Error creating weekly snapshot (non-fatal): {str(e)}", exc_info=True)
             # Don't raise - weekly snapshots are nice-to-have, not critical
 
+    async def _append_session_history(
+        self,
+        user_id: str,
+        language: str,
+        updated_strands: Dict,
+        session_number: int,
+        session_type: str,
+        voice_checks_count: int,
+    ) -> None:
+        """
+        Append per-session and per-voice-check history points to each strand.
+
+        Transcript strands (vocabulary, accuracy, fluency): one entry per session.
+        Acoustic strands (rhythm, confidence, pronunciation): one entry per voice check only.
+
+        History arrays are capped at 50 entries (oldest popped).
+        """
+        TRANSCRIPT_STRANDS = {"vocabulary", "accuracy", "fluency"}
+        ACOUSTIC_STRANDS   = {"rhythm", "confidence", "pronunciation"}
+
+        now = datetime.utcnow()
+
+        def _score(strands: Dict, key: str) -> float:
+            s = strands.get(key) or {}
+            if key == "rhythm":
+                return float(s.get("consistency_score") or 0.0)
+            if key == "confidence":
+                return float(s.get("score") or 0.0)
+            if key == "pronunciation":
+                return float(s.get("score") or 0.0)
+            if key == "vocabulary":
+                return float(s.get("new_word_attempt_rate") or 0.0)
+            if key == "accuracy":
+                return float(s.get("grammar_accuracy") or 0.0)
+            if key == "fluency":
+                return float(s.get("score") or 0.0)
+            return 0.0
+
+        is_voice_check = session_type in {"voice_check", "speaking_assessment"}
+
+        try:
+            update_ops: Dict[str, Any] = {}
+
+            for strand_key in TRANSCRIPT_STRANDS:
+                value = round(_score(updated_strands, strand_key), 4)
+                entry = {
+                    "session_number": session_number,
+                    "value": value,
+                    "timestamp": now,
+                }
+                # Push to array, slice to last 50
+                field = f"dna_strands.{strand_key}.history"
+                update_ops[field] = entry
+
+            if is_voice_check:
+                for strand_key in ACOUSTIC_STRANDS:
+                    value = round(_score(updated_strands, strand_key), 4)
+                    entry = {
+                        "voice_check_number": voice_checks_count,
+                        "value": value,
+                        "timestamp": now,
+                    }
+                    field = f"dna_strands.{strand_key}.voice_check_history"
+                    update_ops[field] = entry
+
+            if not update_ops:
+                return
+
+            # Use $push with $each + $slice to cap array at 50
+            push_ops = {}
+            for field, entry in update_ops.items():
+                push_ops[field] = {"$each": [entry], "$slice": -50}
+
+            await self.db.speaking_dna_profiles.update_one(
+                {"user_id": user_id, "language": language},
+                {"$push": push_ops}
+            )
+            logger.info(
+                f"[DNA] Session history appended: session_number={session_number}, "
+                f"is_voice_check={is_voice_check}, strands_updated={list(update_ops.keys())}"
+            )
+        except Exception as e:
+            logger.error(f"[DNA] Error appending session history (non-fatal): {e}", exc_info=True)
+
     # =========================================================================
     # PROFILE RETRIEVAL & EVOLUTION
     # =========================================================================
@@ -1681,30 +2240,110 @@ Session type: {session_type}
         self,
         user_id: str,
         language: str,
-        weeks: int = 12
+        weeks: int = 12,  # kept for API compat but now means "last N transcript points"
     ) -> List[Dict]:
-        """Get DNA evolution history for visualization."""
+        """
+        Get DNA evolution history for visualization.
+
+        Returns session-level history for transcript strands (vocabulary, accuracy, fluency).
+        The `weeks` param is repurposed as max_points for the last N sessions (default 12).
+        """
         try:
-            history = await self.db.speaking_dna_history.find({
+            profile = await self.db.speaking_dna_profiles.find_one({
                 "user_id": user_id,
-                "language": language
-            }).sort("week_start", -1).limit(weeks).to_list(weeks)
+                "language": language,
+            })
+            if not profile:
+                return []
 
-            # Convert ObjectIds and dates to strings for API response
-            for entry in history:
-                entry["_id"] = str(entry["_id"])
-                # Convert datetime objects to ISO strings for JavaScript parsing
-                if "week_start" in entry and entry["week_start"]:
-                    entry["week_start"] = entry["week_start"].isoformat()
-                if "created_at" in entry and entry["created_at"]:
-                    entry["created_at"] = entry["created_at"].isoformat()
-                if "updated_at" in entry and entry["updated_at"]:
-                    entry["updated_at"] = entry["updated_at"].isoformat()
+            strands = profile.get("dna_strands", {})
+            TRANSCRIPT_STRANDS = ["vocabulary", "accuracy", "fluency"]
 
-            return list(reversed(history))  # Chronological order
+            # Build unified timeline: each unique session_number is one point
+            # Aggregate from all transcript strand histories
+            session_map: Dict[int, Dict] = {}  # session_number -> {strand: value, timestamp}
 
+            for strand_key in TRANSCRIPT_STRANDS:
+                history = strands.get(strand_key, {}).get("history", [])
+                for entry in history:
+                    sn = entry.get("session_number")
+                    if sn is None:
+                        continue
+                    if sn not in session_map:
+                        session_map[sn] = {
+                            "session_number": sn,
+                            "timestamp": entry.get("timestamp"),
+                            "strand_scores": {},
+                        }
+                    session_map[sn]["strand_scores"][strand_key] = entry.get("value", 0.0)
+                    # Use most recent timestamp for this session
+                    ts = entry.get("timestamp")
+                    if ts and (not session_map[sn]["timestamp"] or ts > session_map[sn]["timestamp"]):
+                        session_map[sn]["timestamp"] = ts
+
+            # Sort chronologically, cap to last `weeks` points
+            result = sorted(session_map.values(), key=lambda x: x["session_number"])
+            result = result[-weeks:]  # last N points
+
+            # Serialize timestamps
+            for entry in result:
+                ts = entry.get("timestamp")
+                if ts and hasattr(ts, "isoformat"):
+                    entry["timestamp"] = ts.isoformat()
+
+            return result
         except Exception as e:
-            logger.error(f"[DNA] Error getting evolution: {str(e)}", exc_info=True)
+            logger.error(f"[DNA] Error getting evolution: {e}", exc_info=True)
+            return []
+
+    async def get_voice_check_evolution(
+        self,
+        user_id: str,
+        language: str,
+    ) -> List[Dict]:
+        """
+        Get acoustic strand evolution using Voice Check events only.
+
+        Returns one data point per Voice Check for rhythm, confidence, pronunciation.
+        """
+        try:
+            profile = await self.db.speaking_dna_profiles.find_one({
+                "user_id": user_id,
+                "language": language,
+            })
+            if not profile:
+                return []
+
+            strands = profile.get("dna_strands", {})
+            ACOUSTIC_STRANDS = ["rhythm", "confidence", "pronunciation"]
+
+            # Build unified timeline: each unique voice_check_number is one point
+            vc_map: Dict[int, Dict] = {}
+
+            for strand_key in ACOUSTIC_STRANDS:
+                history = strands.get(strand_key, {}).get("voice_check_history", [])
+                for entry in history:
+                    vcn = entry.get("voice_check_number")
+                    if vcn is None:
+                        continue
+                    if vcn not in vc_map:
+                        vc_map[vcn] = {
+                            "voice_check_number": vcn,
+                            "timestamp": entry.get("timestamp"),
+                            "strand_scores": {},
+                        }
+                    vc_map[vcn]["strand_scores"][strand_key] = entry.get("value", 0.0)
+
+            result = sorted(vc_map.values(), key=lambda x: x["voice_check_number"])
+
+            for entry in result:
+                ts = entry.get("timestamp")
+                if ts and hasattr(ts, "isoformat"):
+                    entry["timestamp"] = ts.isoformat()
+
+            return result
+        except Exception as e:
+            logger.error(f"[DNA] Error getting voice check evolution: {e}", exc_info=True)
             return []
 
     async def get_acoustic_evolution(
@@ -1830,6 +2469,121 @@ Session type: {session_type}
         except Exception as e:
             logger.error(f"[DNA] Error marking breakthrough celebrated: {str(e)}", exc_info=True)
             return False
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# S1.7 — Breakthrough push notification helper
+# ──────────────────────────────────────────────────────────────────────────────
+
+_BREAKTHROUGH_COPY: Dict[str, Dict[str, str]] = {
+    "confidence_breakthrough": {
+        "title": "Your confidence hit a new high!",
+        "body":  "Open MyTaco to reveal what changed.",
+    },
+    "vocabulary_milestone": {
+        "title": "You unlocked a vocab milestone!",
+        "body":  "See what changed in your DNA tab.",
+    },
+    "accuracy_breakthrough": {
+        "title": "Your accuracy just leveled up.",
+        "body":  "Open MyTaco to see the detail.",
+    },
+    "rhythm_breakthrough": {
+        "title": "Your rhythm is more natural now.",
+        "body":  "Open MyTaco to see the detail.",
+    },
+}
+_BREAKTHROUGH_COPY_DEFAULT = {
+    "title": "You hit a breakthrough!",
+    "body":  "Open MyTaco to reveal what changed.",
+}
+
+_COOLDOWN_HOURS = 24
+
+
+async def _send_breakthrough_push(user_id: str, breakthrough: Dict[str, Any]) -> None:
+    """
+    Send a push notification for a breakthrough.
+
+    Enforces a per-user 24-hour cooldown via a Redis key; if Redis is
+    unavailable the push is sent anyway (fail-open, not fail-closed).
+    Respects the user's notification preferences — no push if push_token absent
+    or notifications disabled.
+    """
+    bt_type = breakthrough.get("breakthrough_type", "")
+    copy = _BREAKTHROUGH_COPY.get(bt_type, _BREAKTHROUGH_COPY_DEFAULT)
+
+    # ── Cooldown check ───────────────────────────────────────────────────────
+    cooldown_key = f"breakthrough_push_cooldown:{user_id}"
+    try:
+        from redis_client import redis_client as _redis
+        if _redis and await _redis.exists(cooldown_key):
+            logger.info(
+                f"[BREAKTHROUGH_PUSH] Cooldown active for user {user_id} — skipping push"
+            )
+            logger.info(f"[TELEMETRY] breakthrough_push_cooldown_skipped user={user_id} type={bt_type}")
+            return
+    except Exception as _redis_err:
+        logger.warning(f"[BREAKTHROUGH_PUSH] Redis unavailable for cooldown check: {_redis_err} — proceeding")
+
+    # ── Fetch user push token and notification preferences ───────────────────
+    try:
+        user = await database.users.find_one(
+            {"_id": ObjectId(user_id)},
+            {"push_token": 1, "notifications_enabled": 1},
+        )
+    except Exception:
+        user = await database.users.find_one(
+            {"id": user_id},
+            {"push_token": 1, "notifications_enabled": 1},
+        )
+
+    if not user:
+        logger.warning(f"[BREAKTHROUGH_PUSH] User {user_id} not found — skipping push")
+        return
+
+    push_token = user.get("push_token")
+    if not push_token:
+        logger.info(f"[BREAKTHROUGH_PUSH] User {user_id} has no push token — skipping")
+        return
+
+    if user.get("notifications_enabled") is False:
+        logger.info(f"[BREAKTHROUGH_PUSH] Notifications disabled for user {user_id} — skipping")
+        return
+
+    # ── Send ─────────────────────────────────────────────────────────────────
+    from notification_service import send_push_notification
+
+    bt_id = breakthrough.get("_id", "")
+    success = await send_push_notification(
+        push_token=push_token,
+        title=copy["title"],
+        body=copy["body"],
+        data={
+            "type": "breakthrough",
+            "deep_link": "mytacoai://dna/breakthroughs",
+            "breakthrough_id": str(bt_id),
+            "breakthrough_type": bt_type,
+        },
+        user_id=user_id,
+        priority="high",
+    )
+
+    if success:
+        logger.info(
+            f"[BREAKTHROUGH_PUSH] ✅ Sent to user {user_id}, type={bt_type}"
+        )
+        logger.info(f"[TELEMETRY] breakthrough_push_sent user={user_id} type={bt_type}")
+
+        # Set cooldown key (expires after 24 hours)
+        try:
+            from redis_client import redis_client as _redis
+            if _redis:
+                await _redis.setex(cooldown_key, _COOLDOWN_HOURS * 3600, "1")
+        except Exception as _redis_err:
+            logger.warning(f"[BREAKTHROUGH_PUSH] Could not set cooldown key: {_redis_err}")
+    else:
+        logger.warning(f"[BREAKTHROUGH_PUSH] Push send returned false for user {user_id}")
 
 
 # Singleton instance

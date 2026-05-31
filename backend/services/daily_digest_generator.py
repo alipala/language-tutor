@@ -39,6 +39,7 @@ from models import (
     JourneyStage
 )
 from services.journey_state_detector import journey_state_detector
+from database import database as _db
 
 
 class DailyDigestGenerator:
@@ -195,6 +196,32 @@ class DailyDigestGenerator:
                 "PLAN COMPLETE, {name}! You did it! 🎉 Ready for the final assessment?",
                 "CONGRATULATIONS, {name}! Learning plan finished! Time to test your new skills!",
                 "YOU FINISHED, {name}! Plan 100% complete! Let's see how much you've learned!"
+            ],
+
+            # S3.7 — Strand-anchored daily nudges
+            "strand_rhythm": [
+                "Your speaking flow is your next unlock, {name}. Today's session works on that rhythm.",
+                "Smooth rhythm makes everything easier, {name}. One session today sharpens that flow.",
+            ],
+            "strand_confidence": [
+                "Your confidence strand is growing, {name}. Show up and own the mic today.",
+                "The mic is yours, {name}. Today's session is about speaking bolder.",
+            ],
+            "strand_vocabulary": [
+                "Vocab gaps close one session at a time, {name}. You're closer than you think.",
+                "Today's session adds new words to your arsenal, {name}. Small steps, big gains.",
+            ],
+            "strand_accuracy": [
+                "Clean grammar is your next unlock, {name}. One session builds the foundation.",
+                "Today's session sharpens your accuracy, {name}. Precision is a habit.",
+            ],
+            "strand_learning": [
+                "You level up by leaning in, {name}. Take the challenge today.",
+                "Growth happens at the edge, {name}. Today's challenge is your strand booster.",
+            ],
+            "strand_emotional": [
+                "Authentic expression is a skill, {name}. Today's session builds yours.",
+                "Connecting emotionally in {language} is rare — you're developing that today.",
             ],
 
             # General motivation
@@ -362,6 +389,33 @@ class DailyDigestGenerator:
             previous_streak = user.get("journey_state", {}).get("current_streak", 0)
             streak_lost = previous_streak > 0 and current_streak == 0
 
+            # S3.7: weakest strand from DNA profile
+            weakest_strand_key = None
+            try:
+                lang_key = (user.get("preferred_language") or "english").lower()
+                dna_doc = await _db.speaking_dna.find_one(
+                    {"user_id": user_id, "language": lang_key},
+                    {"dna_strands": 1}
+                )
+                if dna_doc:
+                    _SCORE_FIELDS = {
+                        "rhythm": "consistency_score", "confidence": "score",
+                        "vocabulary": "diversity_score", "accuracy": "grammar_accuracy",
+                        "learning": "challenge_acceptance", "emotional": "positivity_score",
+                    }
+                    strands = dna_doc.get("dna_strands", {})
+                    lowest, lowest_score = None, float("inf")
+                    for k, field in _SCORE_FIELDS.items():
+                        s = strands.get(k)
+                        if s:
+                            score = float(s.get(field, 0) or 0)
+                            if score < lowest_score:
+                                lowest_score = score
+                                lowest = k
+                    weakest_strand_key = lowest
+            except Exception:
+                pass
+
             return {
                 "name": user.get("name", "there"),
                 "language": (user.get("preferred_language") or "english").title(),
@@ -379,7 +433,8 @@ class DailyDigestGenerator:
                 "subscription_status": user.get("subscription_status", "free"),
                 "journey_stage": journey_state.stage,
                 "intervention_needed": journey_state.intervention_needed,
-                "intervention_reason": journey_state.intervention_reason
+                "intervention_reason": journey_state.intervention_reason,
+                "weakest_strand": weakest_strand_key,
             }
 
         except Exception as e:
@@ -424,8 +479,34 @@ class DailyDigestGenerator:
         if journey_state.intervention_needed:
             return self._create_intervention_message(context)
 
-        # Priority 5: Stage-specific messages
+        # Priority 5: Strand-anchored nudge (S3.7 — 30% of the time when DNA available)
+        weakest = context.get("weakest_strand")
+        if weakest:
+            import random
+            if random.random() < 0.30:
+                return self._create_strand_message(weakest, context)
+
+        # Priority 6: Stage-specific messages
         return self._create_stage_message(journey_state, context)
+
+    def _create_strand_message(self, strand_key: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        """S3.7 — Strand-anchored daily nudge."""
+        import random
+        template_key = f"strand_{strand_key}"
+        templates = self.message_templates.get(template_key, self.message_templates["general_motivation"])
+        message = random.choice(templates).format(**context)
+        strand_labels = {
+            "rhythm": "Speaking Flow", "confidence": "Confidence",
+            "vocabulary": "Vocabulary", "accuracy": "Accuracy",
+            "learning": "Learning", "emotional": "Emotional Expression",
+        }
+        label = strand_labels.get(strand_key, "Speaking")
+        return {
+            "type": "motivation",
+            "subject": f"Build Your {label} Today",
+            "message": message,
+            "quick_actions": [],
+        }
 
     def _create_breakthrough_message(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """Create message for uncelebrated DNA breakthroughs"""
