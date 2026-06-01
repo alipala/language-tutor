@@ -6,7 +6,7 @@ Provides daily personalized challenges based on user's CEFR level and weaknesses
 import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from bson import ObjectId
 
 from auth import get_current_user
@@ -17,11 +17,22 @@ from models import (
     ChallengeCountsResponse,
     ChallengesByTypeResponse,
     ChallengePoolItem,
+    ProgressionResponse,
+    ProgressionXP,
+    ProgressionDailyGoal,
+    NextStepResponse,
 )
-from database import database
+from database import database, daily_stats_collection, users_collection, challenge_sessions_collection
 from challenge_generator_ai import get_or_generate_daily_challenges
 from services.timezone_utils import convert_to_local_date, get_current_local_date
 from services.stats_service import update_daily_stats, update_lifetime_stats, update_streak
+from services.progression import (
+    DEFAULT_DAILY_GOAL_CHALLENGES,
+    compute_level,
+    compute_readiness,
+    pick_next_step,
+    xp_to_next,
+)
 from cache_helpers import invalidate_coach_context_smart  # PHASE 4.2: Smart cache invalidation
 
 router = APIRouter(prefix="/api/challenges", tags=["challenges"])
@@ -622,6 +633,175 @@ async def get_challenge_stats(current_user: UserResponse = Depends(get_current_u
     except Exception as e:
         print(f"[CHALLENGES] ❌ Error getting stats: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get challenge stats: {str(e)}")
+
+
+# ==================== PROGRESSION SPINE (Phase A) ====================
+#
+# `/progression` and `/next-step` expose persistent progression that already
+# lives in `users.stats.lifetime.*` and `daily_stats.*`. They follow the
+# `response_model` + `Query` + timezone-resolution convention from
+# `routes/stats_routes.py`. All tunables live in `services/progression.py`.
+
+@router.get("/progression", response_model=ProgressionResponse)
+async def get_progression(
+    current_user: UserResponse = Depends(get_current_user),
+    timezone: Optional[str] = Query(None, description="User's IANA timezone (e.g. 'Europe/Amsterdam')"),
+):
+    """Persistent progression summary for the games spine.
+
+    Returns lifetime XP + derived level, current/longest streak, today's
+    progress against the daily goal, and a v1 readiness score (0..100).
+
+    `level` is read from `stats.lifetime.level` when present; otherwise it is
+    computed on the fly from `total_xp` so existing users see a real number
+    immediately (no migration needed).
+    """
+    try:
+        user_id = current_user.id
+
+        # Timezone priority: query > user profile > UTC (matches stats_routes).
+        if not timezone:
+            timezone = getattr(current_user, "timezone", None) or "UTC"
+        local_date = get_current_local_date(timezone)
+
+        user = await users_collection.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        stats = user.get("stats", {}) or {}
+        lifetime = stats.get("lifetime", {}) or {}
+
+        total_xp = int(lifetime.get("total_xp", 0) or 0)
+        stored_level = lifetime.get("level")
+        xp_block = xp_to_next(total_xp)
+        # Prefer the persisted level if it exists and is at least the derived
+        # value; otherwise compute on read (handles legacy users + drift).
+        level = max(int(stored_level), xp_block["level"]) if isinstance(stored_level, int) else xp_block["level"]
+
+        # Pull the active language for readiness (uses learning plan resolver).
+        # We compute readiness against (active language, highest_level for that
+        # language) — those are the buckets that already carry signal.
+        active_language = await get_user_active_language(user_id) or "english"
+        by_language = lifetime.get("by_language", {}) or {}
+        lang_bucket = by_language.get(active_language, {}) or {}
+        highest_level = lang_bucket.get("highest_level") or "A1"
+        by_level = lifetime.get("by_level", {}) or {}
+        level_bucket = by_level.get(highest_level, {}) or {}
+
+        current_streak = int(stats.get("current_streak", 0) or 0)
+        longest_streak = int(stats.get("longest_streak", 0) or 0)
+
+        readiness = compute_readiness(
+            by_language_lang=lang_bucket,
+            by_level_level=level_bucket,
+            current_streak=current_streak,
+        )
+
+        # Daily-goal progress: target lives on user; progress comes from the
+        # already-aggregated daily_stats doc for the user's local date.
+        daily_goal_target = int(
+            stats.get("daily_goal_challenges", DEFAULT_DAILY_GOAL_CHALLENGES) or DEFAULT_DAILY_GOAL_CHALLENGES
+        )
+        daily_doc = await daily_stats_collection.find_one(
+            {"user_id": user_id, "local_date": local_date}
+        )
+        completed_today = int((daily_doc or {}).get("total_challenges", 0) or 0)
+
+        return ProgressionResponse(
+            success=True,
+            xp=ProgressionXP(
+                total_xp=total_xp,
+                level=level,
+                xp_into_level=xp_block["xp_into_level"],
+                xp_for_level=xp_block["xp_for_level"],
+                xp_to_next=xp_block["xp_to_next"],
+            ),
+            current_streak=current_streak,
+            longest_streak=longest_streak,
+            daily_goal=ProgressionDailyGoal(
+                target=daily_goal_target,
+                completed_today=completed_today,
+                is_complete=completed_today >= daily_goal_target,
+            ),
+            readiness=readiness,
+            timezone=timezone,
+            date=local_date,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[CHALLENGES] ❌ Error getting progression: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Failed to get progression: {str(e)}")
+
+
+@router.get("/next-step", response_model=NextStepResponse)
+async def get_next_step(
+    current_user: UserResponse = Depends(get_current_user),
+    language: Optional[str] = Query(None, description="Override language"),
+    level: Optional[str] = Query(None, description="Override CEFR level (A1–C2)"),
+):
+    """Recommend the next challenge type for the user.
+
+    Selection logic (see `services/progression.pick_next_step` for full spec):
+      1. **Weak area** — type with enough volume AND accuracy below threshold.
+      2. **Variety**   — first type the user hasn't just played.
+      3. **Cold start** — `smart_flashcard → micro_quiz → native_check` ladder.
+    """
+    try:
+        user_id = current_user.id
+        preferred_level = getattr(current_user, "preferred_level", None)
+        resolved_language, resolved_level = await resolve_language_and_level(
+            user_id=user_id,
+            user_preferred_level=preferred_level,
+            language_param=language,
+            level_param=level,
+        )
+
+        user = await users_collection.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        by_type = (user.get("stats", {}) or {}).get("lifetime", {}).get("by_type") or {}
+
+        # Most-recent challenge type for variety rotation (best-effort).
+        last_type = None
+        if challenge_sessions_collection is not None:
+            try:
+                last_session = await challenge_sessions_collection.find_one(
+                    {"user_id": user_id},
+                    sort=[("created_at", -1)],
+                    projection={"challenge_type": 1, "_id": 0},
+                )
+                last_type = (last_session or {}).get("challenge_type")
+            except Exception as recent_err:
+                print(f"[CHALLENGES] ⚠️ next-step: could not read last session: {recent_err}")
+
+        pick = pick_next_step(
+            by_type=by_type,
+            last_challenge_type=last_type,
+            excluded_types=None,
+        )
+
+        return NextStepResponse(
+            success=True,
+            challenge_type=pick["challenge_type"],
+            display_title=pick["display_title"],
+            reason=pick["reason"],
+            estimated_duration_sec=pick["estimated_duration_sec"],
+            language=resolved_language,
+            level=resolved_level,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[CHALLENGES] ❌ Error getting next step: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Failed to get next step: {str(e)}")
 
 
 # ==================== CHALLENGE POOL SYSTEM ENDPOINTS ====================

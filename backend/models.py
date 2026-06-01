@@ -911,6 +911,46 @@ class ChallengesByTypeResponse(BaseModel):
         populate_by_name = True
         arbitrary_types_allowed = True
 
+
+# ---------------------------------------------------------------------------
+# Progression spine (Phase A — Games experience architecture)
+# ---------------------------------------------------------------------------
+class ProgressionXP(BaseModel):
+    """Lifetime XP roll-up with level-progress breakdown."""
+    total_xp: int
+    level: int
+    xp_into_level: int       # XP earned past the current level threshold
+    xp_for_level: int        # XP span of the current level (bar denominator)
+    xp_to_next: int          # XP still needed for next level
+
+
+class ProgressionDailyGoal(BaseModel):
+    target: int              # users.stats.daily_goal_challenges (default 10)
+    completed_today: int     # from daily_stats.total_challenges
+    is_complete: bool
+
+
+class ProgressionResponse(BaseModel):
+    success: bool = True
+    xp: ProgressionXP
+    current_streak: int
+    longest_streak: int
+    daily_goal: ProgressionDailyGoal
+    readiness: int           # 0..100, computed on read
+    timezone: str
+    date: str                # local date used for daily_goal lookup
+
+
+class NextStepResponse(BaseModel):
+    success: bool = True
+    challenge_type: str
+    display_title: str
+    reason: str
+    estimated_duration_sec: int
+    language: str
+    level: str
+
+
 # Achievement models for gamification
 class AchievementBase(BaseModel):
     id: str  # perfect_session, speed_demon, combo_master, ultimate_combo

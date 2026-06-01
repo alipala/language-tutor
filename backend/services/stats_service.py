@@ -21,6 +21,7 @@ from services.timezone_utils import (
     calculate_streak_days,
     get_dates_in_range
 )
+from services.progression import compute_level
 
 
 # ============================================================================
@@ -251,6 +252,21 @@ async def update_lifetime_stats(session_data: Dict[str, Any]) -> None:
             # Set started_at if this is first time for this language
             if not current_highest:
                 updates[f'stats.lifetime.by_language.{language}.started_at'] = datetime.utcnow()
+
+        # Phase A: persist the derived gameplay level alongside total_xp so
+        # readers (Hub header, Coach, recommender) don't need to recompute.
+        # We compute against the post-increment total because $inc and $set in
+        # the same update operate on the pre-image; the value will be one
+        # session behind for one read at most, then the next write catches up.
+        previous_total_xp = int(
+            (user or {})
+            .get('stats', {})
+            .get('lifetime', {})
+            .get('total_xp', 0)
+            or 0
+        )
+        projected_total_xp = previous_total_xp + int(session_data.get('total_xp', 0) or 0)
+        updates['stats.lifetime.level'] = compute_level(projected_total_xp)
 
         # Update user document
         await users_collection.update_one(
