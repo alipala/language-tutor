@@ -28,6 +28,7 @@ from services.timezone_utils import convert_to_local_date, get_current_local_dat
 from services.stats_service import update_daily_stats, update_lifetime_stats, update_streak
 from services.progression import (
     DEFAULT_DAILY_GOAL_CHALLENGES,
+    DEFAULT_DAILY_GOAL_XP,
     compute_level,
     compute_readiness,
     pick_next_step,
@@ -227,9 +228,9 @@ async def select_personalized_challenges(
     """
     challenges_collection = get_challenges_collection()
 
+    # XP rebalance PR2: dropped `swipe_fix` — no mobile screen implements it.
     challenge_types = [
         "error_spotting",
-        "swipe_fix",
         "micro_quiz",
         "smart_flashcard",
         "native_check",
@@ -465,19 +466,11 @@ async def complete_challenge(
         challenge_stats["currentStreak"] = current_streak
         challenge_stats["lastChallengeDate"] = datetime.combine(today, datetime.min.time())
 
-        # Update completion history
-        if "completionHistory" not in challenge_stats:
-            challenge_stats["completionHistory"] = {}
-
-        if today_str not in challenge_stats["completionHistory"]:
-            challenge_stats["completionHistory"][today_str] = []
-
-        challenge_stats["completionHistory"][today_str].append({
-            "challenge_id": challenge_id,
-            "correct": request.correct,
-            "time_spent": request.time_spent,
-            "completed_at": datetime.utcnow().isoformat()
-        })
+        # XP rebalance PR2: dropped `completionHistory` write — an unbounded
+        # per-day array that nothing reads (verified across mobile + backend).
+        # The small fields above (totalCompleted, currentStreak, completedToday,
+        # lastChallengeDate) stay so the legacy `/today` and `/today-status`
+        # endpoints remain self-consistent for any debug/internal use.
 
         # Save to database
         result = await users_collection.update_one(
@@ -511,45 +504,20 @@ async def complete_challenge(
 
         print(f"[CHALLENGES] ✅ Challenge completed. Streak: {current_streak}, Total: {challenge_stats['totalCompleted']}")
 
-        # NEW: Update new stats system (daily_stats, users.stats) for Recent Performance Card
-        # This bridges the gap between legacy endpoint and new stats architecture
+        # XP rebalance PR2: this legacy per-answer endpoint no longer awards
+        # XP. The single source of XP for a games session is
+        # `POST /api/achievements/sessions/complete` → `process_session_completion`,
+        # which writes daily_stats.total_xp, stats.lifetime.total_xp and
+        # xp_by_source.challenges from the client's per-session total. Doing it
+        # here too (flat 10/5 per answer) produced a multi-X double-count.
+        # We keep the streak update so a same-day completion still ticks the
+        # streak via the conversation_sessions calculation.
         try:
-            print(f"[CHALLENGES] 🔄 Updating new stats system...")
-
-            # Get user timezone (fallback to UTC if not set)
             user_timezone = user.get("timezone", "UTC")
             local_date = get_current_local_date(user_timezone)
-
-            # Create session data for stats processing
-            # Note: Since this is individual challenge completion (not a full session),
-            # we'll update daily_stats directly with minimal data
-            session_data = {
-                "user_id": user_id,
-                "local_date": local_date,
-                "user_timezone": user_timezone,
-                "language": request.language or "unknown",
-                "level": request.level or "B1",
-                "challenge_type": request.challenge_type or "unknown",
-                "total_challenges": 1,  # Single challenge
-                "correct_answers": 1 if request.correct else 0,
-                "wrong_answers": 0 if request.correct else 1,
-                "total_xp": 10 if request.correct else 5,  # Basic XP
-                "created_at": datetime.utcnow()
-            }
-
-            # Update daily stats (incremental)
-            await update_daily_stats(session_data)
-
-            # Update lifetime stats
-            await update_lifetime_stats(session_data)
-
-            # Update streak (uses conversation_sessions for streak calculation)
             await update_streak(user_id, local_date, user_timezone)
-
-            print(f"[CHALLENGES] ✅ New stats system updated successfully")
         except Exception as stats_error:
-            # Don't fail the request if stats update fails
-            print(f"[CHALLENGES] ⚠️ Error updating new stats system: {str(stats_error)}")
+            print(f"[CHALLENGES] ⚠️ Error updating streak: {str(stats_error)}")
             import traceback
             print(traceback.format_exc())
 
@@ -697,15 +665,22 @@ async def get_progression(
             current_streak=current_streak,
         )
 
-        # Daily-goal progress: target lives on user; progress comes from the
-        # already-aggregated daily_stats doc for the user's local date.
-        daily_goal_target = int(
-            stats.get("daily_goal_challenges", DEFAULT_DAILY_GOAL_CHALLENGES) or DEFAULT_DAILY_GOAL_CHALLENGES
+        # Daily-goal progress: XP rebalance PR2 — the goal is now XP-based.
+        # Prefer the user's per-account override (`stats.daily_goal_xp`); fall
+        # back to the legacy `stats.daily_goal_challenges` so users carrying a
+        # custom value from before the rebalance see it translated 1:1
+        # (challenges and XP both default to 50, so the migration is silent
+        # for the default case). New users use DEFAULT_DAILY_GOAL_XP.
+        daily_goal_xp = int(
+            stats.get("daily_goal_xp")
+            or stats.get("daily_goal_challenges")
+            or DEFAULT_DAILY_GOAL_XP
         )
         daily_doc = await daily_stats_collection.find_one(
             {"user_id": user_id, "local_date": local_date}
         )
-        completed_today = int((daily_doc or {}).get("total_challenges", 0) or 0)
+        current_xp = int((daily_doc or {}).get("total_xp", 0) or 0)
+        is_complete = current_xp >= daily_goal_xp
 
         return ProgressionResponse(
             success=True,
@@ -719,9 +694,15 @@ async def get_progression(
             current_streak=current_streak,
             longest_streak=longest_streak,
             daily_goal=ProgressionDailyGoal(
-                target=daily_goal_target,
-                completed_today=completed_today,
-                is_complete=completed_today >= daily_goal_target,
+                # Back-compat: legacy clients read `target` / `completed_today`
+                # as challenge counts; populate them with the XP values so
+                # the bar still moves (numbers are now XP, but the contract
+                # shape is unchanged for pre-rebalance mobile builds).
+                target=daily_goal_xp,
+                completed_today=current_xp,
+                is_complete=is_complete,
+                target_xp=daily_goal_xp,
+                current_xp=current_xp,
             ),
             readiness=readiness,
             timezone=timezone,

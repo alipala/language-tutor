@@ -1133,8 +1133,15 @@ async def store_session_summary(
                 # selected_duration is already validated/clamped above; get_session_xp handles unknowns.
                 session_xp = get_session_xp(int(selected_duration))
                 raw_bonus = (conversation_data or {}).get("correction_bonus_xp", 0)
-                bonus_xp = max(0, min(int(raw_bonus or 0), 15))  # server-side clamp [0, 15]
-                total_xp_delta = session_xp + bonus_xp
+                # XP rebalance PR2: bonus clamp range widened to [0, 20].
+                bonus_xp = max(0, min(int(raw_bonus or 0), 20))
+                # XP rebalance PR2: learning-plan voice gets ×1.5 — speaking-in-plan
+                # is the top-rewarded action (premium action × premium context).
+                # This routine ONLY runs for plan voice sessions (called from
+                # save_learning_plan_session_summary), so the multiplier applies
+                # unconditionally here.
+                LEARNING_PLAN_XP_MULTIPLIER = 1.5
+                total_xp_delta = int(round((session_xp + bonus_xp) * LEARNING_PLAN_XP_MULTIPLIER))
 
                 daily_result = await daily_stats_collection.update_one(
                     {

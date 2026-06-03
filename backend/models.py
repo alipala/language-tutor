@@ -357,14 +357,18 @@ class ConversationSession(BaseModel):
         json_encoders = {ObjectId: str}
 
 # XP awarded for completing a conversation session by chosen duration.
-# Keep in sync with XP_PER_DURATION on the frontend (ConversationScreen.tsx).
+# XP rebalance PR2: speaking is the brand's premium action — buffed so the
+# 5-minute session is meaningfully bigger than a typical 10-question game
+# (~40 XP) and a perfect+fast game (~70 XP). Keep in sync with
+# XP_PER_DURATION on the frontend (ConversationScreen.tsx).
 CONVERSATION_SESSION_XP: dict[int, int] = {
-    1: 15,   # Sprint  — ≈ 1-2 challenge answers
-    3: 50,   # Quick   — ≈ 5 correct challenges
-    5: 100,  # Standard — full challenge session equivalent
+    1: 40,   # Sprint   — buffed from 15
+    3: 110,  # Quick    — buffed from 50
+    5: 180,  # Standard — buffed from 100
 }
-# Fallback for any unrecognised duration: award proportionally at the 5-min rate.
-_XP_PER_MIN_FALLBACK = 20  # 100 XP / 5 min
+# Fallback for any unrecognised duration: proportional at the 5-min rate
+# (180 XP / 5 min = 36 XP/min), clamped between the 1-min floor and 5-min cap.
+_XP_PER_MIN_FALLBACK = 36
 
 
 def get_session_xp(selected_duration: int) -> int:
@@ -376,8 +380,7 @@ def get_session_xp(selected_duration: int) -> int:
     """
     if selected_duration in CONVERSATION_SESSION_XP:
         return CONVERSATION_SESSION_XP[selected_duration]
-    # Clamp: at least 1 XP per minute, at most the 5-min cap.
-    return min(max(selected_duration * _XP_PER_MIN_FALLBACK, 15), 100)
+    return min(max(selected_duration * _XP_PER_MIN_FALLBACK, 40), 180)
 
 
 class SaveConversationRequest(BaseModel):
@@ -393,7 +396,8 @@ class SaveConversationRequest(BaseModel):
     # Bonus XP earned during the session:
     #   +10 correction engagement (≥50% of corrections dismissed via "Got it")
     #   +5  fluency burst (2 consecutive clean turns with no correction)
-    # Max possible: 15. Validated server-side: clamped to [0, 15].
+    # XP rebalance PR2: server-side clamp range widened from [0, 15] to [0, 20]
+    # so the speaking buff can rise alongside the base table.
     correction_bonus_xp: Optional[int] = 0
     user_timezone: Optional[str] = 'UTC'
 
@@ -925,9 +929,16 @@ class ProgressionXP(BaseModel):
 
 
 class ProgressionDailyGoal(BaseModel):
-    target: int              # users.stats.daily_goal_challenges (default 10)
-    completed_today: int     # from daily_stats.total_challenges
+    # XP rebalance PR2: daily goal is now XP-based. The legacy challenge-count
+    # fields stay populated for backward compatibility with mobile clients
+    # built before this change; new clients should read `target_xp` /
+    # `current_xp`. `is_complete` reflects the XP comparison (the new
+    # source-of-truth), not the legacy challenge count.
+    target: int              # legacy: equals target_xp (kept for back-compat)
+    completed_today: int     # legacy: equals current_xp (kept for back-compat)
     is_complete: bool
+    target_xp: int           # XP rebalance PR2: daily XP goal (default 50)
+    current_xp: int          # XP rebalance PR2: from daily_stats.total_xp
 
 
 class ProgressionResponse(BaseModel):

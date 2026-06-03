@@ -19,18 +19,21 @@ from typing import Any, Dict, List, Optional, Tuple
 # Level curve
 # ---------------------------------------------------------------------------
 # Curve: level = floor(sqrt(total_xp / LEVEL_XP_DIVISOR)) + 1
-# This is sub-linear (XP cost grows with level) and gives sane numbers across
-# the current production range:
+# XP rebalance PR2: the divisor dropped from 100 to 35 so progression feels
+# rewarding under the new XP economy (per-answer XP is much lower; voice is
+# bigger; daily goal is XP-based). Worked examples under the new curve:
 #
 #   total_xp =     0  ->  level  1
-#   total_xp =   500  ->  level  3
-#   total_xp = 2_000  ->  level  5
-#   total_xp = 6_225  ->  level  8   (real user — dutch heavy)
-#   total_xp = 9_430  ->  level 10
-#   total_xp =19_880  ->  level 15
+#   total_xp =   140  ->  level  3   (140 = 4 × 35)
+#   total_xp =   500  ->  level  4
+#   total_xp = 2_000  ->  level  8
+#   total_xp = 6_225  ->  level 14   (real user — dutch heavy)
+#   total_xp = 9_430  ->  level 17
+#   total_xp =19_880  ->  level 24
 #
-# To tune the climb, raise LEVEL_XP_DIVISOR (slower) or lower it (faster).
-LEVEL_XP_DIVISOR: int = 100
+# Existing users see a one-time positive level bump (see migration script at
+# backend/scripts/migrate_levels_for_curve_change.py).
+LEVEL_XP_DIVISOR: int = 35
 
 
 def compute_level(total_xp: int) -> int:
@@ -137,8 +140,14 @@ def compute_readiness(
 # ---------------------------------------------------------------------------
 # Daily goal
 # ---------------------------------------------------------------------------
-# Default challenges/day if the user doesn't have a custom goal yet.
-DEFAULT_DAILY_GOAL_CHALLENGES: int = 10
+# XP rebalance PR2: daily goal is now XP-based (voice contributes; games
+# contribute; one currency). Tiers: Casual 30 · Regular 50 (default) ·
+# Serious 100 · Intense 200. The legacy challenge-count constant is kept
+# only as a back-compat alias for any internal caller; it points at the
+# new default so behavior stays sensible if anything still reads it.
+DEFAULT_DAILY_GOAL_XP: int = 50
+DAILY_GOAL_XP_TIERS: Tuple[int, ...] = (30, 50, 100, 200)
+DEFAULT_DAILY_GOAL_CHALLENGES: int = DEFAULT_DAILY_GOAL_XP  # back-compat alias
 
 
 # ---------------------------------------------------------------------------
@@ -236,7 +245,8 @@ def pick_next_step(
     if not available:
         # Defensive: caller excluded everything. Return ladder head.
         head = COLD_START_LADDER[0]
-        return _format_pick(head, reason="default fallback (all types excluded)")
+        # User-facing fallback only — never leak engineer copy to the card.
+        return _format_pick(head, reason="a good next step for you")
 
     by_type = by_type or {}
 
@@ -254,9 +264,11 @@ def pick_next_step(
     if candidates:
         candidates.sort()
         _, _, weakest = candidates[0]
+        # Encouragement-framed, game-name-agnostic — the card already shows
+        # the game title above, so don't repeat it in the reason line.
         return _format_pick(
             weakest,
-            reason=f"targets your weak spot in {DISPLAY_TITLES.get(weakest, weakest)}",
+            reason="a good place to build your confidence",
         )
 
     # ── 2. Variety rotation (has *some* history) ──

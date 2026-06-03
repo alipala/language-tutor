@@ -50,9 +50,9 @@ async def copy_reference_to_pool(
         reference_collection = await get_reference_challenges_collection()
         pool_collection = await get_pool_collection()
 
+        # XP rebalance PR2: dropped `swipe_fix` — no mobile screen implements it.
         challenge_types = [
             "error_spotting",
-            "swipe_fix",
             "micro_quiz",
             "smart_flashcard",
             "native_check",
@@ -207,9 +207,9 @@ async def ensure_pool_has_challenges(
     try:
         pool_collection = await get_pool_collection()
 
+        # XP rebalance PR2: dropped `swipe_fix` — no mobile screen implements it.
         challenge_types = [
             "error_spotting",
-            "swipe_fix",
             "micro_quiz",
             "smart_flashcard",
             "native_check",
