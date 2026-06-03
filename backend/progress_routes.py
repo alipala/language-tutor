@@ -987,7 +987,8 @@ async def save_conversation(
 
             # Pre-compute XP so we can stamp it on the session document
             session_xp_pre = get_session_xp(selected_duration)
-            bonus_xp_pre = max(0, min(int(request.correction_bonus_xp or 0), 15))
+            # XP rebalance PR2: bonus clamp range widened to [0, 20].
+            bonus_xp_pre = max(0, min(int(request.correction_bonus_xp or 0), 20))
             xp_earned_total = session_xp_pre + bonus_xp_pre
 
             update_data = {
@@ -1214,7 +1215,8 @@ async def save_conversation(
 
             # Pre-compute XP so we can stamp it on the session document
             session_xp_pre = get_session_xp(selected_duration)
-            bonus_xp_pre = max(0, min(int(request.correction_bonus_xp or 0), 15))
+            # XP rebalance PR2: bonus clamp range widened to [0, 20].
+            bonus_xp_pre = max(0, min(int(request.correction_bonus_xp or 0), 20))
             xp_earned_total = session_xp_pre + bonus_xp_pre
 
             session_dict = {

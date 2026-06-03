@@ -6,7 +6,7 @@ Provides daily personalized challenges based on user's CEFR level and weaknesses
 import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from bson import ObjectId
 
 from auth import get_current_user
@@ -17,11 +17,23 @@ from models import (
     ChallengeCountsResponse,
     ChallengesByTypeResponse,
     ChallengePoolItem,
+    ProgressionResponse,
+    ProgressionXP,
+    ProgressionDailyGoal,
+    NextStepResponse,
 )
-from database import database
+from database import database, daily_stats_collection, users_collection, challenge_sessions_collection
 from challenge_generator_ai import get_or_generate_daily_challenges
 from services.timezone_utils import convert_to_local_date, get_current_local_date
 from services.stats_service import update_daily_stats, update_lifetime_stats, update_streak
+from services.progression import (
+    DEFAULT_DAILY_GOAL_CHALLENGES,
+    DEFAULT_DAILY_GOAL_XP,
+    compute_level,
+    compute_readiness,
+    pick_next_step,
+    xp_to_next,
+)
 from cache_helpers import invalidate_coach_context_smart  # PHASE 4.2: Smart cache invalidation
 
 router = APIRouter(prefix="/api/challenges", tags=["challenges"])
@@ -216,9 +228,9 @@ async def select_personalized_challenges(
     """
     challenges_collection = get_challenges_collection()
 
+    # XP rebalance PR2: dropped `swipe_fix` — no mobile screen implements it.
     challenge_types = [
         "error_spotting",
-        "swipe_fix",
         "micro_quiz",
         "smart_flashcard",
         "native_check",
@@ -454,19 +466,11 @@ async def complete_challenge(
         challenge_stats["currentStreak"] = current_streak
         challenge_stats["lastChallengeDate"] = datetime.combine(today, datetime.min.time())
 
-        # Update completion history
-        if "completionHistory" not in challenge_stats:
-            challenge_stats["completionHistory"] = {}
-
-        if today_str not in challenge_stats["completionHistory"]:
-            challenge_stats["completionHistory"][today_str] = []
-
-        challenge_stats["completionHistory"][today_str].append({
-            "challenge_id": challenge_id,
-            "correct": request.correct,
-            "time_spent": request.time_spent,
-            "completed_at": datetime.utcnow().isoformat()
-        })
+        # XP rebalance PR2: dropped `completionHistory` write — an unbounded
+        # per-day array that nothing reads (verified across mobile + backend).
+        # The small fields above (totalCompleted, currentStreak, completedToday,
+        # lastChallengeDate) stay so the legacy `/today` and `/today-status`
+        # endpoints remain self-consistent for any debug/internal use.
 
         # Save to database
         result = await users_collection.update_one(
@@ -500,45 +504,20 @@ async def complete_challenge(
 
         print(f"[CHALLENGES] ✅ Challenge completed. Streak: {current_streak}, Total: {challenge_stats['totalCompleted']}")
 
-        # NEW: Update new stats system (daily_stats, users.stats) for Recent Performance Card
-        # This bridges the gap between legacy endpoint and new stats architecture
+        # XP rebalance PR2: this legacy per-answer endpoint no longer awards
+        # XP. The single source of XP for a games session is
+        # `POST /api/achievements/sessions/complete` → `process_session_completion`,
+        # which writes daily_stats.total_xp, stats.lifetime.total_xp and
+        # xp_by_source.challenges from the client's per-session total. Doing it
+        # here too (flat 10/5 per answer) produced a multi-X double-count.
+        # We keep the streak update so a same-day completion still ticks the
+        # streak via the conversation_sessions calculation.
         try:
-            print(f"[CHALLENGES] 🔄 Updating new stats system...")
-
-            # Get user timezone (fallback to UTC if not set)
             user_timezone = user.get("timezone", "UTC")
             local_date = get_current_local_date(user_timezone)
-
-            # Create session data for stats processing
-            # Note: Since this is individual challenge completion (not a full session),
-            # we'll update daily_stats directly with minimal data
-            session_data = {
-                "user_id": user_id,
-                "local_date": local_date,
-                "user_timezone": user_timezone,
-                "language": request.language or "unknown",
-                "level": request.level or "B1",
-                "challenge_type": request.challenge_type or "unknown",
-                "total_challenges": 1,  # Single challenge
-                "correct_answers": 1 if request.correct else 0,
-                "wrong_answers": 0 if request.correct else 1,
-                "total_xp": 10 if request.correct else 5,  # Basic XP
-                "created_at": datetime.utcnow()
-            }
-
-            # Update daily stats (incremental)
-            await update_daily_stats(session_data)
-
-            # Update lifetime stats
-            await update_lifetime_stats(session_data)
-
-            # Update streak (uses conversation_sessions for streak calculation)
             await update_streak(user_id, local_date, user_timezone)
-
-            print(f"[CHALLENGES] ✅ New stats system updated successfully")
         except Exception as stats_error:
-            # Don't fail the request if stats update fails
-            print(f"[CHALLENGES] ⚠️ Error updating new stats system: {str(stats_error)}")
+            print(f"[CHALLENGES] ⚠️ Error updating streak: {str(stats_error)}")
             import traceback
             print(traceback.format_exc())
 
@@ -622,6 +601,188 @@ async def get_challenge_stats(current_user: UserResponse = Depends(get_current_u
     except Exception as e:
         print(f"[CHALLENGES] ❌ Error getting stats: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get challenge stats: {str(e)}")
+
+
+# ==================== PROGRESSION SPINE (Phase A) ====================
+#
+# `/progression` and `/next-step` expose persistent progression that already
+# lives in `users.stats.lifetime.*` and `daily_stats.*`. They follow the
+# `response_model` + `Query` + timezone-resolution convention from
+# `routes/stats_routes.py`. All tunables live in `services/progression.py`.
+
+@router.get("/progression", response_model=ProgressionResponse)
+async def get_progression(
+    current_user: UserResponse = Depends(get_current_user),
+    timezone: Optional[str] = Query(None, description="User's IANA timezone (e.g. 'Europe/Amsterdam')"),
+):
+    """Persistent progression summary for the games spine.
+
+    Returns lifetime XP + derived level, current/longest streak, today's
+    progress against the daily goal, and a v1 readiness score (0..100).
+
+    `level` is read from `stats.lifetime.level` when present; otherwise it is
+    computed on the fly from `total_xp` so existing users see a real number
+    immediately (no migration needed).
+    """
+    try:
+        user_id = current_user.id
+
+        # Timezone priority: query > user profile > UTC (matches stats_routes).
+        if not timezone:
+            timezone = getattr(current_user, "timezone", None) or "UTC"
+        local_date = get_current_local_date(timezone)
+
+        user = await users_collection.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        stats = user.get("stats", {}) or {}
+        lifetime = stats.get("lifetime", {}) or {}
+
+        total_xp = int(lifetime.get("total_xp", 0) or 0)
+        stored_level = lifetime.get("level")
+        xp_block = xp_to_next(total_xp)
+        # Prefer the persisted level if it exists and is at least the derived
+        # value; otherwise compute on read (handles legacy users + drift).
+        level = max(int(stored_level), xp_block["level"]) if isinstance(stored_level, int) else xp_block["level"]
+
+        # Pull the active language for readiness (uses learning plan resolver).
+        # We compute readiness against (active language, highest_level for that
+        # language) — those are the buckets that already carry signal.
+        active_language = await get_user_active_language(user_id) or "english"
+        by_language = lifetime.get("by_language", {}) or {}
+        lang_bucket = by_language.get(active_language, {}) or {}
+        highest_level = lang_bucket.get("highest_level") or "A1"
+        by_level = lifetime.get("by_level", {}) or {}
+        level_bucket = by_level.get(highest_level, {}) or {}
+
+        current_streak = int(stats.get("current_streak", 0) or 0)
+        longest_streak = int(stats.get("longest_streak", 0) or 0)
+
+        readiness = compute_readiness(
+            by_language_lang=lang_bucket,
+            by_level_level=level_bucket,
+            current_streak=current_streak,
+        )
+
+        # Daily-goal progress: XP rebalance PR2 — the goal is now XP-based.
+        # Prefer the user's per-account override (`stats.daily_goal_xp`); fall
+        # back to the legacy `stats.daily_goal_challenges` so users carrying a
+        # custom value from before the rebalance see it translated 1:1
+        # (challenges and XP both default to 50, so the migration is silent
+        # for the default case). New users use DEFAULT_DAILY_GOAL_XP.
+        daily_goal_xp = int(
+            stats.get("daily_goal_xp")
+            or stats.get("daily_goal_challenges")
+            or DEFAULT_DAILY_GOAL_XP
+        )
+        daily_doc = await daily_stats_collection.find_one(
+            {"user_id": user_id, "local_date": local_date}
+        )
+        current_xp = int((daily_doc or {}).get("total_xp", 0) or 0)
+        is_complete = current_xp >= daily_goal_xp
+
+        return ProgressionResponse(
+            success=True,
+            xp=ProgressionXP(
+                total_xp=total_xp,
+                level=level,
+                xp_into_level=xp_block["xp_into_level"],
+                xp_for_level=xp_block["xp_for_level"],
+                xp_to_next=xp_block["xp_to_next"],
+            ),
+            current_streak=current_streak,
+            longest_streak=longest_streak,
+            daily_goal=ProgressionDailyGoal(
+                # Back-compat: legacy clients read `target` / `completed_today`
+                # as challenge counts; populate them with the XP values so
+                # the bar still moves (numbers are now XP, but the contract
+                # shape is unchanged for pre-rebalance mobile builds).
+                target=daily_goal_xp,
+                completed_today=current_xp,
+                is_complete=is_complete,
+                target_xp=daily_goal_xp,
+                current_xp=current_xp,
+            ),
+            readiness=readiness,
+            timezone=timezone,
+            date=local_date,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[CHALLENGES] ❌ Error getting progression: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Failed to get progression: {str(e)}")
+
+
+@router.get("/next-step", response_model=NextStepResponse)
+async def get_next_step(
+    current_user: UserResponse = Depends(get_current_user),
+    language: Optional[str] = Query(None, description="Override language"),
+    level: Optional[str] = Query(None, description="Override CEFR level (A1–C2)"),
+):
+    """Recommend the next challenge type for the user.
+
+    Selection logic (see `services/progression.pick_next_step` for full spec):
+      1. **Weak area** — type with enough volume AND accuracy below threshold.
+      2. **Variety**   — first type the user hasn't just played.
+      3. **Cold start** — `smart_flashcard → micro_quiz → native_check` ladder.
+    """
+    try:
+        user_id = current_user.id
+        preferred_level = getattr(current_user, "preferred_level", None)
+        resolved_language, resolved_level = await resolve_language_and_level(
+            user_id=user_id,
+            user_preferred_level=preferred_level,
+            language_param=language,
+            level_param=level,
+        )
+
+        user = await users_collection.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        by_type = (user.get("stats", {}) or {}).get("lifetime", {}).get("by_type") or {}
+
+        # Most-recent challenge type for variety rotation (best-effort).
+        last_type = None
+        if challenge_sessions_collection is not None:
+            try:
+                last_session = await challenge_sessions_collection.find_one(
+                    {"user_id": user_id},
+                    sort=[("created_at", -1)],
+                    projection={"challenge_type": 1, "_id": 0},
+                )
+                last_type = (last_session or {}).get("challenge_type")
+            except Exception as recent_err:
+                print(f"[CHALLENGES] ⚠️ next-step: could not read last session: {recent_err}")
+
+        pick = pick_next_step(
+            by_type=by_type,
+            last_challenge_type=last_type,
+            excluded_types=None,
+        )
+
+        return NextStepResponse(
+            success=True,
+            challenge_type=pick["challenge_type"],
+            display_title=pick["display_title"],
+            reason=pick["reason"],
+            estimated_duration_sec=pick["estimated_duration_sec"],
+            language=resolved_language,
+            level=resolved_level,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[CHALLENGES] ❌ Error getting next step: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Failed to get next step: {str(e)}")
 
 
 # ==================== CHALLENGE POOL SYSTEM ENDPOINTS ====================
