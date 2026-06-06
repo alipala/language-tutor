@@ -484,8 +484,32 @@ async def _run_sentence_analysis_background(
         )
         print(f"[SENTENCE_ANALYSIS_BG] 🔄 Job {job_id} started processing")
 
-        # Extract sentence texts
-        sentence_texts = [s.get('text') for s in sentences_for_analysis if s.get('text')]
+        # Pair each sentence with its quality score so we can pick the strongest
+        # examples first. Mobile sends `qualityScore` (camelCase); be defensive
+        # for older payloads that might use snake_case.
+        def _score(item):
+            if isinstance(item, dict):
+                qs = item.get('qualityScore')
+                if qs is None:
+                    qs = item.get('quality_score')
+                try:
+                    return float(qs) if qs is not None else 0.0
+                except (TypeError, ValueError):
+                    return 0.0
+            return 0.0
+
+        # SPEED: analyze the top 3 sentences by quality_score (desc) instead of
+        # all available. Job completes faster so mobile's review readiness
+        # window catches it inline. If fewer than 3 exist, analyze all.
+        TOP_N_FOR_ANALYSIS = 3
+        scored_items = [
+            (s, _score(s)) for s in sentences_for_analysis
+            if isinstance(s, dict) and s.get('text')
+        ]
+        if len(scored_items) > TOP_N_FOR_ANALYSIS:
+            scored_items.sort(key=lambda pair: pair[1], reverse=True)
+            scored_items = scored_items[:TOP_N_FOR_ANALYSIS]
+        sentence_texts = [item.get('text') for item, _ in scored_items]
 
         if not sentence_texts:
             # No sentences to analyze
@@ -502,10 +526,10 @@ async def _run_sentence_analysis_background(
             print(f"[SENTENCE_ANALYSIS_BG] ✅ Job {job_id} completed (no sentences)")
             return
 
-        # Run batch analysis (this is the 15-20 second operation)
+        # Run batch analysis (single GPT-4o-mini call; top-3 cap keeps it fast)
         from background_sentence_analysis import batch_analyze_sentences
 
-        print(f"[SENTENCE_ANALYSIS_BG] 🔍 Analyzing {len(sentence_texts)} sentences...")
+        print(f"[SENTENCE_ANALYSIS_BG] 🔍 Analyzing {len(sentence_texts)} sentences (top-{TOP_N_FOR_ANALYSIS} by quality)...")
         analyses = await batch_analyze_sentences(
             sentences=sentence_texts,
             language=language,
@@ -1214,7 +1238,10 @@ async def store_session_summary(
             except Exception as cache_error:
                 print(f"[SESSION_SUMMARY] ⚠️ Cache invalidation error (non-fatal): {cache_error}")
 
-            # ⚡ BACKGROUND: Flashcard generation runs after response is sent (saves 3-10s)
+            # ⚡ BACKGROUND: Flashcard generation is scheduled LAST (after DNA and
+            # journey state) so it never blocks the sentence-analysis job that
+            # mobile waits on. The actual add_task call lives further below;
+            # we just prepare the kwargs here while summary_text is in scope.
             flashcard_generation_success = True   # optimistic — will complete in background
             generated_flashcards = 5              # expected count
             _summary_text = summary_data.get("full", basic_summary)
@@ -1227,8 +1254,6 @@ async def store_session_summary(
                 summary_text=_summary_text,
                 user_id=str(current_user.id),
             )
-            background_tasks.add_task(_generate_flashcards_background, **_flashcard_kwargs)
-            print(f"[FLASHCARD_GENERATION] ⚡ Scheduled flashcard generation as background task")
 
             # 🔥 FIX: Calculate ONLY essential stats immediately (fast operations only)
             # Move complex calculations to background for instant response
@@ -1344,6 +1369,12 @@ async def store_session_summary(
 
             # 🎯 JOURNEY ORCHESTRATOR: Update journey state (run in background)
             background_tasks.add_task(_update_journey_state_background, user_id=str(current_user.id))
+
+            # 🚀 Flashcard generation LAST (off the critical path).
+            # Sentence-analysis, DNA, optimizer, and journey state are dispatched
+            # earlier so they aren't gated by the flashcard LLM call.
+            background_tasks.add_task(_generate_flashcards_background, **_flashcard_kwargs)
+            print(f"[FLASHCARD_GENERATION] ⚡ Scheduled flashcard generation (LAST) as background task")
 
             # ⚡ Return immediately — flashcards, DNA, optimizer, and sentence analysis run in background
             print(f"[SESSION_SUMMARY] ✅ Returning response (background tasks scheduled)")

@@ -199,8 +199,34 @@ async def _run_sentence_analysis_background(
         )
         print(f"[SENTENCE_ANALYSIS_BG] 🔄 Job {job_id} started processing")
 
-        # Extract sentence texts
-        sentence_texts = [s.get('text') if isinstance(s, dict) else s for s in sentences_for_analysis]
+        # Pair each sentence with its quality score so we can pick the strongest
+        # examples first. Mobile sends `qualityScore` (camelCase); be defensive
+        # for older payloads that might use snake_case.
+        def _score(item):
+            if isinstance(item, dict):
+                qs = item.get('qualityScore')
+                if qs is None:
+                    qs = item.get('quality_score')
+                try:
+                    return float(qs) if qs is not None else 0.0
+                except (TypeError, ValueError):
+                    return 0.0
+            return 0.0
+
+        def _text(item):
+            if isinstance(item, dict):
+                return item.get('text')
+            return item
+
+        # SPEED: analyze the top 3 sentences by quality_score (desc) instead of
+        # all available. Job completes faster so mobile's review readiness
+        # window catches it inline. If fewer than 3 exist, analyze all.
+        TOP_N_FOR_ANALYSIS = 3
+        scored_items = [(s, _score(s)) for s in sentences_for_analysis if _text(s)]
+        if len(scored_items) > TOP_N_FOR_ANALYSIS:
+            scored_items.sort(key=lambda pair: pair[1], reverse=True)
+            scored_items = scored_items[:TOP_N_FOR_ANALYSIS]
+        sentence_texts = [_text(item) for item, _ in scored_items]
 
         if not sentence_texts:
             # No sentences to analyze
@@ -217,10 +243,10 @@ async def _run_sentence_analysis_background(
             print(f"[SENTENCE_ANALYSIS_BG] ✅ Job {job_id} completed (no sentences)")
             return
 
-        # Run batch analysis (this is the 15-20 second operation)
+        # Run batch analysis (single GPT-4o-mini call; top-3 cap keeps it fast)
         from background_sentence_analysis import batch_analyze_sentences
 
-        print(f"[SENTENCE_ANALYSIS_BG] 🔍 Analyzing {len(sentence_texts)} sentences...")
+        print(f"[SENTENCE_ANALYSIS_BG] 🔍 Analyzing {len(sentence_texts)} sentences (top-{TOP_N_FOR_ANALYSIS} by quality)...")
         analyses = await batch_analyze_sentences(
             sentences=sentence_texts,
             language=language,
@@ -1064,7 +1090,42 @@ async def save_conversation(
             except Exception as stats_err:
                 print(f"[PROGRESS] ⚠️ Error updating stats for XP (non-fatal): {stats_err}")
 
-            # 🚀 Schedule summary and enhanced analysis generation in background (runs AFTER response is sent)
+            # 🚀 Create sentence analysis job FIRST so the background task fires
+            # before the heavier GPT-4o summary/enhanced/embedding/cache tasks.
+            # FastAPI runs BackgroundTasks sequentially in registration order;
+            # mobile post-session review depends on this job reaching
+            # status='completed' within its readiness window.
+            if analysis_job_id and request.sentences_for_analysis:
+                from database import database
+                jobs_collection = database.sentence_analysis_jobs
+
+                await jobs_collection.insert_one({
+                    "job_id": analysis_job_id,
+                    "user_id": current_user.id,
+                    "plan_id": None,  # Practice sessions don't have plan_id
+                    "session_id": str(existing_session["_id"]),
+                    "status": "pending",
+                    "created_at": datetime.now(timezone.utc),
+                    "sentences": request.sentences_for_analysis,
+                    "language": request.language,
+                    "level": request.level,
+                    "analyses": []
+                })
+                print(f"[BATCH_SAVE] 📝 Created analysis job {analysis_job_id} with {len(request.sentences_for_analysis)} sentences")
+
+                # Schedule background task FIRST (runs AFTER response is sent)
+                background_tasks.add_task(
+                    _run_sentence_analysis_background,
+                    job_id=analysis_job_id,
+                    user_id=current_user.id,
+                    session_id=str(existing_session["_id"]),
+                    sentences_for_analysis=request.sentences_for_analysis,
+                    language=request.language,
+                    level=request.level
+                )
+                print(f"[BATCH_SAVE] 🚀 Scheduled background analysis (FIRST) for job {analysis_job_id}")
+
+            # 🚀 Schedule summary and enhanced analysis generation in background (runs AFTER sentence analysis)
             background_tasks.add_task(
                 _generate_summary_and_analysis_background,
                 session_id=str(existing_session["_id"]),
@@ -1102,38 +1163,8 @@ async def save_conversation(
             )
             print(f"[SESSION_STATS_CACHE] 🚀 Scheduled statistics caching for session {existing_session['_id']}")
 
-            # 🚀 Create sentence analysis job for background processing (for EXISTING sessions)
-            if analysis_job_id and request.sentences_for_analysis:
-                from database import database
-                jobs_collection = database.sentence_analysis_jobs
-
-                await jobs_collection.insert_one({
-                    "job_id": analysis_job_id,
-                    "user_id": current_user.id,
-                    "plan_id": None,  # Practice sessions don't have plan_id
-                    "session_id": str(existing_session["_id"]),
-                    "status": "pending",
-                    "created_at": datetime.now(timezone.utc),
-                    "sentences": request.sentences_for_analysis,
-                    "language": request.language,
-                    "level": request.level,
-                    "analyses": []
-                })
-                print(f"[BATCH_SAVE] 📝 Created analysis job {analysis_job_id} with {len(request.sentences_for_analysis)} sentences")
-
-                # Schedule background task (runs AFTER response is sent)
-                background_tasks.add_task(
-                    _run_sentence_analysis_background,
-                    job_id=analysis_job_id,
-                    user_id=current_user.id,
-                    session_id=str(existing_session["_id"]),
-                    sentences_for_analysis=request.sentences_for_analysis,
-                    language=request.language,
-                    level=request.level
-                )
-                print(f"[BATCH_SAVE] 🚀 Scheduled background analysis for job {analysis_job_id}")
-
             # S3.3 — Transcript DNA update for premium users (existing session path)
+            # Kept AFTER sentence-analysis per guardrail (DNA depends on analyses being ready).
             _dna_session_type = conversation_type if conversation_type in (
                 "freestyle", "news", "custom_topic", "practice"
             ) else "practice"
@@ -1320,22 +1351,9 @@ async def save_conversation(
                     language=request.language,
                     level=request.level
                 )
-                print(f"[BATCH_SAVE] 🚀 Scheduled background analysis for job {analysis_job_id}")
+                print(f"[BATCH_SAVE] 🚀 Scheduled background analysis (FIRST) for job {analysis_job_id}")
 
-            # 🚀 Schedule flashcard generation in background (runs AFTER response is sent)
-            # Note: Flashcards will generate after summary is available
-            background_tasks.add_task(
-                _generate_flashcards_background,
-                session_id=str(result.inserted_id),
-                user_id=current_user.id,
-                language=request.language,
-                level=request.level,
-                topic=request.topic,
-                summary=""  # Summary will be generated in background, flashcards will fetch from session
-            )
-            print(f"[FLASHCARD_BG] 🚀 Scheduled flashcard generation for session {result.inserted_id}")
-
-            # 🚀 Schedule summary and enhanced analysis generation in background (runs AFTER response is sent)
+            # 🚀 Schedule summary and enhanced analysis generation in background (runs AFTER sentence analysis)
             background_tasks.add_task(
                 _generate_summary_and_analysis_background,
                 session_id=str(result.inserted_id),
@@ -1374,6 +1392,7 @@ async def save_conversation(
             print(f"[SESSION_STATS_CACHE] 🚀 Scheduled statistics caching for session {result.inserted_id}")
 
             # S3.3 — Transcript DNA update for premium users (new session path)
+            # Kept AFTER sentence-analysis per guardrail (DNA depends on analyses being ready).
             _dna_session_type = conversation_type if conversation_type in (
                 "freestyle", "news", "custom_topic", "practice"
             ) else "practice"
@@ -1390,6 +1409,20 @@ async def save_conversation(
                     duration_minutes=request.duration_minutes,
                 )
                 print(f"[TRANSCRIPT_DNA] 🚀 Scheduled DNA update for new session {result.inserted_id}")
+
+            # 🚀 Schedule flashcard generation LAST (off the critical path).
+            # Flashcards still generate; they just don't delay the
+            # sentence-analysis job that mobile waits on.
+            background_tasks.add_task(
+                _generate_flashcards_background,
+                session_id=str(result.inserted_id),
+                user_id=current_user.id,
+                language=request.language,
+                level=request.level,
+                topic=request.topic,
+                summary=""  # Summary will be generated in background, flashcards will fetch from session
+            )
+            print(f"[FLASHCARD_BG] 🚀 Scheduled flashcard generation (LAST) for session {result.inserted_id}")
 
             # Deduct minutes from user subscription quota (server-side, idempotent)
             await _deduct_practice_minutes(
