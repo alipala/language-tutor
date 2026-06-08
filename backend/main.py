@@ -253,6 +253,10 @@ app.include_router(missions_router)
 from routes.hub_routes import router as hub_router
 app.include_router(hub_router)
 
+# Include profile-story routes (PROFILE_STORY_V1; additive, mobile-flag-gated)
+from routes.profile_routes import router as profile_router
+app.include_router(profile_router)
+
 # Include modular routes (refactored from main.py)
 from routes import health_router, mock_router
 from routes.image_routes import router as image_router
