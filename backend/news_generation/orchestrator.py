@@ -63,7 +63,11 @@ from news_generation.providers import (
     NewsDataProvider,
     ProviderResult,
 )
-from news_generation.providers._common import make_fuzzy_title_key, make_stable_id
+from news_generation.providers._common import (
+    backfill_images_for_articles,
+    make_fuzzy_title_key,
+    make_stable_id,
+)
 
 logger = logging.getLogger(__name__)
 

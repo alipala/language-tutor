@@ -29,6 +29,7 @@ from news_generation.crew_agents import (
 from news_generation.news_tools import get_diverse_news
 from news_generation.config import is_multi_provider_enabled
 from news_generation.providers import NewsApiProvider
+from news_generation.providers._common import backfill_images_for_articles
 from news_generation.orchestrator import (
     fetch_candidates_multi_provider,
     NEWS_VARIATION_CONCURRENCY,
@@ -439,6 +440,22 @@ async def _progressive_write_by_category(
                 index_counter[0] += len(docs)
             for offset, d in enumerate(docs):
                 d["article_index"] = base + offset
+
+            # Phase 4 image backfill: for any doc whose provider didn't return
+            # an image (typical for Google News RSS aggregator URLs and GDELT
+            # rows), scrape og:image / twitter:image from the article URL.
+            # Mutates docs in place; failure is silent (image stays None).
+            # See providers/_common.backfill_images_for_articles for the
+            # bounded-concurrency implementation.
+            try:
+                # Adapt the doc shape (has nested ``original``) to the helper's
+                # 8-key flat shape by passing references to the ``original``
+                # sub-dicts directly. The helper only reads url + image_url
+                # and writes image_url, so the in-place mutation is sufficient.
+                originals = [d.get("original") or {} for d in docs]
+                await backfill_images_for_articles(originals, max_concurrency=8)
+            except Exception as e:  # never block the insert on backfill issues
+                logger.warning(f"[NEWS_GEN] image backfill skipped for '{slot_id}': {e}")
 
             await news_articles_collection.insert_many(docs)
             await news_batches_collection.update_one(

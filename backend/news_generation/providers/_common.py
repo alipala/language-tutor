@@ -16,13 +16,19 @@ Uses only stdlib (``html.parser`` + ``html.unescape``). No new runtime dep.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import logging
 import re
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from html import unescape
 from html.parser import HTMLParser
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+import httpx
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -292,3 +298,159 @@ def html_strip(raw: Optional[str]) -> str:
         pass
     # Whitespace normalize.
     return " ".join(text.split())
+
+
+# ---------------------------------------------------------------------------
+# Image backfill — fetch og:image / twitter:image from article URLs when the
+# provider didn't supply one. Best-effort, time-bounded, fully concurrent.
+# ---------------------------------------------------------------------------
+
+# Match <meta property="og:image" content="..."> in either attribute order,
+# either quote style. Also matches <meta name="twitter:image" content="...">
+# as a fallback. Case-insensitive, dot-matches-newline so attributes can span.
+#
+# Phase 4 image-backfill helper: when Google News RSS / GDELT / NewsData return
+# an article with no image_url, the orchestrator can pull the source URL and
+# parse <head> for the standard social-share image meta. This gives the mobile
+# app a real article image instead of a "No image available" placeholder.
+_OG_IMAGE_RE = re.compile(
+    r'<meta[^>]+(?:property|name)\s*=\s*["\'](?:og:image|og:image:url|twitter:image|twitter:image:src)["\'][^>]*?'
+    r'\s+content\s*=\s*["\']([^"\']+)["\']',
+    re.IGNORECASE | re.DOTALL,
+)
+_OG_IMAGE_RE_REVERSED = re.compile(
+    r'<meta[^>]+content\s*=\s*["\']([^"\']+)["\'][^>]*?'
+    r'\s+(?:property|name)\s*=\s*["\'](?:og:image|og:image:url|twitter:image|twitter:image:src)["\']',
+    re.IGNORECASE | re.DOTALL,
+)
+
+# Only download a few hundred KB of <head> bytes; we don't need the whole page
+# and many news sites are heavy.
+_IMG_FETCH_BYTE_LIMIT = 256 * 1024  # 256 KB
+_IMG_FETCH_TIMEOUT_SECONDS = 6.0
+
+
+def _extract_og_image_from_html(html: str) -> Optional[str]:
+    """
+    Find the first og:image / twitter:image URL in the given HTML.
+    Returns None if no match. Stdlib + regex only — no bs4/lxml.
+    """
+    if not html:
+        return None
+    m = _OG_IMAGE_RE.search(html)
+    if not m:
+        m = _OG_IMAGE_RE_REVERSED.search(html)
+    if not m:
+        return None
+    url = m.group(1).strip()
+    # Decode HTML entities in URL attribute values (e.g. &amp; → &).
+    url = unescape(url)
+    # Sanity: must look like a URL.
+    if not url.startswith(("http://", "https://", "//")):
+        return None
+    if url.startswith("//"):
+        url = "https:" + url
+    return url
+
+
+async def _fetch_og_image_for_url(
+    client: httpx.AsyncClient,
+    page_url: str,
+) -> Optional[str]:
+    """
+    Visit ``page_url``, read the first ~256 KB, extract og:image. Returns
+    None if anything goes wrong (timeout, non-2xx, no meta, etc.). Never
+    raises out.
+    """
+    if not page_url:
+        return None
+    try:
+        # GET with size cap: we ask the server for the head bytes via Range,
+        # but many news CDNs ignore Range — fall through to standard GET and
+        # rely on the response.aread() limit via .read(N).
+        async with client.stream(
+            "GET",
+            page_url,
+            headers={
+                # Some sites cloak content from headless UAs; pretend to be a
+                # standard browser. This is the same UA news aggregators use.
+                "User-Agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
+                ),
+                "Accept": "text/html,application/xhtml+xml",
+            },
+            timeout=_IMG_FETCH_TIMEOUT_SECONDS,
+            follow_redirects=True,
+        ) as resp:
+            if resp.status_code != 200:
+                return None
+            # Read up to the byte limit.
+            chunks: list[bytes] = []
+            total = 0
+            async for chunk in resp.aiter_bytes(chunk_size=8192):
+                chunks.append(chunk)
+                total += len(chunk)
+                if total >= _IMG_FETCH_BYTE_LIMIT:
+                    break
+            body = b"".join(chunks)
+        # Best-effort decode — most news pages are UTF-8.
+        try:
+            html = body.decode("utf-8", errors="replace")
+        except Exception:
+            return None
+        return _extract_og_image_from_html(html)
+    except (httpx.TimeoutException, httpx.HTTPError, httpx.RequestError):
+        return None
+    except Exception:
+        # Last-resort catch — never break the orchestrator.
+        return None
+
+
+async def backfill_images_for_articles(
+    articles: List[Dict[str, Any]],
+    *,
+    max_concurrency: int = 8,
+    client: Optional[httpx.AsyncClient] = None,
+) -> None:
+    """
+    For each article in ``articles`` where ``image_url`` is missing AND ``url``
+    is present, fetch the page and extract og:image. Mutates the articles in
+    place — sets ``article["image_url"]`` only if a real image URL is found,
+    leaves it as-is otherwise.
+
+    Bounded by ``max_concurrency`` to avoid hitting many news sites at once.
+    Total time roughly = (count_needing_image / max_concurrency) * timeout.
+    With 60 missing images and concurrency 8 + 6s timeout, worst case = ~45s.
+    """
+    targets = [a for a in articles if not a.get("image_url") and a.get("url")]
+    if not targets:
+        return
+
+    logger.info(
+        f"[IMG_BACKFILL] {len(targets)} article(s) need images "
+        f"(concurrency={max_concurrency}, timeout={_IMG_FETCH_TIMEOUT_SECONDS}s)"
+    )
+
+    sem = asyncio.Semaphore(max_concurrency)
+    owns_client = client is None
+
+    if owns_client:
+        client = httpx.AsyncClient(timeout=_IMG_FETCH_TIMEOUT_SECONDS)
+
+    async def _one(article: Dict[str, Any]) -> None:
+        async with sem:
+            url = article.get("url") or ""
+            img = await _fetch_og_image_for_url(client, url)
+            if img:
+                article["image_url"] = img
+
+    try:
+        await asyncio.gather(*[_one(a) for a in targets], return_exceptions=True)
+    finally:
+        if owns_client:
+            await client.aclose()
+
+    found = sum(1 for a in targets if a.get("image_url"))
+    logger.info(f"[IMG_BACKFILL] recovered {found}/{len(targets)} images")
