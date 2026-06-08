@@ -27,6 +27,27 @@ from news_generation.crew_agents import (
     MVP_LEVELS
 )
 from news_generation.news_tools import get_diverse_news
+from news_generation.config import is_multi_provider_enabled
+from news_generation.providers import NewsApiProvider
+from news_generation.providers._common import backfill_images_for_articles
+from news_generation.orchestrator import (
+    fetch_candidates_multi_provider,
+    NEWS_VARIATION_CONCURRENCY,
+)
+from news_generation.catalog import CATALOG
+
+
+def _filter_catalog(slot_ids):
+    """
+    Return the subset of the 20-slot CATALOG whose ``slot_id`` is in
+    ``slot_ids``. Preserves catalog order (specific → general) so
+    claiming-order semantics still hold. Returns an empty list if no
+    slot_id matches — caller decides what to do with that.
+    """
+    if not slot_ids:
+        return None
+    requested = {s.strip().lower() for s in slot_ids if isinstance(s, str)}
+    return [d for d in CATALOG if d.slot_id.lower() in requested]
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +159,35 @@ async def generate_daily_news(
             logger.info(f"[NEWS_GEN] Excluding {len(used_urls)} previously used articles from last 7 days")
 
         # Use our news tools to get articles (works without CrewAI)
-        candidate_articles = get_diverse_news(exclude_urls=used_urls, categories=categories)
+        # Provider seam:
+        #   Flag OFF: NewsApiProvider — wraps get_diverse_news() verbatim;
+        #             keeps the live pipeline byte-identical to pre-Phase-1.
+        #   Flag ON:  multi-provider orchestrator (NewsData → Google News RSS →
+        #             GDELT fallback chain across the 20-category catalog).
+        #             Returns the same 8-key shape as get_diverse_news, drops
+        #             into the existing safety + variation pipeline unchanged.
+        # The flag-ON path treats the ``categories`` argument as an optional
+        # **subset filter** over the 20-slot catalog: if the admin supplied
+        # specific slot_ids (e.g. ['technology', 'science', 'ai']) we honor
+        # that — only those categories are fetched and variations are
+        # generated for them. If categories is None/empty, the full
+        # 20-catalog runs (default cron behavior).
+        if is_multi_provider_enabled():
+            sub_catalog = _filter_catalog(categories) if categories else None
+            if sub_catalog is not None and len(sub_catalog) == 0:
+                # Admin sent ``categories`` but none matched the catalog —
+                # fall back to the full catalog rather than producing zero
+                # articles. Log loudly so the admin notices the typo.
+                logger.warning(
+                    f"[NEWS_GEN] Flag-ON requested categories={categories!r} but none "
+                    f"matched the catalog; running the full 20-category catalog instead."
+                )
+                sub_catalog = None
+            if sub_catalog is not None:
+                logger.info(f"[NEWS_GEN] Flag-ON catalog filter: {[d.slot_id for d in sub_catalog]}")
+            candidate_articles = await fetch_candidates_multi_provider(catalog=sub_catalog)
+        else:
+            candidate_articles = NewsApiProvider().fetch(exclude_urls=used_urls, categories=categories)
 
         if not candidate_articles:
             raise NewsGenerationError("No articles found in search")
@@ -158,8 +207,14 @@ async def generate_daily_news(
 
         logger.info(f"[NEWS_GEN] {len(safe_articles)} articles passed safety evaluation")
 
-        # Limit to MVP_ARTICLE_COUNT
-        safe_articles = safe_articles[:MVP_ARTICLE_COUNT]
+        # Phase 4 bug fix: the MVP_ARTICLE_COUNT=5 cap was originally written for
+        # the flag-OFF NewsAPI path (which targets 5 articles/day). When the flag
+        # is ON, the multi-provider orchestrator deliberately produces ~120
+        # articles via the 20-category catalog (Phase 3). Capping at 5 here
+        # silently discards 115 of them. The cap is now only applied on the
+        # flag-OFF path; flag-ON keeps whatever the orchestrator returned.
+        if not is_multi_provider_enabled():
+            safe_articles = safe_articles[:MVP_ARTICLE_COUNT]
 
         # Step 4: AGENTS 3 & 4 - Parallel generation for all variations
         logger.info("[NEWS_GEN] STEP 3: Generating adaptations (parallel processing)...")
@@ -168,21 +223,56 @@ async def generate_daily_news(
         total_variations = len(safe_articles) * len(languages) * len(levels)
         logger.info(f"[NEWS_GEN] Generating {total_variations} variations ({len(safe_articles)} articles × {len(languages)} langs × {len(levels)} levels)")
 
-        # Generate all variations in parallel
-        article_docs = await generate_all_variations_parallel(
-            safe_articles,
-            batch_id,
-            today_start_utc,
-            languages=languages,
-            levels=levels
-        )
+        if is_multi_provider_enabled():
+            # ----------------------------------------------------------------
+            # Phase 4 Task 6 — production-grade progressive per-category write.
+            # ----------------------------------------------------------------
+            # Instead of one big all-or-nothing 4,320-call fan-out followed by
+            # one giant insert_many at the end (the original MVP design), we
+            # process the safe articles **category by category** in catalog
+            # order:
+            #
+            #   for each category:
+            #     generate that category's 6 article × 36 cell variations
+            #     insert_many ONLY this category's ~6 docs
+            #     $inc batch.article_count and $addToSet batch.completed_categories
+            #
+            # Benefits:
+            #   • User starts seeing news ~1-2 min after run begins (the first
+            #     category's batch lands), not 15 min later as before.
+            #   • One category's variation failure does not abort the others.
+            #   • The batch row's article_count grows monotonically — anyone
+            #     reading /api/news/today during the run gets the partial set
+            #     they're entitled to.
+            #   • The 8-key article doc shape and the news_articles collection
+            #     schema are unchanged — only batch row gets two operational
+            #     metadata fields (completed_categories, failed_categories)
+            #     that are never surfaced via /api/news/today.
+            article_docs = await _progressive_write_by_category(
+                safe_articles,
+                batch_id,
+                today_start_utc,
+                languages=languages,
+                levels=levels,
+            )
+        else:
+            # Flag-OFF: original all-or-nothing path. Byte-identical to Phase 1
+            # baseline (snapshot tests still green).
+            article_docs = await generate_all_variations_parallel(
+                safe_articles,
+                batch_id,
+                today_start_utc,
+                languages=languages,
+                levels=levels
+            )
 
-        # Step 5: Save to MongoDB
-        logger.info("[NEWS_GEN] STEP 4: Saving to MongoDB...")
+            # Step 5: Save to MongoDB (flag-OFF only — progressive path inserts
+            # per-category during generation).
+            logger.info("[NEWS_GEN] STEP 4: Saving to MongoDB...")
 
-        if article_docs:
-            await news_articles_collection.insert_many(article_docs)
-            logger.info(f"[NEWS_GEN] Saved {len(article_docs)} articles to database")
+            if article_docs:
+                await news_articles_collection.insert_many(article_docs)
+                logger.info(f"[NEWS_GEN] Saved {len(article_docs)} articles to database")
 
         # Step 6: Update batch status
         generation_end = datetime.now(cet)
@@ -283,16 +373,181 @@ async def evaluate_safety_simple(articles: List[Dict[str, Any]]) -> List[Dict[st
     return safe_articles
 
 
+async def _progressive_write_by_category(
+    safe_articles: List[Dict[str, Any]],
+    batch_id: ObjectId,
+    date: datetime,
+    languages: List[str],
+    levels: List[str],
+) -> List[Dict[str, Any]]:
+    """
+    Phase 4 progressive writer (flag-ON only).
+
+    Groups ``safe_articles`` by ``original['category']`` (which the orchestrator
+    has already stamped with the canonical slot_id) and runs **all categories
+    in parallel**. Inside each category task:
+        1. generates that group's variations (wrapped in the shared
+           NEWS_VARIATION_CONCURRENCY semaphore so total in-flight OpenAI
+           calls across ALL categories stays bounded — this is the cap that
+           protects us from rate-limit cascades),
+        2. atomically claims the next block of article_index values from a
+           single counter (so indexes are globally unique across the day),
+        3. inserts only those ~6 docs into news_articles,
+        4. increments batch.article_count and appends to
+           batch.completed_categories.
+
+    Parallel execution model (the v2 design after Ali's feedback):
+        Sequential (v1, 35 min):   cat1 → cat2 → ... → cat20
+        Parallel   (v2, ~5 min):   all 20 cats kicked off at once;
+                                   semaphore=15 caps simultaneous variation
+                                   loops across the whole batch.
+
+    Returns the flat list of every doc that was successfully written.
+    Failure isolation: each category is its own asyncio task wrapped in
+    return_exceptions semantics — one task raising does not abort the others.
+    """
+    from collections import OrderedDict
+
+    # Catalog-ordered grouping. The orchestrator already returns articles in
+    # catalog order (specific → general) and the orchestrator stamps
+    # article['category'] with the slot_id, so this groupby preserves that
+    # order. Order matters here only for *deterministic article_index
+    # assignment*: even though categories run in parallel, the index counter
+    # is claimed atomically so the final indexes are stable.
+    groups: "OrderedDict[str, List[Dict[str, Any]]]" = OrderedDict()
+    for art in safe_articles:
+        slot_id = art.get("category") or "general"
+        groups.setdefault(slot_id, []).append(art)
+
+    # ONE shared semaphore across all parallel category tasks. This is the
+    # global cap on simultaneous in-flight OpenAI calls regardless of how
+    # many categories are running at once.
+    sem = asyncio.Semaphore(NEWS_VARIATION_CONCURRENCY)
+
+    # Shared index counter. asyncio is single-threaded so a list-index + lock
+    # gives us a deterministic global counter without races.
+    index_counter = [0]
+    index_lock = asyncio.Lock()
+
+    logger.info(
+        f"[NEWS_GEN] Progressive write (PARALLEL): launching {len(groups)} category tasks, "
+        f"{sum(len(g) for g in groups.values())} articles total, "
+        f"variation semaphore cap={NEWS_VARIATION_CONCURRENCY}"
+    )
+
+    async def _run_one_category(slot_id: str, group_articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """One category's full pipeline: variations → claim indexes → insert → batch tag."""
+        if not group_articles:
+            return []
+        logger.info(f"[NEWS_GEN] → category '{slot_id}': starting (n={len(group_articles)})")
+        try:
+            docs = await generate_all_variations_parallel(
+                group_articles,
+                batch_id,
+                date,
+                languages=languages,
+                levels=levels,
+                semaphore=sem,  # shared cap across all parallel categories
+            )
+            if not docs:
+                logger.warning(f"[NEWS_GEN] category '{slot_id}': 0 docs produced")
+                await news_batches_collection.update_one(
+                    {"_id": batch_id},
+                    {"$addToSet": {"failed_categories": slot_id}},
+                )
+                return []
+
+            # Atomically claim a block of N indexes so concurrent categories
+            # don't collide. asyncio.Lock + bumping the counter is a tiny
+            # critical section — no real contention.
+            async with index_lock:
+                base = index_counter[0]
+                index_counter[0] += len(docs)
+            for offset, d in enumerate(docs):
+                d["article_index"] = base + offset
+
+            # Phase 4 image backfill: for any doc whose provider didn't return
+            # an image (typical for Google News RSS aggregator URLs and GDELT
+            # rows), scrape og:image / twitter:image from the article URL.
+            # Mutates docs in place; failure is silent (image stays None).
+            # See providers/_common.backfill_images_for_articles for the
+            # bounded-concurrency implementation.
+            try:
+                # Adapt the doc shape (has nested ``original``) to the helper's
+                # 8-key flat shape by passing references to the ``original``
+                # sub-dicts directly. The helper only reads url + image_url
+                # and writes image_url, so the in-place mutation is sufficient.
+                originals = [d.get("original") or {} for d in docs]
+                await backfill_images_for_articles(originals, max_concurrency=8)
+            except Exception as e:  # never block the insert on backfill issues
+                logger.warning(f"[NEWS_GEN] image backfill skipped for '{slot_id}': {e}")
+
+            await news_articles_collection.insert_many(docs)
+            await news_batches_collection.update_one(
+                {"_id": batch_id},
+                {
+                    "$inc": {"article_count": len(docs)},
+                    "$addToSet": {"completed_categories": slot_id},
+                },
+            )
+            logger.info(f"[NEWS_GEN] ✅ category '{slot_id}': wrote {len(docs)} docs")
+            return docs
+        except Exception as e:
+            logger.exception(f"[NEWS_GEN] ❌ category '{slot_id}' failed: {type(e).__name__}: {e}")
+            try:
+                await news_batches_collection.update_one(
+                    {"_id": batch_id},
+                    {"$addToSet": {"failed_categories": slot_id}},
+                )
+            except Exception:
+                pass
+            return []
+
+    # Launch one task per category, all in parallel. The shared semaphore
+    # inside generate_all_variations_parallel keeps in-flight OpenAI calls
+    # bounded — adding more categories doesn't multiply OpenAI concurrency,
+    # only spreads the same 15 slots across more pipelines.
+    tasks = [_run_one_category(slot_id, group) for slot_id, group in groups.items()]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Flatten and filter exceptions defensively (per-task try/except above
+    # should catch everything; this is belt-and-braces).
+    all_written: List[Dict[str, Any]] = []
+    for r in results:
+        if isinstance(r, list):
+            all_written.extend(r)
+
+    logger.info(
+        f"[NEWS_GEN] Progressive write complete: {len(all_written)} docs across "
+        f"{len(groups)} categories (parallel run)"
+    )
+    return all_written
+
+
 async def generate_all_variations_parallel(
     articles: List[Dict[str, Any]],
     batch_id: ObjectId,
     date: datetime,
     languages: List[str] = None,
-    levels: List[str] = None
+    levels: List[str] = None,
+    semaphore: "asyncio.Semaphore" = None,
 ) -> List[Dict[str, Any]]:
     """
-    Generate all article variations in parallel
-    Uses asyncio.gather for maximum speed
+    Generate all article variations in parallel.
+
+    Phase 4: a ``semaphore`` (default ``NEWS_VARIATION_CONCURRENCY=15``) bounds
+    the number of articles whose variation loops are in flight simultaneously.
+    Each article still runs its 6×6 cells sequentially inside
+    ``generate_single_article_all_variations`` — so peak in-flight OpenAI
+    calls ≈ semaphore capacity, not articles × langs × levels. This protects
+    against OpenAI rate-limit cascades on the at-scale flag-ON run (~4,320
+    total calls when the orchestrator delivers ~120 articles).
+
+    Per-article failure isolation is preserved by the existing
+    ``asyncio.gather(return_exceptions=True)`` + Exception-filter pattern:
+    one article exploding does not abort the batch. Per-(lang, level) cell
+    failure is absorbed inside ``generate_variation_simple`` via its own
+    try/except → template fallback.
 
     Args:
         articles: List of safe articles
@@ -300,6 +555,8 @@ async def generate_all_variations_parallel(
         date: Generation date
         languages: List of language codes (defaults to MVP_LANGUAGES)
         levels: List of CEFR levels (defaults to MVP_LEVELS)
+        semaphore: optional bound on concurrent article variation loops.
+            When ``None``, defaults to ``asyncio.Semaphore(NEWS_VARIATION_CONCURRENCY)``.
 
     Returns:
         List of article documents ready for MongoDB
@@ -308,25 +565,56 @@ async def generate_all_variations_parallel(
         languages = MVP_LANGUAGES
     if levels is None:
         levels = MVP_LEVELS
+    if semaphore is None:
+        semaphore = asyncio.Semaphore(NEWS_VARIATION_CONCURRENCY)
 
     tasks = []
 
     for article in articles:
-        task = generate_single_article_all_variations(article, batch_id, date, languages=languages, levels=levels)
+        task = _generate_single_article_with_semaphore(
+            article, batch_id, date, languages=languages, levels=levels,
+            semaphore=semaphore,
+        )
         tasks.append(task)
 
-    # Run all article generations in parallel
+    # Run all article generations in parallel, semaphore-bounded.
     article_docs = await asyncio.gather(*tasks, return_exceptions=True)
 
-    # Filter out failed generations
+    # Filter out failed generations (per-article isolation).
     successful_docs = [
         doc for doc in article_docs
         if not isinstance(doc, Exception)
     ]
+    failed_count = len(article_docs) - len(successful_docs)
+    if failed_count:
+        # Log per-article failures so the Phase-4 batch report can account
+        # for them without losing the rest of the batch.
+        for d in article_docs:
+            if isinstance(d, Exception):
+                logger.warning(f"[NEWS_GEN] Article variation failed: {type(d).__name__}: {d}")
 
-    logger.info(f"[NEWS_GEN] Successfully generated {len(successful_docs)}/{len(articles)} articles")
+    logger.info(
+        f"[NEWS_GEN] Successfully generated {len(successful_docs)}/{len(articles)} articles "
+        f"(failed: {failed_count})"
+    )
 
     return successful_docs
+
+
+async def _generate_single_article_with_semaphore(
+    article: Dict[str, Any],
+    batch_id: ObjectId,
+    date: datetime,
+    *,
+    languages: List[str],
+    levels: List[str],
+    semaphore: "asyncio.Semaphore",
+) -> Dict[str, Any]:
+    """Wrap ``generate_single_article_all_variations`` with the concurrency cap."""
+    async with semaphore:
+        return await generate_single_article_all_variations(
+            article, batch_id, date, languages=languages, levels=levels,
+        )
 
 
 async def generate_single_article_all_variations(
