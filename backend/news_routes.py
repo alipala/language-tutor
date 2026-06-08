@@ -86,7 +86,14 @@ async def get_todays_news(
 
         logger.info(f"[NEWS] Query date: {today} (CET)")
 
-        # Check if today's news batch exists
+        # Check if today's news batch exists.
+        # Phase 4 progressive write: a batch starts at status=in_progress and
+        # ticks article_count up category-by-category as ~120 articles land.
+        # We serve as soon as ANY articles are written for the day, not only
+        # after the full batch completes — otherwise the user sees nothing
+        # for 15-50 min after the cron starts, defeating the progressive
+        # design's whole point. ``completed`` is still the happy path, but
+        # ``in_progress`` with article_count > 0 is also served.
         batch = await news_batches_collection.find_one(
             {"date": {"$gte": today_start}}
         )
@@ -94,7 +101,17 @@ async def get_todays_news(
         fallback_used = False
         query_date = today_start
 
-        if not batch or batch.get("status") != "completed":
+        def _batch_has_visible_articles(b):
+            if not b:
+                return False
+            status = b.get("status")
+            if status == "completed":
+                return True
+            if status == "in_progress" and (b.get("article_count") or 0) > 0:
+                return True
+            return False
+
+        if not _batch_has_visible_articles(batch):
             # Try yesterday's news as fallback
             logger.warning(f"[NEWS] Today's news not available, falling back to yesterday")
             yesterday_start = today_start - timedelta(days=1)
