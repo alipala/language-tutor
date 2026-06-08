@@ -127,7 +127,10 @@ async def get_todays_news(
             }
         ).sort("article_index", 1)
 
-        articles_raw = await articles_cursor.to_list(20)
+        # Phase 4 Task 2A: raised from 20 → 200 so the flag-ON multi-provider
+        # path (≤120 articles/day) surfaces in full. Flag-safe: flag-OFF still
+        # writes ≤5 articles/day, so the same find().to_list(200) returns ≤5.
+        articles_raw = await articles_cursor.to_list(200)
 
         # Transform to response format
         articles = [
