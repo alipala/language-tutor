@@ -34,6 +34,20 @@ from news_generation.orchestrator import (
     fetch_candidates_multi_provider,
     NEWS_VARIATION_CONCURRENCY,
 )
+from news_generation.catalog import CATALOG
+
+
+def _filter_catalog(slot_ids):
+    """
+    Return the subset of the 20-slot CATALOG whose ``slot_id`` is in
+    ``slot_ids``. Preserves catalog order (specific → general) so
+    claiming-order semantics still hold. Returns an empty list if no
+    slot_id matches — caller decides what to do with that.
+    """
+    if not slot_ids:
+        return None
+    requested = {s.strip().lower() for s in slot_ids if isinstance(s, str)}
+    return [d for d in CATALOG if d.slot_id.lower() in requested]
 
 logger = logging.getLogger(__name__)
 
@@ -152,15 +166,26 @@ async def generate_daily_news(
         #             GDELT fallback chain across the 20-category catalog).
         #             Returns the same 8-key shape as get_diverse_news, drops
         #             into the existing safety + variation pipeline unchanged.
-        # The flag-ON path ignores `used_urls` and `categories` parameters at
-        # this seam — Phase 3 deduplicates internally via the global
-        # `claimed_ids` set in the orchestrator, and the 20-category catalog is
-        # the new source of truth for which categories to fetch. (Admin
-        # `POST /api/admin/news/generate` callers can still override behavior
-        # via the flag-OFF path by leaving the flag off, which is the current
-        # default.)
+        # The flag-ON path treats the ``categories`` argument as an optional
+        # **subset filter** over the 20-slot catalog: if the admin supplied
+        # specific slot_ids (e.g. ['technology', 'science', 'ai']) we honor
+        # that — only those categories are fetched and variations are
+        # generated for them. If categories is None/empty, the full
+        # 20-catalog runs (default cron behavior).
         if is_multi_provider_enabled():
-            candidate_articles = await fetch_candidates_multi_provider()
+            sub_catalog = _filter_catalog(categories) if categories else None
+            if sub_catalog is not None and len(sub_catalog) == 0:
+                # Admin sent ``categories`` but none matched the catalog —
+                # fall back to the full catalog rather than producing zero
+                # articles. Log loudly so the admin notices the typo.
+                logger.warning(
+                    f"[NEWS_GEN] Flag-ON requested categories={categories!r} but none "
+                    f"matched the catalog; running the full 20-category catalog instead."
+                )
+                sub_catalog = None
+            if sub_catalog is not None:
+                logger.info(f"[NEWS_GEN] Flag-ON catalog filter: {[d.slot_id for d in sub_catalog]}")
+            candidate_articles = await fetch_candidates_multi_provider(catalog=sub_catalog)
         else:
             candidate_articles = NewsApiProvider().fetch(exclude_urls=used_urls, categories=categories)
 
