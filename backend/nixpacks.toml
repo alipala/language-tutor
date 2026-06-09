@@ -1,17 +1,30 @@
 [phases.setup]
 pythonVersion = "3.11"
-# Nix-provided python3 doesn't include pip. Bootstrap pip into the
-# nix python via ensurepip during the setup phase. `cmds` runs AFTER
-# the nix packages are installed, so python3 is available here.
-# Once pip is present, the default Python provider install phase
-# (`python3 -m pip install -r requirements.txt`) succeeds.
+# Nix-provided python3 ships without pip AND its /nix/store is
+# read-only (PEP 668 / externally-managed-environment), so neither
+# `python3 -m ensurepip` nor `python3 -m venv` (which calls ensurepip)
+# can install pip in place. The workaround is three steps:
+#   1. Create an empty venv at /opt/venv with `--without-pip`
+#      (skips the ensurepip call, so PEP 668 never fires).
+#   2. Download get-pip.py via curl (apt-installed below).
+#   3. Run it with the venv python — pip lands inside the venv,
+#      which is on a writable layer, not /nix/store.
+# After that the install phase uses /opt/venv/bin/pip directly.
 #
-# Why this matters: without this, every cron service build (news,
-# scheduler, run_daily_digest) failed with "No module named pip",
-# Railway rolled back to a 1-month-old image, and the news cron kept
-# producing 5 articles instead of the multi-provider catalog's ~120.
-aptPkgs = ["python3-dev", "python3-venv", "build-essential"]
-cmds = ["python3 -m ensurepip --upgrade && python3 -m pip install --upgrade pip"]
+# Why this matters: every cron service build (news, scheduler,
+# run_daily_digest) had been failing with "No module named pip" for a
+# month, causing Railway to roll back to a 1-month-old image. That
+# stale image predates the multi-provider news engine, which is why
+# the nightly cron has been producing 5 articles instead of ~120.
+aptPkgs = ["python3-dev", "python3-venv", "build-essential", "curl"]
+cmds = [
+  "python3 -m venv --without-pip /opt/venv",
+  "curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py",
+  "/opt/venv/bin/python /tmp/get-pip.py",
+]
+
+[phases.install]
+cmd = "/opt/venv/bin/pip install --no-cache-dir -r requirements.txt"
 
 [start]
 cmd = "/opt/venv/bin/python challenge_pool_replenisher.py"
