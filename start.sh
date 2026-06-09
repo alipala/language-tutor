@@ -2,6 +2,47 @@
 
 # Railway deployment startup script
 # Starts both backend API and Next.js frontend server
+#
+# Cron-service dispatch (news / scheduler / run_daily_digest):
+# the root railway.toml pins this script as startCommand for EVERY
+# service, so we branch on $RAILWAY_SERVICE_NAME up front. Recognised
+# cron services exec their own entry script and exit — everything else
+# (web and any unknown name) falls through to the unchanged uvicorn +
+# Next.js boot below, byte-identical to the previous behaviour.
+
+SERVICE_NAME="${RAILWAY_SERVICE_NAME:-web}"
+
+start_healthcheck_listener() {
+  # Tiny background HTTP server purely to satisfy Railway's healthcheck
+  # (railway.toml sets healthcheckPath=/ for all services). Muted so it
+  # doesn't pollute the cron log. Dies with the container when the main
+  # cron script exits.
+  local hp="${PORT:-8000}"
+  python3 -m http.server "$hp" >/dev/null 2>&1 &
+}
+
+case "$SERVICE_NAME" in
+  news)
+    echo "[start.sh] Service=news — running news generator"
+    start_healthcheck_listener
+    cd /app/backend
+    exec python run_news_generator.py
+    ;;
+  scheduler)
+    echo "[start.sh] Service=scheduler — running background scheduler"
+    start_healthcheck_listener
+    cd /app/backend
+    exec python run_scheduler.py
+    ;;
+  run_daily_digest)
+    echo "[start.sh] Service=run_daily_digest — running daily digest job"
+    start_healthcheck_listener
+    cd /app/backend
+    exec python cron_jobs/run_daily_digest.py
+    ;;
+esac
+
+# --- web (default) path below — UNCHANGED from the previous version ---
 
 # Set default port if PORT is not set
 PORT=${PORT:-3001}
