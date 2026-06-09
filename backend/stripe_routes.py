@@ -9,6 +9,28 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Cache invalidation after subscription writes. `get_user_cached`
+# (auth.py:178) reads `user:{user_id}` with a 5-minute TTL; without
+# clearing it after a Stripe webhook update the next request still sees
+# the pre-payment user document and 403s premium endpoints. Helpers
+# wrap try/except so a Redis hiccup never breaks the webhook path.
+from cache_helpers import invalidate_user_cache, invalidate_subscription_cache
+
+
+async def _invalidate_after_subscription_write(user_id: str) -> None:
+    """Drop the cached user + subscription docs so the next API call
+    re-reads the fresh MongoDB state. Errors are swallowed because the
+    DB write already succeeded — a cache miss is recoverable, but
+    blocking the webhook on Redis would cause Stripe retries."""
+    try:
+        await invalidate_user_cache(user_id)
+    except Exception as e:
+        logger.warning(f"[CACHE] invalidate_user_cache failed for {user_id}: {e}")
+    try:
+        await invalidate_subscription_cache(user_id)
+    except Exception as e:
+        logger.warning(f"[CACHE] invalidate_subscription_cache failed for {user_id}: {e}")
+
 # CRITICAL FIX: Initialize Stripe properly to avoid circular import issues
 import stripe
 
@@ -969,6 +991,7 @@ async def handle_subscription_created(subscription):
             }
         )
         await delete_cached(f"stripe_sub:{customer_id}")
+        await _invalidate_after_subscription_write(str(user["_id"]))
 
         logger.info(f"Subscription created for user {user['_id']}")
     except Exception as e:
@@ -1140,6 +1163,7 @@ async def handle_subscription_updated(subscription):
             {"$set": update_data}
         )
         await delete_cached(f"stripe_sub:{customer_id}")
+        await _invalidate_after_subscription_write(str(user["_id"]))
 
         logger.info(f"[SUB_UPDATED] Successfully updated subscription for user {user['_id']}")
 
@@ -1256,6 +1280,7 @@ async def handle_subscription_deleted(subscription):
             }
         )
         await delete_cached(f"stripe_sub:{customer_id}")
+        await _invalidate_after_subscription_write(str(user["_id"]))
 
         logger.info(f"[SUB_DELETED] ✅ User {user['_id']} reset to free tier")
         logger.info(f"[SUB_DELETED] Kept stripe_customer_id for future resubscriptions")
@@ -1355,6 +1380,7 @@ async def handle_subscription_trial_will_end(subscription):
             {"$set": update_data}
         )
         await delete_cached(f"stripe_sub:{customer_id}")
+        await _invalidate_after_subscription_write(str(user["_id"]))
 
         logger.info(f"[TRIAL_WILL_END] Updated user {user['_id']} for upcoming trial end")
         
@@ -1424,6 +1450,7 @@ async def handle_checkout_completed(checkout_session):
             {"$set": update_data}
         )
         await delete_cached(f"stripe_sub:{customer_id}")
+        await _invalidate_after_subscription_write(str(user["_id"]))
         logger.info(f"Updated Stripe customer ID for user {user['_id']}")
     except Exception as e:
         logger.error(f"Error handling checkout completed: {str(e)}")
@@ -1563,6 +1590,7 @@ async def handle_invoice_payment_succeeded(invoice):
             }
         )
         await delete_cached(f"stripe_sub:{customer_id}")
+        await _invalidate_after_subscription_write(str(user["_id"]))
 
         if is_renewal:
             logger.info(f"✅ [RENEWAL] Updated subscription for user {user['_id']} - usage reset")

@@ -657,11 +657,25 @@ async def get_progression(
             total_xp = int(xp_by_source.get("challenges", 0) or 0)
         else:
             total_xp = int(lifetime.get("total_xp", 0) or 0)
-        stored_level = lifetime.get("level")
         xp_block = xp_to_next(total_xp)
-        # Prefer the persisted level if it exists and is at least the derived
-        # value; otherwise compute on read (handles legacy users + drift).
-        level = max(int(stored_level), xp_block["level"]) if isinstance(stored_level, int) else xp_block["level"]
+        if source == "games":
+            # Games mode: always compute level from the games-only XP slice.
+            # `stats.lifetime.level` is written by stats_service against the
+            # *combined* total_xp, so reusing it here would surface LVL 5
+            # next to a "28/105 XP" bar built from 63 challenge XP — the
+            # label and the bar would disagree. Computing fresh keeps them
+            # in lockstep with the games slice.
+            level = xp_block["level"]
+        else:
+            stored_level = lifetime.get("level")
+            # Prefer the persisted level if it exists and is at least the
+            # derived value; otherwise compute on read (handles legacy
+            # users + drift).
+            level = (
+                max(int(stored_level), xp_block["level"])
+                if isinstance(stored_level, int)
+                else xp_block["level"]
+            )
 
         # Pull the active language for readiness (uses learning plan resolver).
         # We compute readiness against (active language, highest_level for that
