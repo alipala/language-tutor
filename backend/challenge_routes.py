@@ -614,6 +614,15 @@ async def get_challenge_stats(current_user: UserResponse = Depends(get_current_u
 async def get_progression(
     current_user: UserResponse = Depends(get_current_user),
     timezone: Optional[str] = Query(None, description="User's IANA timezone (e.g. 'Europe/Amsterdam')"),
+    source: Optional[str] = Query(
+        "all",
+        description=(
+            "XP source filter. 'all' (default) sums every source (conversations + "
+            "challenges + assessments). 'games' returns only challenge XP — used by "
+            "the Games tab progression bar so it doesn't inflate when a user "
+            "completes a learning-plan conversation without playing any game."
+        ),
+    ),
 ):
     """Persistent progression summary for the games spine.
 
@@ -639,7 +648,15 @@ async def get_progression(
         stats = user.get("stats", {}) or {}
         lifetime = stats.get("lifetime", {}) or {}
 
-        total_xp = int(lifetime.get("total_xp", 0) or 0)
+        # Source filter: `games` mode reads only the challenges bucket from
+        # `xp_by_source` instead of the flat `total_xp` (which mixes every
+        # source). Falls back to 0 if the bucket hasn't been written yet —
+        # the user just hasn't played any games, which is the honest answer.
+        xp_by_source = lifetime.get("xp_by_source", {}) or {}
+        if source == "games":
+            total_xp = int(xp_by_source.get("challenges", 0) or 0)
+        else:
+            total_xp = int(lifetime.get("total_xp", 0) or 0)
         stored_level = lifetime.get("level")
         xp_block = xp_to_next(total_xp)
         # Prefer the persisted level if it exists and is at least the derived
@@ -679,7 +696,31 @@ async def get_progression(
         daily_doc = await daily_stats_collection.find_one(
             {"user_id": user_id, "local_date": local_date}
         )
-        current_xp = int((daily_doc or {}).get("total_xp", 0) or 0)
+        # In `games` mode the daily goal should also reflect challenges only.
+        # Two strategies, in order of trustworthiness:
+        #   1. If the new `challenge_xp` counter exists on the doc, use it
+        #      directly — it's the canonical games-XP slice written by the
+        #      challenge completion pipeline.
+        #   2. Fallback: derive games_xp by subtracting every non-games
+        #      bucket from total_xp. Three known sources today:
+        #      conversation (freestyle + learning-plan + news), mission
+        #      (daily hub bronze/silver/gold). Any unaccounted future
+        #      bucket would inflate the games counter — when that happens
+        #      add the bucket here AND tag it on the write side so the
+        #      `challenge_xp` branch above can short-circuit.
+        # Clamped to 0 so a stale doc can never report negative XP.
+        if source == "games":
+            daily_doc = daily_doc or {}
+            if "challenge_xp" in daily_doc:
+                current_xp = int(daily_doc.get("challenge_xp", 0) or 0)
+            else:
+                total       = int(daily_doc.get("total_xp", 0) or 0)
+                conv_xp     = int(daily_doc.get("conversation_xp", 0) or 0)
+                mission_xp  = int(daily_doc.get("mission_xp", 0) or 0)
+                derived     = total - conv_xp - mission_xp
+                current_xp = max(0, derived)
+        else:
+            current_xp = int((daily_doc or {}).get("total_xp", 0) or 0)
         is_complete = current_xp >= daily_goal_xp
 
         return ProgressionResponse(

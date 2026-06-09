@@ -1153,7 +1153,16 @@ async def award_mission_xp(
         await daily_stats_collection.update_one(
             {"user_id": user_id, "local_date": local_date},
             {
-                "$inc": {"total_xp": xp},
+                "$inc": {
+                    "total_xp": xp,
+                    # Source-tagged XP — mission rewards belong to neither
+                    # the conversation nor the games bucket. Tagging lets
+                    # /progression?source=games subtract this slice from
+                    # the games daily-goal counter (otherwise completing
+                    # a bronze mission would inflate the games bar even
+                    # when no challenge was played).
+                    "mission_xp": xp,
+                },
                 "$set": {"updated_at": datetime.utcnow()},
                 "$setOnInsert": {"created_at": datetime.utcnow()},
             },

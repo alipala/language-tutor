@@ -1292,6 +1292,18 @@ class LifetimeSummary(BaseModel):
     xp_by_source: Optional[Dict[str, Any]] = None
     challenge_count: int = 0
     conversation_count: int = 0
+    # Count of completed speaking assessments. Drives the "First Voice"
+    # badge independently from conversation sessions, so the user gets
+    # the motivational ping right after their very first assessment.
+    assessments_completed: int = 0
+    # Count of completed news-flow conversations. Gates News Reader /
+    # Daily Newsie badges separately from generic total_sessions so the
+    # badges fire only on actual news activity.
+    news_sessions: int = 0
+    # Time-of-day counters in the user's local timezone.
+    # < 8am → early_bird, ≥ 10pm → late_night.
+    early_bird_sessions: int = 0
+    late_night_sessions: int = 0
 
 
 class LifetimeProgressResponse(BaseModel):

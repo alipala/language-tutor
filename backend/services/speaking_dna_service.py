@@ -506,6 +506,11 @@ class SpeakingDNAService:
                 "session_insights": session_insights,
                 "previous_strand_values": previous_strand_values,
                 "strand_deltas": strand_deltas,
+                # Surfaces the running session count so the client can
+                # distinguish a true "no movement" state from the very
+                # first session (where the strand delta is always empty
+                # because there's no prior snapshot to diff against).
+                "sessions_analyzed": sessions_analyzed,
             }
 
         except Exception as e:

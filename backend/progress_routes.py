@@ -932,12 +932,20 @@ async def save_conversation(
             # Track subscription usage for learning plan sessions
             await track_subscription_usage(current_user.id, "practice_session")
             
+            # LP sessions don't go through the standard XP pipeline yet
+            # (that lives in the non-LP branch below). Mirror the legacy
+            # calc for now so the client gets a real number instead of the
+            # baseXP fallback.
+            lp_session_xp = get_session_xp(selected_duration) + max(
+                0, min(int(getattr(request, "correction_bonus_xp", 0) or 0), 20)
+            )
             return {
                 "success": True,
                 "session_id": "learning_plan_session",
                 "message": "Learning plan session saved successfully",
                 "is_streak_eligible": False,
                 "summary": session_summary,
+                "xp_earned": lp_session_xp,
                 "action": "learning_plan_session_saved"
             }
         
@@ -1053,6 +1061,12 @@ async def save_conversation(
                             'total_time_seconds': time_seconds,
                             'total_sessions': 1,
                             'total_xp': xp_earned_total,
+                            # Source-tagged XP — Games tab progression
+                            # bar reads /progression?source=games which
+                            # subtracts conversation_xp from total. This
+                            # keeps freestyle / news conversations out
+                            # of the games daily-goal counter.
+                            'conversation_xp': xp_earned_total,
                         },
                         '$set': {'updated_at': datetime.now(timezone.utc)},
                         '$setOnInsert': {
@@ -1065,15 +1079,38 @@ async def save_conversation(
                     },
                     upsert=True
                 )
-                # Also increment the denormalized lifetime XP on the user document
+                # Also increment the denormalized lifetime XP + session
+                # counters on the user document. `lifetime.total_sessions`
+                # is what BADGE_REGISTRY reads to unlock "First
+                # Conversation" / "Voice Warmup" / etc; news sessions
+                # additionally bump `lifetime.news_sessions` so the News
+                # Reader / Daily Newsie badges fire only on actual news
+                # sessions instead of riding the generic total counter.
+                lifetime_inc = {
+                    'stats.lifetime.total_xp': xp_earned_total,
+                    'stats.lifetime.xp_by_source.conversations': xp_earned_total,
+                    'stats.lifetime.total_sessions': 1,
+                    'stats.lifetime.total_time_minutes': integer_duration,
+                }
+                if conversation_type == 'news':
+                    lifetime_inc['stats.lifetime.news_sessions'] = 1
+                # Time-window counters for Early Bird (<8am) and Late
+                # Night Talker (≥10pm). Read against the user's own
+                # timezone so the badges fire on the time they
+                # experienced, not server-local UTC.
+                from services.timezone_utils import get_user_timezone_obj
+                _local_hour = datetime.now(get_user_timezone_obj(
+                    getattr(request, 'user_timezone', None) or 'UTC'
+                )).hour
+                if _local_hour < 8:
+                    lifetime_inc['stats.lifetime.early_bird_sessions'] = 1
+                if _local_hour >= 22:
+                    lifetime_inc['stats.lifetime.late_night_sessions'] = 1
                 await users_collection.update_one(
                     {'_id': ObjectId(current_user.id)},
-                    {'$inc': {
-                        'stats.lifetime.total_xp': xp_earned_total,
-                        'stats.lifetime.xp_by_source.conversations': xp_earned_total,
-                    }}
+                    {'$inc': lifetime_inc}
                 )
-                print(f"[PROGRESS] ✅ XP applied (existing session): daily_stats +{xp_earned_total} XP, lifetime +{xp_earned_total} XP (base {session_xp_pre} + bonus {bonus_xp_pre})")
+                print(f"[PROGRESS] ✅ XP applied (existing session): daily_stats +{xp_earned_total} XP, lifetime +{xp_earned_total} XP (base {session_xp_pre} + bonus {bonus_xp_pre}), local_hour={_local_hour}")
 
                 # Keep users.stats.current_streak honest for the voice product.
                 # Challenges write the streak via process_session_completion; the
@@ -1211,6 +1248,7 @@ async def save_conversation(
                     "comparison": cached_stats.get("comparison", {}),
                     "overall_progress": cached_stats.get("overall_progress", {}),
                     "dna_cache_invalidate": _dna_cache_invalidate,
+                    "xp_earned": xp_earned_total,
                     "action": "updated"
                 }
             else:
@@ -1234,6 +1272,7 @@ async def save_conversation(
                     "overall_progress": {"total_sessions": 0, "total_minutes": 0},  # Will be available in cache soon
                     "stats_loading": True,  # NEW: Indicates stats are being calculated
                     "dna_cache_invalidate": _dna_cache_invalidate,
+                    "xp_earned": xp_earned_total,
                     "action": "updated"
                 }
         else:
@@ -1288,6 +1327,11 @@ async def save_conversation(
                             'total_time_seconds': time_seconds,
                             'total_sessions': 1,
                             'total_xp': xp_earned_total,
+                            # Source-tagged XP — same reason as the
+                            # existing-session branch above. Keeps
+                            # freestyle / news conversations out of the
+                            # Games tab daily goal counter.
+                            'conversation_xp': xp_earned_total,
                         },
                         '$set': {'updated_at': datetime.now(timezone.utc)},
                         '$setOnInsert': {
@@ -1300,15 +1344,31 @@ async def save_conversation(
                     },
                     upsert=True
                 )
-                # Also increment the denormalized lifetime XP on the user document
+                # Mirror of the existing-session branch above — same
+                # session/time counters, plus the news bucket when this
+                # conversation came in via the news flow.
+                lifetime_inc = {
+                    'stats.lifetime.total_xp': xp_earned_total,
+                    'stats.lifetime.xp_by_source.conversations': xp_earned_total,
+                    'stats.lifetime.total_sessions': 1,
+                    'stats.lifetime.total_time_minutes': integer_duration,
+                }
+                if conversation_type == 'news':
+                    lifetime_inc['stats.lifetime.news_sessions'] = 1
+                # Same time-window logic as the existing-session branch.
+                from services.timezone_utils import get_user_timezone_obj
+                _local_hour = datetime.now(get_user_timezone_obj(
+                    getattr(request, 'user_timezone', None) or 'UTC'
+                )).hour
+                if _local_hour < 8:
+                    lifetime_inc['stats.lifetime.early_bird_sessions'] = 1
+                if _local_hour >= 22:
+                    lifetime_inc['stats.lifetime.late_night_sessions'] = 1
                 await users_collection.update_one(
                     {'_id': ObjectId(current_user.id)},
-                    {'$inc': {
-                        'stats.lifetime.total_xp': xp_earned_total,
-                        'stats.lifetime.xp_by_source.conversations': xp_earned_total,
-                    }}
+                    {'$inc': lifetime_inc}
                 )
-                print(f"[PROGRESS] ✅ XP applied (new session): daily_stats +{xp_earned_total} XP, lifetime +{xp_earned_total} XP (base {session_xp_pre} + bonus {bonus_xp_pre})")
+                print(f"[PROGRESS] ✅ XP applied (new session): daily_stats +{xp_earned_total} XP, lifetime +{xp_earned_total} XP (base {session_xp_pre} + bonus {bonus_xp_pre}), local_hour={_local_hour}")
 
                 # Keep users.stats.current_streak honest for the voice product —
                 # see notes at the existing-session insertion above. Same guards.
@@ -1455,6 +1515,7 @@ async def save_conversation(
                     "comparison": cached_stats.get("comparison", {}),
                     "overall_progress": cached_stats.get("overall_progress", {}),
                     "dna_cache_invalidate": _dna_cache_invalidate,
+                    "xp_earned": xp_earned_total,
                     "action": "created"
                 }
             else:
@@ -1480,6 +1541,7 @@ async def save_conversation(
                     "overall_progress": {"total_sessions": 0, "total_minutes": 0},  # Will be available in cache soon
                     "stats_loading": True,  # NEW: Indicates stats are being calculated
                     "dna_cache_invalidate": _dna_cache_invalidate,
+                    "xp_earned": xp_earned_total,
                     "action": "created"
                 }
         
@@ -2234,8 +2296,10 @@ async def save_learning_plan_session_summary(user_id: str, learning_plan_id: Opt
         print(f"[SESSION_SUMMARY] Duration: {duration_minutes:.1f}min, threshold: {selected_duration}min → status: {session_status}")
         print(f"[SESSION_SUMMARY] Duration enforced as INTEGER: {duration_minutes} → {integer_duration} minutes")
 
-        # Create session detail object
-        session_detail = {
+        # Build the completion fields that overlay the (likely pending)
+        # entry. We preserve `focus` and any structured_summary written by
+        # the transcript pipeline — only completion-time fields get set.
+        completion_fields = {
             "session_number": session_in_week,
             "global_session_number": session_number,
             "summary": session_summary,
@@ -2243,11 +2307,30 @@ async def save_learning_plan_session_summary(user_id: str, learning_plan_id: Opt
             "status": session_status,
             "selected_duration": selected_duration,
             "duration_minutes": integer_duration,
-            "message_count": len(conversation_messages)
+            "message_count": len(conversation_messages),
         }
 
-        # Add to session_details
-        week['session_details'].append(session_detail)
+        # session_details is pre-populated at plan creation with one entry
+        # per session_in_week, all `status: "pending"`. Completion must
+        # update the matching entry IN PLACE — appending a duplicate
+        # leaves a stale "pending" twin alongside the completed one (which
+        # is exactly the bug observed for Jason: 5 entries instead of 4,
+        # and #1 still pending while completed_sessions said 1).
+        existing_idx = next(
+            (
+                i
+                for i, s in enumerate(week['session_details'])
+                if s.get('session_number') == session_in_week
+            ),
+            None,
+        )
+        if existing_idx is not None:
+            week['session_details'][existing_idx] = {
+                **week['session_details'][existing_idx],
+                **completion_fields,
+            }
+        else:
+            week['session_details'].append(completion_fields)
 
         # Only count fully completed sessions toward plan progress and missions
         completed_in_week = sum(1 for s in week['session_details'] if s.get('status') == 'completed')

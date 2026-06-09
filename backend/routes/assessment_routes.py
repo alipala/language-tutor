@@ -363,7 +363,18 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
 
                 result = await users_collection.update_one(
                     {"_id": ObjectId(current_user.id)},
-                    {"$set": {"last_assessment_data": assessment}}
+                    {
+                        "$set": {"last_assessment_data": assessment},
+                        # Lifetime assessment counter at the same `lifetime.*`
+                        # level the other lifetime counters use (challenge
+                        # pipeline writes `lifetime.total_sessions`,
+                        # `lifetime.total_xp`, etc — keeping assessments in
+                        # the same namespace lets the lifetime endpoint and
+                        # BADGE_REGISTRY surface them without a schema fork).
+                        "$inc": {
+                            "stats.lifetime.assessments_completed": 1,
+                        },
+                    }
                 )
 
                 if result.modified_count > 0:

@@ -35,6 +35,7 @@ from database import (
     notification_preferences_collection,
     speaking_time_tracking_collection,
     flashcards_collection,
+    speaking_dna_profiles_collection,
 )
 
 from services.profile_story.language_normalizer import (
@@ -219,6 +220,23 @@ async def _discover_languages(
                     seen_names.add(nm)
     except Exception as e:
         logger.warning(f"[PROFILE_STORY] distinct challenge languages failed: {e}")
+
+    # Assessment-only users have no conversation/challenge sessions yet,
+    # but they DO have a speaking_dna_profiles doc tagged with the
+    # language they were assessed in. Without this branch their profile
+    # languages payload comes back empty → no flag on the share card →
+    # the "First Voice" badge looks generic. Reading from DNA profiles
+    # keeps the chip live the moment the first assessment finishes.
+    try:
+        if speaking_dna_profiles_collection is not None:
+            for raw in await speaking_dna_profiles_collection.distinct(
+                "language", {"user_id": user_id}
+            ):
+                nm = canonical_name(raw)
+                if nm:
+                    seen_names.add(nm)
+    except Exception as e:
+        logger.warning(f"[PROFILE_STORY] distinct dna languages failed: {e}")
 
     lifetime = (user_doc.get("stats") or {}).get("lifetime") or {}
     by_language = lifetime.get("by_language") or {}
