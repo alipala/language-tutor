@@ -94,13 +94,12 @@ async def analyze_session(
         500: Server error during analysis
     """
     try:
-        # Check if user has premium access (allow "canceling" status - user has access until period ends)
-        if not current_user.subscription_status or current_user.subscription_status not in ["active", "trialing", "canceling"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Speaking DNA is a premium feature. Please upgrade your subscription to access this feature."
-            )
-
+        # No premium gate on analyze-session. Voice checks + per-session
+        # DNA recompute are pedagogical primitives that every learner —
+        # free or paid — should benefit from. The Speaking DNA *view*
+        # surfaces (profile / evolution / breakthroughs GETs below)
+        # stay premium-only, so a free user's strands keep updating in
+        # the background but they only get to see them after upgrading.
         logger.info(f"[DNA API] Analyzing session for user {current_user.id}, language {language}")
 
         # Convert Pydantic model to dict for service

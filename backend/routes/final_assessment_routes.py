@@ -204,6 +204,24 @@ async def submit_final_assessment(
     try:
         logger.info(f"[FINAL_ASSESSMENT_API] Submitting final assessment for plan {plan_id}, user {current_user.id}")
 
+        # Server-side voice-check guard. A user with a pending voice
+        # check shouldn't be able to short-cut into the final
+        # assessment via the API — the mobile CTA reroutes them, but
+        # this is the belt to those braces.
+        from database import learning_plans_collection as _lp_coll
+        from services.voice_check_service import voice_check_service as _vc_svc
+        _guard_plan = await _lp_coll.find_one({"id": plan_id})
+        if _guard_plan and _vc_svc.has_pending_voice_check(_guard_plan):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "VOICE_CHECK_PENDING",
+                    "plan_id": plan_id,
+                    "session_number": int(_guard_plan.get("completed_sessions", 0) or 0),
+                    "message": "Finish your voice check first — final assessment unlocks after that.",
+                },
+            )
+
         # Get assessment requirements first
         requirements = await LearningPlanFinalAssessmentService.get_assessment_requirements(
             learning_plan_id=plan_id,
@@ -386,6 +404,26 @@ async def create_next_level_plan(
     """
     try:
         logger.info(f"[FINAL_ASSESSMENT_API] Creating next level plan for user {current_user.id}")
+
+        # Voice-check guard. A user can only level-up if their *current*
+        # plan has cleared every scheduled voice check. Skipping the
+        # final check and jumping into the next plan would leave the
+        # DNA history with a gap, which the strand trajectory math
+        # depends on. Mobile routes the user back to the voice-check
+        # screen on this 403.
+        from database import learning_plans_collection as _lp_coll
+        from services.voice_check_service import voice_check_service as _vc_svc
+        _guard_plan = await _lp_coll.find_one({"id": request.current_plan_id})
+        if _guard_plan and _vc_svc.has_pending_voice_check(_guard_plan):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "VOICE_CHECK_PENDING",
+                    "plan_id": request.current_plan_id,
+                    "session_number": int(_guard_plan.get("completed_sessions", 0) or 0),
+                    "message": "Finish your voice check on the current plan before starting the next level.",
+                },
+            )
 
         # Get the suggestion first
         suggestion = await LearningPlanFinalAssessmentService.generate_next_level_plan_suggestion(

@@ -92,6 +92,24 @@ class VoiceCheckScheduleService:
         return completed_sessions in schedule and completed_sessions not in voice_checks_completed
 
     @staticmethod
+    def has_pending_voice_check(plan: dict) -> bool:
+        """
+        Lightweight wrapper used by LP-write guards. Returns True when
+        the user has reached a scheduled voice-check session but hasn't
+        completed it yet. Skips counted via `voice_checks_skipped` are
+        deliberately NOT consulted — only `voice_checks_completed`
+        clears the pending state. Centralised here so every endpoint
+        that needs to block LP progression looks at the same rule.
+        """
+        if not plan:
+            return False
+        return VoiceCheckScheduleService.is_voice_check_due(
+            completed_sessions=int(plan.get("completed_sessions", 0) or 0),
+            duration_months=int(plan.get("duration_months", 3) or 3),
+            voice_checks_completed=plan.get("voice_checks_completed", []) or [],
+        )
+
+    @staticmethod
     def get_next_voice_check(
         completed_sessions: int,
         duration_months: int,

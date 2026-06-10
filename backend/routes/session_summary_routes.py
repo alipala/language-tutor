@@ -939,6 +939,23 @@ async def store_session_summary(
                 detail="You don't have permission to update this learning plan"
             )
 
+        # Block LP progression while a scheduled voice check is still
+        # pending. Mobile reroutes the hero CTA when it sees the
+        # `is_due` flag, but a stale client (or someone calling the
+        # API directly) could still try to write a session summary —
+        # this guard is the server-side belt to mobile's UX braces.
+        from services.voice_check_service import voice_check_service
+        if voice_check_service.has_pending_voice_check(plan):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "VOICE_CHECK_PENDING",
+                    "plan_id": plan_id,
+                    "session_number": int(plan.get("completed_sessions", 0) or 0),
+                    "message": "Finish your voice check first — it unlocks the rest of your plan.",
+                },
+            )
+
         # 🎓 DETECT FINAL ASSESSMENT MODE
         plan_status = plan.get("status", "in_progress")
         is_final_assessment = plan_status in ["awaiting_final_assessment", "failed_assessment"]

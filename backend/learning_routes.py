@@ -1859,16 +1859,13 @@ async def get_voice_check_status(
     - progress: Voice check completion statistics
     - prompt: Next voice check prompt to display
 
-    Premium Feature: Only available for active subscribers.
+    Free for all users. Voice checks themselves are pedagogical
+    primitives — the *DNA view* surfaces (profile / evolution /
+    breakthroughs) stay premium-only, but reaching and clearing a
+    scheduled check must work even when a subscription has lapsed,
+    otherwise the LP gets permanently blocked behind a paywall.
     """
     try:
-        # Premium-only feature check
-        if current_user.subscription_status not in ["active", "trialing", "canceling"]:
-            raise HTTPException(
-                status_code=403,
-                detail="Voice checks are a premium feature. Upgrade to access Speaking DNA acoustic analysis."
-            )
-
         # 🚀 REDIS CACHE: Check cache first (10 second TTL)
         from redis_client import get_cached, set_cached
         cache_key = f"voice_check_status:{plan_id}"
@@ -1928,8 +1925,22 @@ async def get_voice_check_status(
         check_number = len(voice_checks_completed)
         prompt = voice_check_service.get_voice_check_prompt(check_number)
 
+        # `was_skipped` lets the client distinguish "user hit Skip
+        # earlier and still needs to finish" from "first time we're
+        # showing this prompt", so the hero CTA copy can be tuned.
+        # Only meaningful while `is_due` is true.
+        voice_checks_skipped = plan.get("voice_checks_skipped", []) or []
+        was_skipped = bool(is_due and completed_sessions in voice_checks_skipped)
+
+        print(
+            f"[VOICE_CHECK] plan={plan_id} completed={completed_sessions} "
+            f"schedule={progress['schedule']} completed_checks={voice_checks_completed} "
+            f"skipped={voice_checks_skipped} is_due={is_due} was_skipped={was_skipped}"
+        )
+
         result = {
             "is_due": is_due,
+            "was_skipped": was_skipped,
             "next_check": next_check,
             "current_session": completed_sessions,
             "schedule": progress["schedule"],
@@ -2038,20 +2049,19 @@ async def skip_voice_check(
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
-    Skip a voice check without penalty.
-    User can still complete it later via manual trigger.
+    Record that the user dismissed the voice-check modal at this
+    session. The voice check itself stays *pending* — `is_due` will
+    keep returning True until the user actually completes one. This is
+    a deliberate change from the earlier "skip = silently complete"
+    behaviour: skipping the DNA scan now blocks plan progression
+    (the hero CTA reroutes to the voice-check screen) until the user
+    finishes a check. `voice_checks_skipped` is tracked separately for
+    analytics + so the client can show a "you skipped earlier" tone.
 
-    Premium Feature: Only available for active subscribers.
+    No premium gate. Voice checks are pedagogical and free for all
+    learners; only the resulting DNA view is premium-gated.
     """
     try:
-        # Premium-only feature check
-        if current_user.subscription_status not in ["active", "trialing", "canceling"]:
-            raise HTTPException(
-                status_code=403,
-                detail="Voice checks are a premium feature."
-            )
-
-        # Get the learning plan
         plan = await learning_plans_collection.find_one({"id": plan_id})
         if not plan:
             raise HTTPException(status_code=404, detail="Learning plan not found")
@@ -2065,18 +2075,14 @@ async def skip_voice_check(
         completed_sessions = plan.get("completed_sessions", 0)
         voice_checks_completed = plan.get("voice_checks_completed", [])
 
-        # S2.4 — write to voice_checks_completed so the modal doesn't re-fire,
-        # and to voice_checks_skipped for analytics differentiation
-        if session_number not in voice_checks_completed:
-            updated_completed = voice_checks_completed + [session_number]
-            await learning_plans_collection.update_one(
-                {"id": plan_id},
-                {
-                    "$set": {"voice_checks_completed": updated_completed},
-                    "$addToSet": {"voice_checks_skipped": session_number},
-                }
-            )
-            voice_checks_completed = updated_completed
+        # Record the skip for analytics ONLY. Do NOT push to
+        # voice_checks_completed — that array drives `is_due`, and
+        # adding the session number there would silently mark the
+        # check as done, which is the opposite of the new behaviour.
+        await learning_plans_collection.update_one(
+            {"id": plan_id},
+            {"$addToSet": {"voice_checks_skipped": session_number}},
+        )
 
         next_check = voice_check_service.get_next_voice_check(
             completed_sessions=completed_sessions,
@@ -2084,7 +2090,7 @@ async def skip_voice_check(
             voice_checks_completed=voice_checks_completed
         )
 
-        logger.info(f"[VOICE_CHECK] ⏭️ User skipped voice check for plan {plan_id}, session {session_number}")
+        logger.info(f"[VOICE_CHECK] ⏭️ Skip recorded for plan {plan_id}, session {session_number} — is_due remains true")
         logger.info(f"[VOICE_CHECK] Next scheduled check: session {next_check}")
 
         return {
@@ -2092,7 +2098,8 @@ async def skip_voice_check(
             "skipped": True,
             "session_number": session_number,
             "next_check": next_check,
-            "message": "No worries! You can update your DNA anytime from the Speaking DNA screen."
+            "still_pending": True,
+            "message": "Voice check still waiting — you can finish it anytime from your plan.",
         }
 
     except HTTPException:
