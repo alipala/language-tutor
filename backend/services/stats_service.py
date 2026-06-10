@@ -83,6 +83,12 @@ async def update_daily_stats(session_data: Dict[str, Any]) -> None:
             'correct_challenges': session_data['correct_answers'],
             'incorrect_challenges': session_data['wrong_answers'],
             'total_xp': session_data['total_xp'],
+            # Source-tagged XP so the Games tab progression bar can
+            # surface "challenge XP only" via /progression?source=games.
+            # Without this, the Games tab summed *all* XP (including
+            # learning-plan conversation XP) and showed 82/50 after a
+            # plan session even though the user hadn't played a game.
+            'challenge_xp': session_data['total_xp'],
             'total_time_seconds': session_data.get('duration_seconds', 0),
 
             # Language breakdown

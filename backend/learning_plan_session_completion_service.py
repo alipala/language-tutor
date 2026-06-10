@@ -198,6 +198,30 @@ class LearningPlanSessionCompletionService:
             else:
                 logger.warning(f"[SESSION_COMPLETION] ⚠️ Failed to update user's practice_minutes_used")
 
+            # Lifetime counters — drive badge unlocks via the same
+            # `stats.lifetime.*` path the challenge pipeline uses
+            # (see services/stats_service.process_session_completion).
+            # The /api/stats/lifetime endpoint reads `lifetime.total_sessions`
+            # directly, which is what `LifetimeSummary.total_sessions`
+            # surfaces to the BADGE_REGISTRY context. Without this write,
+            # learning-plan sessions never bump the counter and every
+            # session-based badge stays locked.
+            if session_status == "completed":
+                lifetime_result = await database["users"].update_one(
+                    {"_id": ObjectId(user_id)},
+                    {
+                        "$inc": {
+                            "stats.lifetime.total_sessions": 1,
+                            "stats.lifetime.total_time_minutes": enforced_duration,
+                            "stats.lifetime.learning_plan_sessions": 1,
+                        }
+                    }
+                )
+                if lifetime_result.modified_count > 0:
+                    logger.info(f"[SESSION_COMPLETION] ✅ Incremented lifetime.total_sessions for {user_id}")
+                else:
+                    logger.warning(f"[SESSION_COMPLETION] ⚠️ Failed to increment lifetime")
+
             # 🔥 NEW: Update daily_stats for weekly practice chart
             try:
                 local_date = get_current_local_date(user_timezone='UTC')  # TODO: Use user's actual timezone

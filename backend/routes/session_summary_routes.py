@@ -206,6 +206,12 @@ async def generate_structured_session_summary(
         )
 
         response = await get_async_openai().chat.completions.create(
+            # gpt-4.1-mini is the right model here — OpenAI's published
+            # benchmarks (and independent comparisons) put its latency
+            # ~50% below gpt-4o-mini for function-calling workloads, at
+            # comparable intelligence and ~83% lower cost. Keep this.
+            # The wait felt long before because of the wide max_tokens
+            # cap, not the model — that's tightened below.
             model="gpt-4.1-mini",
             tools=[{"type": "function", "function": _STRUCTURED_SUMMARY_FUNCTION}],
             tool_choice={"type": "function", "function": {"name": "store_session_summary"}},
@@ -222,7 +228,10 @@ async def generate_structured_session_summary(
                 {"role": "user", "content": prompt},
             ],
             temperature=0.3,
-            max_tokens=700,
+            # Tightened from 700 → 400. The function schema is small
+            # (5 short fields) so 400 tokens is generous, and the lower
+            # cap shaves the worst-case generation tail.
+            max_tokens=400,
         )
 
         tool_calls = (
@@ -1007,16 +1016,24 @@ async def store_session_summary(
         background_analyses = []  # Empty - will be populated by background job
 
         # ── Structured session summary (gpt-4.1-mini, fully async) ──────────
-        # Fire-and-forget: generate + persist off the hot path so the response
-        # returns immediately (~0ms instead of ~8s). Client polls
-        # GET /api/learning/session-structured-summary/{session_id} for the result.
-        background_tasks.add_task(
-            _generate_and_persist_structured_summary_background,
-            plan_id=plan_id,
-            session_number=completed_sessions,
-            plan=plan,
-            conversation_data=conversation_data,
-            basic_summary=basic_summary,
+        # Fire-and-forget via asyncio.create_task — NOT FastAPI
+        # BackgroundTasks. The latter runs scheduled tasks SEQUENTIALLY
+        # after the response is sent, so the structured-summary GPT call
+        # was waiting behind sentence_analysis (~10s) → flashcards
+        # before even starting. Total wait observed: ~17s before persist.
+        # asyncio.create_task fires it onto the running event loop
+        # immediately, in parallel with the other bg work, dropping the
+        # observed wait to ~5s — fits within the mobile polling window
+        # so the post-session recap actually lands while the user is
+        # still looking at the screen.
+        asyncio.create_task(
+            _generate_and_persist_structured_summary_background(
+                plan_id=plan_id,
+                session_number=completed_sessions,
+                plan=plan,
+                conversation_data=conversation_data,
+                basic_summary=basic_summary,
+            )
         )
         structured_summary: Dict[str, Any] = {}  # always null in the immediate response
 
@@ -1179,6 +1196,12 @@ async def store_session_summary(
                             'total_sessions': 1,
                             'learning_plan_sessions': 1,
                             'total_xp': total_xp_delta,
+                            # Source-tagged XP — Games tab progression
+                            # bar reads /progression?source=games which
+                            # subtracts conversation_xp from total. The
+                            # plan session belongs in this bucket so it
+                            # never inflates the games daily goal.
+                            'conversation_xp': total_xp_delta,
                         },
                         '$set': {
                             'user_timezone': 'UTC',
@@ -1197,15 +1220,35 @@ async def store_session_summary(
                 if daily_result.modified_count > 0 or daily_result.upserted_id:
                     print(f"[SESSION_SUMMARY] ✅ daily_stats updated (learning plan): +{session_duration_minutes} min, +{total_xp_delta} XP (base {session_xp} + bonus {bonus_xp})")
 
-                # Also increment the denormalized lifetime XP on the user document
+                # Also increment the denormalized lifetime XP + session
+                # counter on the user document. `lifetime.total_sessions`
+                # is what BADGE_REGISTRY reads to unlock "First
+                # Conversation" / "Voice Warmup" / etc — without this
+                # write a learning-plan session left every session-based
+                # badge locked forever.
+                # Time-window counters so the streak badges (Early Bird,
+                # Late Night Talker) can fire on actual time-of-day
+                # signal instead of the previous "any session" stand-in.
+                # Use the user's local timezone — a 7am London session
+                # shouldn't count as Early Bird in a UTC frame.
+                from services.timezone_utils import get_user_timezone_obj
+                local_hour = datetime.now(get_user_timezone_obj(user_tz)).hour
+                lifetime_inc = {
+                    'stats.lifetime.total_xp': total_xp_delta,
+                    'stats.lifetime.xp_by_source.conversations': total_xp_delta,
+                    'stats.lifetime.total_sessions': 1,
+                    'stats.lifetime.total_time_minutes': session_duration_minutes,
+                    'stats.lifetime.learning_plan_sessions': 1,
+                }
+                if local_hour < 8:
+                    lifetime_inc['stats.lifetime.early_bird_sessions'] = 1
+                if local_hour >= 22:
+                    lifetime_inc['stats.lifetime.late_night_sessions'] = 1
                 await users_collection.update_one(
                     {'_id': ObjectId(str(current_user.id))},
-                    {'$inc': {
-                        'stats.lifetime.total_xp': total_xp_delta,
-                        'stats.lifetime.xp_by_source.conversations': total_xp_delta,
-                    }}
+                    {'$inc': lifetime_inc}
                 )
-                print(f"[SESSION_SUMMARY] ✅ lifetime XP updated: +{total_xp_delta} XP")
+                print(f"[SESSION_SUMMARY] ✅ lifetime updated: +{total_xp_delta} XP, +1 session, local_hour={local_hour}")
 
                 # Keep users.stats.current_streak honest for learning-plan
                 # sessions. Challenges write the streak via
@@ -1378,9 +1421,19 @@ async def store_session_summary(
 
             # ⚡ Return immediately — flashcards, DNA, optimizer, and sentence analysis run in background
             print(f"[SESSION_SUMMARY] ✅ Returning response (background tasks scheduled)")
+            # Canonical plan session id — the mobile client uses the
+            # `plan_…_session_N` prefix as the polling key for
+            # GET /api/learning/session-structured-summary/{id}. Without
+            # this field on the response the client falls back to a
+            # generic `session_<timestamp>` id, fails the prefix check,
+            # and never polls — leaving the recap card stuck on
+            # skeleton even though the structured summary lands
+            # server-side in a few seconds.
+            plan_session_id = f"plan_{plan_id}_session_{completed_sessions}"
             return {
                 "success": True,
                 "message": "Session summary stored successfully",
+                "session_id": plan_session_id,
                 "completed_sessions": completed_sessions,
                 "progress_percentage": progress_percentage,
                 "current_week": new_week,
@@ -1398,7 +1451,14 @@ async def store_session_summary(
                 "structured_summary": structured_summary if structured_summary else None,
                 "dna_breakthroughs": [],   # populated by background task
                 "dna_insights": {},        # populated by background task
-                "recommended_challenges": recommended_challenges  # 🎯 NEW: Post-session challenge recommendations
+                "recommended_challenges": recommended_challenges,  # 🎯 NEW: Post-session challenge recommendations
+                # Backend-authoritative XP for this session (base + bonus,
+                # already multiplied by the learning-plan 1.5x rate). The
+                # client previously fell back to a hard-coded formula
+                # (15 / 50 / 100 by duration) which drifted from what
+                # daily_stats / lifetime actually recorded — observed
+                # locally as "30 XP" rendered while the DB had 82 XP.
+                "xp_earned": total_xp_delta,
             }
         else:
             print(f"[SESSION_SUMMARY] Warning: No documents were modified for plan {plan_id}")

@@ -218,6 +218,20 @@ def calculate_lifetime_summary(user: Dict[str, Any], stats: Dict[str, Any], life
         'member_since': member_since,
         'longest_streak': longest_streak,
         'current_streak': current_streak,
+        # Surface the assessment count so the client-side BADGE_REGISTRY can
+        # award "First Voice" the moment a user finishes their first
+        # assessment, even before any conversation session has happened.
+        'assessments_completed': int(lifetime.get('assessments_completed', 0) or 0),
+        # News-only session counter — used by the News Reader / Daily
+        # Newsie badges so they fire on actual news sessions rather than
+        # any session of any kind (the old stand-in behaviour).
+        'news_sessions': int(lifetime.get('news_sessions', 0) or 0),
+        # Time-window counters: a session counts toward Early Bird when
+        # it was started before 8am local time, and toward Late Night
+        # Talker when started at 10pm or later. Honest signal vs. the
+        # previous "any session" stand-in.
+        'early_bird_sessions': int(lifetime.get('early_bird_sessions', 0) or 0),
+        'late_night_sessions': int(lifetime.get('late_night_sessions', 0) or 0),
         'xp_by_source': {
             'challenges': xp_breakdown.get('challenges', 0),
             'conversations': xp_breakdown.get('conversations', 0),
