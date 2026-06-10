@@ -1409,12 +1409,54 @@ class DNAStrandEmotional(BaseModel):
         arbitrary_types_allowed = True
 
 
+class DNAStrandPronunciation(BaseModel):
+    """S4 — Pronunciation strand (acoustic, voice-check / assessment driven)."""
+    score: float
+    phoneme_accuracy: Optional[float] = None
+    prosody_score: Optional[float] = None
+    completeness_score: Optional[float] = None
+    fluency_score: Optional[float] = None
+    voice_checks_count: Optional[int] = 0
+    last_updated_session_type: Optional[str] = None
+    description: Optional[str] = ""
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        extra = "allow"  # tolerate voice_check_history etc.
+
+
+class DNAStrandFluency(BaseModel):
+    """S4 — Fluency strand (transcript-based, every session)."""
+    score: float
+    level: Optional[str] = None
+    filler_rate: Optional[float] = None
+    wpm_variance: Optional[float] = None
+    pause_score: Optional[float] = None
+    description: Optional[str] = ""
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        extra = "allow"  # tolerate history etc.
+
+
 class DNAStrands(BaseModel):
-    """Complete DNA strand collection (6 strands)"""
+    """Complete DNA strand collection. S4 expanded the canonical set
+    to 6 display strands (rhythm, confidence, pronunciation,
+    vocabulary, accuracy, fluency). Learning + emotional remain on
+    the model for backwards compatibility — pronunciation and
+    fluency are the ones the DNA tab + share card now render.
+    Without these two on the response model, FastAPI's
+    `response_model=DNAProfileResponse` was silently dropping them
+    on serialization — DB had them, the API didn't ship them, and
+    the mobile share card rendered Pronunciation/Fluency as 0."""
     rhythm: DNAStrandRhythm
     confidence: DNAStrandConfidence
+    pronunciation: Optional[DNAStrandPronunciation] = None
     vocabulary: DNAStrandVocabulary
     accuracy: DNAStrandAccuracy
+    fluency: Optional[DNAStrandFluency] = None
     learning: DNAStrandLearning
     emotional: DNAStrandEmotional
 
