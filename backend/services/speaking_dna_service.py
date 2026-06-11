@@ -352,25 +352,30 @@ class SpeakingDNAService:
             sessions_analyzed = (existing_profile.get("sessions_analyzed", 0) if existing_profile else 0) + 1
             total_minutes = (existing_profile.get("total_speaking_minutes", 0) if existing_profile else 0) + session_metrics.get("session_duration_minutes", 5)
 
-            # Update baseline assessment with acoustic metrics (ongoing analysis)
+            # Baseline assessment is write-ONCE: the very first acoustic
+            # session (the user's speaking_assessment) freezes the
+            # `baseline_assessment.acoustic_metrics` snapshot. Every later
+            # voice check feeds into voice_check_history instead — that
+            # array gives us rolling deltas — so the baseline keeps
+            # functioning as a fixed "this is where I started" anchor.
+            # Overwriting it on each VC (the old behavior) destroyed
+            # the only reference point for total-progress questions
+            # and made the DNA tab's Voice Signature page render the
+            # latest VC numbers as if they were the baseline.
             baseline_assessment = None
             if acoustic_metrics:
-                # Get existing baseline or create new
                 existing_baseline = existing_profile.get("baseline_assessment") if existing_profile else None
-
                 if existing_baseline:
-                    # Update existing baseline with moving average of last 10 sessions
-                    # For simplicity, we store the latest metrics (future: implement moving average)
-                    baseline_assessment = {
-                        "date": now,
-                        "acoustic_metrics": acoustic_metrics
-                    }
-                    logger.info("[DNA] Updated baseline assessment with new acoustic metrics")
+                    # Preserve as-is — do NOT overwrite. The strand-update
+                    # pipeline + voice_check_history capture all the new
+                    # data we need; the baseline anchor stays put.
+                    baseline_assessment = existing_baseline
+                    logger.info("[DNA] Baseline preserved (write-once policy)")
                 else:
-                    # First baseline
                     baseline_assessment = {
                         "date": now,
-                        "acoustic_metrics": acoustic_metrics
+                        "acoustic_metrics": acoustic_metrics,
+                        "session_type": session_data.get("session_type", "speaking_assessment"),
                     }
                     logger.info("[DNA] Created initial baseline assessment")
 
@@ -402,6 +407,20 @@ class SpeakingDNAService:
                 "top_strand": top_strand_key,
                 "top_delta": round(top_strand_delta, 4),
             }
+
+            # Preserve any existing history arrays (per-strand `history` and
+            # `voice_check_history`) — the strand-update fns only produce the
+            # latest score fields, so a naive $set wipes the history we just
+            # spent the whole pipeline computing. Re-attach the old arrays
+            # before the write; `_append_session_history` then $push's the
+            # new entry on top.
+            for strand_key, strand_doc in updated_strands.items():
+                old = (existing_profile.get("dna_strands", {}) if existing_profile else {}).get(strand_key) or {}
+                if not isinstance(strand_doc, dict):
+                    continue
+                for hist_key in ("history", "voice_check_history"):
+                    if hist_key in old and hist_key not in strand_doc:
+                        strand_doc[hist_key] = old[hist_key]
 
             profile_update = {
                 "user_id": user_id,
@@ -785,13 +804,35 @@ class SpeakingDNAService:
         else:
             learning_result = self._update_learning_strand(existing_strands.get("learning"), session_metrics, alpha, weights["learning"])
 
+        # ── Voice-check / baseline-assessment transcript-strand pinning ────
+        # Both voice_check (30s) and speaking_assessment (60s) are short
+        # acoustic-only snapshots. Their transcripts are too thin to
+        # produce meaningful vocabulary / accuracy / fluency signal —
+        # running them through the EMA drags real scores toward 0 and
+        # masks progress. Pin to the existing value (or seed on first
+        # session when nothing exists yet) so the user's hard-won numbers
+        # stay put while pronunciation + rhythm + confidence (the acoustic
+        # strands these checks are *meant* to update) move freely.
+        if session_type in {"voice_check", "speaking_assessment"}:
+            logger.info(
+                f"[DNA] Transcript strands pinned (acoustic-only session). "
+                f"user_id={user_id} language={language} session_type={session_type}"
+            )
+            vocabulary_result = existing_strands.get("vocabulary") or self._update_vocabulary_strand(None, session_metrics, alpha, weights["vocabulary"])
+            accuracy_result   = existing_strands.get("accuracy")   or self._update_accuracy_strand(None, session_metrics, alpha, weights["accuracy"])
+            fluency_result    = existing_strands.get("fluency")    or self._update_fluency_strand(None, session_metrics, alpha, weights.get("fluency", 0.8))
+        else:
+            vocabulary_result = self._update_vocabulary_strand(existing_strands.get("vocabulary"), session_metrics, alpha, weights["vocabulary"])
+            accuracy_result   = self._update_accuracy_strand(existing_strands.get("accuracy"),   session_metrics, alpha, weights["accuracy"])
+            fluency_result    = self._update_fluency_strand(existing_strands.get("fluency"),     session_metrics, alpha, weights.get("fluency", 0.8))
+
         updated = {
             "rhythm":        rhythm_result,
             "confidence":    confidence_result,
             "pronunciation": pronunciation_result,
-            "vocabulary":    self._update_vocabulary_strand(existing_strands.get("vocabulary"), session_metrics, alpha, weights["vocabulary"]),
-            "accuracy":      self._update_accuracy_strand(existing_strands.get("accuracy"), session_metrics, alpha, weights["accuracy"]),
-            "fluency":       self._update_fluency_strand(existing_strands.get("fluency"), session_metrics, alpha, weights.get("fluency", 0.8)),
+            "vocabulary":    vocabulary_result,
+            "accuracy":      accuracy_result,
+            "fluency":       fluency_result,
             "learning":      learning_result,
             "emotional":     emotional_result,
         }
