@@ -921,7 +921,26 @@ async def save_conversation(
         if learning_plan_id is not None:
             print(f"[PROGRESS] 📚 This is a learning plan session - updating learning plan progress")
             print(f"[PROGRESS] Learning plan conversations should not appear in conversation history")
-            
+
+            # Server-side voice-check guard. Mirrors the one in
+            # routes/session_summary_routes.py so neither LP write
+            # path can land while a scheduled voice check is still
+            # pending — even if a stale client bypasses the mobile
+            # CTA reroute.
+            from database import learning_plans_collection as _lp_coll
+            from services.voice_check_service import voice_check_service as _vc_svc
+            _guard_plan = await _lp_coll.find_one({"id": learning_plan_id})
+            if _guard_plan and _vc_svc.has_pending_voice_check(_guard_plan):
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "code": "VOICE_CHECK_PENDING",
+                        "plan_id": learning_plan_id,
+                        "session_number": int(_guard_plan.get("completed_sessions", 0) or 0),
+                        "message": "Finish your voice check first — it unlocks the rest of your plan.",
+                    },
+                )
+
             # Generate session summary for learning plan
             session_summary = await generate_conversation_summary(conversation_messages, request.language, request.level)
             

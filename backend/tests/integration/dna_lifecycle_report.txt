@@ -1,0 +1,385 @@
+DNA LIFECYCLE INTEGRATION REPORT
+======================================================================
+Started: 2026-06-11 22:55:08Z
+Backend: http://localhost:8000
+DB:      language_tutor
+
+Totals: PASS=174  FAIL=0  WARN=5
+
+
+USER: A1-Dutch-3mo
+----------------------------------------------------------------------
+  [Setup]
+    PASS  created user + plan
+         · user_id=6a2b36fe0a79b03ea1638588 plan_id=plan-test-a1-dutch-3mo schedule=[12, 24, 36]
+
+  [Speaking Assessment Baseline]
+    PASS  strand `rhythm` seeded with positive score
+         · score=0.76
+    PASS  strand `confidence` seeded with positive score
+         · score=0.74
+    PASS  strand `pronunciation` seeded with positive score
+         · score=0.72
+    PASS  strand `vocabulary` seeded with positive score
+         · score=0.23
+    PASS  strand `accuracy` seeded with positive score
+         · score=0.93
+    PASS  strand `fluency` seeded with positive score
+         · score=0.88
+    PASS  baseline_assessment.acoustic_metrics persisted
+    PASS  voice_check_history seeded for `rhythm` @ assessment
+    PASS  voice_check_history seeded for `confidence` @ assessment
+    PASS  voice_check_history seeded for `pronunciation` @ assessment
+
+  [LP Sessions — Transcript Pin & Acoustic Idle]
+    PASS  acoustic `rhythm` pinned across 11 LP sessions
+         · before=0.760 after=0.760
+    PASS  acoustic `confidence` pinned across 11 LP sessions
+         · before=0.740 after=0.740
+    PASS  acoustic `pronunciation` pinned across 11 LP sessions
+         · before=0.720 after=0.720
+    PASS  transcript `vocabulary` stays measured (>0) after sessions
+         · before=0.230 after=0.260
+    PASS  transcript `accuracy` stays measured (>0) after sessions
+         · before=0.930 after=0.870
+    PASS  transcript `fluency` stays measured (>0) after sessions
+         · before=0.880 after=0.880
+    PASS  completed_sessions incremented
+
+  [Voice Check #1]
+    PASS  transcript `vocabulary` pinned across voice check
+         · before=0.260 after=0.260
+    PASS  transcript `accuracy` pinned across voice check
+         · before=0.870 after=0.870
+    PASS  transcript `fluency` pinned across voice check
+         · before=0.880 after=0.880
+    WARN  acoustic `rhythm` updated by voice check
+         · before=0.760 after=0.760
+    PASS  acoustic `confidence` updated by voice check
+         · before=0.740 after=0.750
+    PASS  acoustic `pronunciation` updated by voice check
+         · before=0.720 after=0.750
+    PASS  voice_check_history length for `rhythm`
+    PASS  voice_check_history length for `confidence`
+    PASS  voice_check_history length for `pronunciation`
+
+  [Voice Check #2]
+    PASS  transcript `vocabulary` pinned across voice check
+         · before=0.300 after=0.300
+    PASS  transcript `accuracy` pinned across voice check
+         · before=0.920 after=0.920
+    PASS  transcript `fluency` pinned across voice check
+         · before=0.880 after=0.880
+    PASS  acoustic `rhythm` updated by voice check
+         · before=0.760 after=0.770
+    PASS  acoustic `confidence` updated by voice check
+         · before=0.750 after=0.780
+    PASS  acoustic `pronunciation` updated by voice check
+         · before=0.750 after=0.780
+    PASS  voice_check_history length for `rhythm`
+    PASS  voice_check_history length for `confidence`
+    PASS  voice_check_history length for `pronunciation`
+
+  [Voice Check #3]
+    PASS  transcript `vocabulary` pinned across voice check
+         · before=0.330 after=0.330
+    PASS  transcript `accuracy` pinned across voice check
+         · before=0.930 after=0.930
+    PASS  transcript `fluency` pinned across voice check
+         · before=0.880 after=0.880
+    PASS  acoustic `rhythm` updated by voice check
+         · before=0.770 after=0.780
+    PASS  acoustic `confidence` updated by voice check
+         · before=0.780 after=0.810
+    PASS  acoustic `pronunciation` updated by voice check
+         · before=0.780 after=0.810
+    PASS  voice_check_history length for `rhythm`
+    PASS  voice_check_history length for `confidence`
+    PASS  voice_check_history length for `pronunciation`
+
+  [Delta Chain (baseline rolling)]
+    PASS  `rhythm` rolling delta computed
+         · vcn=3→4 value=0.770→0.780 delta=+0.010
+    PASS  `confidence` rolling delta computed
+         · vcn=3→4 value=0.780→0.810 delta=+0.030
+    PASS  `pronunciation` rolling delta computed
+         · vcn=3→4 value=0.780→0.810 delta=+0.030
+
+  [Voice Check Status Endpoint]
+    PASS  endpoint returns 200
+    PASS  premium gate removed (works for active sub)
+         · is_due=False next=None
+
+  [Voice Check Evolution Endpoint]
+    PASS  endpoint returns 200
+    PASS  returns ≥2 evolution points
+    PASS  mobile-style delta for `rhythm` non-null
+         · prev=0.770 curr=0.780 delta100=1
+    PASS  mobile-style delta for `confidence` non-null
+         · prev=0.780 curr=0.810 delta100=3
+    PASS  mobile-style delta for `pronunciation` non-null
+         · prev=0.780 curr=0.810 delta100=3
+
+  [Skip → LP Write Blocked (403 VOICE_CHECK_PENDING)]
+    WARN  skip scenario
+         · no remaining scheduled voice checks for this plan
+
+  [Baseline Write-Once Contract]
+    PASS  baseline.date is the speaking_assessment timestamp
+         · voice_checks_count=4
+    PASS  baseline.session_type == speaking_assessment
+    PASS  baseline.acoustic_metrics unchanged after all voice checks
+         · 13 fields preserved
+
+
+USER: A2-Spanish-6mo
+----------------------------------------------------------------------
+  [Setup]
+    PASS  created user + plan
+         · user_id=6a2b36fe0a79b03ea1638590 plan_id=plan-test-a2-spanish-6mo schedule=[12, 24, 36, 48, 60, 72, 84]
+
+  [Speaking Assessment Baseline]
+    PASS  strand `rhythm` seeded with positive score
+         · score=0.78
+    PASS  strand `confidence` seeded with positive score
+         · score=0.72
+    PASS  strand `pronunciation` seeded with positive score
+         · score=0.72
+    PASS  strand `vocabulary` seeded with positive score
+         · score=0.29
+    PASS  strand `accuracy` seeded with positive score
+         · score=0.90
+    PASS  strand `fluency` seeded with positive score
+         · score=0.89
+    PASS  baseline_assessment.acoustic_metrics persisted
+    PASS  voice_check_history seeded for `rhythm` @ assessment
+    PASS  voice_check_history seeded for `confidence` @ assessment
+    PASS  voice_check_history seeded for `pronunciation` @ assessment
+
+  [LP Sessions — Transcript Pin & Acoustic Idle]
+    PASS  acoustic `rhythm` pinned across 11 LP sessions
+         · before=0.780 after=0.780
+    PASS  acoustic `confidence` pinned across 11 LP sessions
+         · before=0.720 after=0.720
+    PASS  acoustic `pronunciation` pinned across 11 LP sessions
+         · before=0.720 after=0.720
+    PASS  transcript `vocabulary` stays measured (>0) after sessions
+         · before=0.290 after=0.310
+    PASS  transcript `accuracy` stays measured (>0) after sessions
+         · before=0.900 after=0.900
+    PASS  transcript `fluency` stays measured (>0) after sessions
+         · before=0.890 after=0.890
+    PASS  completed_sessions incremented
+
+  [Voice Check #1]
+    PASS  transcript `vocabulary` pinned across voice check
+         · before=0.310 after=0.310
+    PASS  transcript `accuracy` pinned across voice check
+         · before=0.900 after=0.900
+    PASS  transcript `fluency` pinned across voice check
+         · before=0.890 after=0.890
+    WARN  acoustic `rhythm` updated by voice check
+         · before=0.780 after=0.780
+    PASS  acoustic `confidence` updated by voice check
+         · before=0.720 after=0.740
+    PASS  acoustic `pronunciation` updated by voice check
+         · before=0.720 after=0.730
+    PASS  voice_check_history length for `rhythm`
+    PASS  voice_check_history length for `confidence`
+    PASS  voice_check_history length for `pronunciation`
+
+  [Voice Check #2]
+    PASS  transcript `vocabulary` pinned across voice check
+         · before=0.310 after=0.310
+    PASS  transcript `accuracy` pinned across voice check
+         · before=0.900 after=0.900
+    PASS  transcript `fluency` pinned across voice check
+         · before=0.890 after=0.890
+    PASS  acoustic `rhythm` updated by voice check
+         · before=0.780 after=0.790
+    PASS  acoustic `confidence` updated by voice check
+         · before=0.740 after=0.770
+    PASS  acoustic `pronunciation` updated by voice check
+         · before=0.730 after=0.760
+    PASS  voice_check_history length for `rhythm`
+    PASS  voice_check_history length for `confidence`
+    PASS  voice_check_history length for `pronunciation`
+
+  [Voice Check #3]
+    PASS  transcript `vocabulary` pinned across voice check
+         · before=0.270 after=0.270
+    PASS  transcript `accuracy` pinned across voice check
+         · before=0.930 after=0.930
+    PASS  transcript `fluency` pinned across voice check
+         · before=0.890 after=0.890
+    PASS  acoustic `rhythm` updated by voice check
+         · before=0.790 after=0.800
+    PASS  acoustic `confidence` updated by voice check
+         · before=0.770 after=0.800
+    PASS  acoustic `pronunciation` updated by voice check
+         · before=0.760 after=0.810
+    PASS  voice_check_history length for `rhythm`
+    PASS  voice_check_history length for `confidence`
+    PASS  voice_check_history length for `pronunciation`
+
+  [Delta Chain (baseline rolling)]
+    PASS  `rhythm` rolling delta computed
+         · vcn=3→4 value=0.790→0.800 delta=+0.010
+    PASS  `confidence` rolling delta computed
+         · vcn=3→4 value=0.770→0.800 delta=+0.030
+    PASS  `pronunciation` rolling delta computed
+         · vcn=3→4 value=0.760→0.810 delta=+0.050
+
+  [Voice Check Status Endpoint]
+    PASS  endpoint returns 200
+    PASS  premium gate removed (works for active sub)
+         · is_due=False next=48
+
+  [Voice Check Evolution Endpoint]
+    PASS  endpoint returns 200
+    PASS  returns ≥2 evolution points
+    PASS  mobile-style delta for `rhythm` non-null
+         · prev=0.790 curr=0.800 delta100=1
+    PASS  mobile-style delta for `confidence` non-null
+         · prev=0.770 curr=0.800 delta100=3
+    PASS  mobile-style delta for `pronunciation` non-null
+         · prev=0.760 curr=0.810 delta100=5
+
+  [Skip → LP Write Blocked (403 VOICE_CHECK_PENDING)]
+    PASS  skip endpoint accepts skip
+    PASS  LP-write returns 403 + VOICE_CHECK_PENDING
+         · {"detail":{"code":"VOICE_CHECK_PENDING","plan_id":"plan-test-a2-spanish-6mo","session_number":48,"message":"Finish your voice check first — final assessment unlocks after that."}}
+
+  [Baseline Write-Once Contract]
+    PASS  baseline.date is the speaking_assessment timestamp
+         · voice_checks_count=4
+    PASS  baseline.session_type == speaking_assessment
+    PASS  baseline.acoustic_metrics unchanged after all voice checks
+         · 13 fields preserved
+
+
+USER: B1-German-12mo
+----------------------------------------------------------------------
+  [Setup]
+    PASS  created user + plan
+         · user_id=6a2b36fe0a79b03ea1638598 plan_id=plan-test-b1-german-12mo schedule=[16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176]
+
+  [Speaking Assessment Baseline]
+    PASS  strand `rhythm` seeded with positive score
+         · score=0.77
+    PASS  strand `confidence` seeded with positive score
+         · score=0.75
+    PASS  strand `pronunciation` seeded with positive score
+         · score=0.72
+    PASS  strand `vocabulary` seeded with positive score
+         · score=0.35
+    PASS  strand `accuracy` seeded with positive score
+         · score=0.78
+    PASS  strand `fluency` seeded with positive score
+         · score=0.89
+    PASS  baseline_assessment.acoustic_metrics persisted
+    PASS  voice_check_history seeded for `rhythm` @ assessment
+    PASS  voice_check_history seeded for `confidence` @ assessment
+    PASS  voice_check_history seeded for `pronunciation` @ assessment
+
+  [LP Sessions — Transcript Pin & Acoustic Idle]
+    PASS  acoustic `rhythm` pinned across 11 LP sessions
+         · before=0.770 after=0.770
+    PASS  acoustic `confidence` pinned across 11 LP sessions
+         · before=0.750 after=0.750
+    PASS  acoustic `pronunciation` pinned across 11 LP sessions
+         · before=0.720 after=0.720
+    PASS  transcript `vocabulary` stays measured (>0) after sessions
+         · before=0.350 after=0.260
+    PASS  transcript `accuracy` stays measured (>0) after sessions
+         · before=0.780 after=0.900
+    PASS  transcript `fluency` stays measured (>0) after sessions
+         · before=0.890 after=0.890
+    PASS  completed_sessions incremented
+
+  [Voice Check #1]
+    PASS  transcript `vocabulary` pinned across voice check
+         · before=0.250 after=0.250
+    PASS  transcript `accuracy` pinned across voice check
+         · before=0.870 after=0.870
+    PASS  transcript `fluency` pinned across voice check
+         · before=0.890 after=0.890
+    WARN  acoustic `rhythm` updated by voice check
+         · before=0.770 after=0.770
+    PASS  acoustic `confidence` updated by voice check
+         · before=0.750 after=0.760
+    PASS  acoustic `pronunciation` updated by voice check
+         · before=0.720 after=0.740
+    PASS  voice_check_history length for `rhythm`
+    PASS  voice_check_history length for `confidence`
+    PASS  voice_check_history length for `pronunciation`
+
+  [Voice Check #2]
+    PASS  transcript `vocabulary` pinned across voice check
+         · before=0.320 after=0.320
+    PASS  transcript `accuracy` pinned across voice check
+         · before=0.860 after=0.860
+    PASS  transcript `fluency` pinned across voice check
+         · before=0.890 after=0.890
+    PASS  acoustic `rhythm` updated by voice check
+         · before=0.770 after=0.790
+    PASS  acoustic `confidence` updated by voice check
+         · before=0.760 after=0.780
+    PASS  acoustic `pronunciation` updated by voice check
+         · before=0.740 after=0.770
+    PASS  voice_check_history length for `rhythm`
+    PASS  voice_check_history length for `confidence`
+    PASS  voice_check_history length for `pronunciation`
+
+  [Voice Check #3]
+    PASS  transcript `vocabulary` pinned across voice check
+         · before=0.230 after=0.230
+    PASS  transcript `accuracy` pinned across voice check
+         · before=0.900 after=0.900
+    PASS  transcript `fluency` pinned across voice check
+         · before=0.890 after=0.890
+    WARN  acoustic `rhythm` updated by voice check
+         · before=0.790 after=0.790
+    PASS  acoustic `confidence` updated by voice check
+         · before=0.780 after=0.800
+    PASS  acoustic `pronunciation` updated by voice check
+         · before=0.770 after=0.820
+    PASS  voice_check_history length for `rhythm`
+    PASS  voice_check_history length for `confidence`
+    PASS  voice_check_history length for `pronunciation`
+
+  [Delta Chain (baseline rolling)]
+    PASS  `rhythm` rolling delta computed
+         · vcn=3→4 value=0.790→0.790 delta=+0.000
+    PASS  `confidence` rolling delta computed
+         · vcn=3→4 value=0.780→0.800 delta=+0.020
+    PASS  `pronunciation` rolling delta computed
+         · vcn=3→4 value=0.770→0.820 delta=+0.050
+
+  [Voice Check Status Endpoint]
+    PASS  endpoint returns 200
+    PASS  premium gate removed (works for active sub)
+         · is_due=False next=64
+
+  [Voice Check Evolution Endpoint]
+    PASS  endpoint returns 200
+    PASS  returns ≥2 evolution points
+    PASS  mobile-style delta for `rhythm` non-null
+         · prev=0.790 curr=0.790 delta100=0
+    PASS  mobile-style delta for `confidence` non-null
+         · prev=0.780 curr=0.800 delta100=2
+    PASS  mobile-style delta for `pronunciation` non-null
+         · prev=0.770 curr=0.820 delta100=5
+
+  [Skip → LP Write Blocked (403 VOICE_CHECK_PENDING)]
+    PASS  skip endpoint accepts skip
+    PASS  LP-write returns 403 + VOICE_CHECK_PENDING
+         · {"detail":{"code":"VOICE_CHECK_PENDING","plan_id":"plan-test-b1-german-12mo","session_number":64,"message":"Finish your voice check first — final assessment unlocks after that."}}
+
+  [Baseline Write-Once Contract]
+    PASS  baseline.date is the speaking_assessment timestamp
+         · voice_checks_count=4
+    PASS  baseline.session_type == speaking_assessment
+    PASS  baseline.acoustic_metrics unchanged after all voice checks
+         · 13 fields preserved
+
