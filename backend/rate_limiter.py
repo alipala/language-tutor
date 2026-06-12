@@ -39,6 +39,16 @@ RATE_LIMITER_ALGO = os.getenv("RATE_LIMITER_ALGO", "sliding_window").lower()
 # Exempt requests skip the limiter middleware entirely (zero Redis ops, no JWT
 # pre-decode). Empty/unset = no exemptions = legacy behavior.
 # Rollback: set RATE_LIMITER_EXEMPT_PATHS="" in Railway — no code deploy.
+# CAPACITY_FIXES_V2 (FU-12): when "true", the check_rate_limit dependency
+# becomes a no-op for requests the middleware has already checked, fixing the
+# coach-route double count (each /api/coach/chat request was recorded twice
+# against the same key, halving the effective limit and doubling Redis ops).
+# Rollback: set RATE_LIMITER_SKIP_DOUBLE_CHECK=false — no code deploy.
+RATE_LIMITER_SKIP_DOUBLE_CHECK = (
+    os.getenv("RATE_LIMITER_SKIP_DOUBLE_CHECK", "false").strip().lower() in ("true", "1", "yes")
+)
+
+
 def _parse_exempt_paths(raw: str) -> frozenset:
     """Comma-separated exact paths → frozenset (whitespace stripped, empties dropped)."""
     return frozenset(p.strip() for p in (raw or "").split(",") if p.strip())
@@ -364,6 +374,10 @@ async def check_rate_limit(
     subscription_status: Optional[str] = None,
 ):
     """FastAPI dependency — same signature as before, no route changes needed."""
+    # CAPACITY_FIXES_V2 (FU-12): middleware already counted this request
+    if RATE_LIMITER_SKIP_DOUBLE_CHECK and getattr(request.state, "rate_limit_checked", False):
+        return
+
     identifier = user_id or request.client.host
     category = _get_category(request.url.path, subscription_status)
     await _check(request, identifier, category, bool(user_id), user_id)
@@ -400,6 +414,9 @@ async def _rate_limit_middleware(request: Request, call_next):
         identifier = user_id or request.client.host
         category = _get_category(request.url.path, subscription_status)
         await _check(request, identifier, category, bool(user_id), user_id)
+        # CAPACITY_FIXES_V2 (FU-12): mark so the check_rate_limit dependency
+        # doesn't count the same request a second time (when flag is on)
+        request.state.rate_limit_checked = True
     except HTTPException as exc:
         return JSONResponse(
             status_code=exc.status_code,
