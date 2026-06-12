@@ -28,6 +28,26 @@ logger = logging.getLogger(__name__)
 
 RATE_LIMITER_BACKEND = os.getenv("RATE_LIMITER_BACKEND", "memory").lower()
 
+# CAPACITY_FIXES_V1: "fixed_window" switches the redis backend to a 2-op
+# fixed-window counter (INCR + EXPIRE NX). Any other value = legacy 4-op
+# sliding-window zset. Only meaningful when RATE_LIMITER_BACKEND == "redis".
+# Rollback: set RATE_LIMITER_ALGO=sliding_window in Railway — no code deploy.
+RATE_LIMITER_ALGO = os.getenv("RATE_LIMITER_ALGO", "sliding_window").lower()
+
+# CAPACITY_FIXES_V1: comma-separated EXACT request paths exempt from rate
+# limiting (no prefixes/wildcards — exact match only, to rule out bypasses).
+# Exempt requests skip the limiter middleware entirely (zero Redis ops, no JWT
+# pre-decode). Empty/unset = no exemptions = legacy behavior.
+# Rollback: set RATE_LIMITER_EXEMPT_PATHS="" in Railway — no code deploy.
+def _parse_exempt_paths(raw: str) -> frozenset:
+    """Comma-separated exact paths → frozenset (whitespace stripped, empties dropped)."""
+    return frozenset(p.strip() for p in (raw or "").split(",") if p.strip())
+
+
+RATE_LIMITER_EXEMPT_PATHS = _parse_exempt_paths(os.getenv("RATE_LIMITER_EXEMPT_PATHS", ""))
+if RATE_LIMITER_EXEMPT_PATHS:
+    logger.info("[RATE_LIMITER] Exempt paths (exact match): %s", sorted(RATE_LIMITER_EXEMPT_PATHS))
+
 # ── Shared configuration ──────────────────────────────────────────────────────
 
 LIMITS: Dict[str, Dict] = {
@@ -176,6 +196,63 @@ async def _redis_check_and_record(identifier: str, category: str) -> tuple[bool,
         return False, None
 
 
+async def _redis_fixed_window_check(identifier: str, category: str) -> tuple[bool, Optional[int]]:
+    """
+    CAPACITY_FIXES_V1: fixed-window counter — exactly 2 Redis ops per request
+    (INCR + EXPIRE NX) vs the legacy sliding-window zset's 4. Requires Redis
+    >= 7.0 for the NX flag on EXPIRE (production is 8.4.0, verified).
+
+    Key: rl_fw:{category}:{identifier}:{window_index} — distinct prefix from
+    the legacy "ratelimit:" zsets so flipping RATE_LIMITER_ALGO mid-traffic
+    cannot collide. In-flight window counts reset on an algorithm flip
+    (accepted per CAPACITY_FIXES_V1).
+
+    Accepted tradeoff per CAPACITY_FIXES_V1: boundary burst — a client can
+    send up to 2x the limit straddling a window edge.
+
+    The legacy over-limit penalty ops (ZREM of the just-added entry + ZRANGE
+    to find the oldest) have no fixed-window equivalent: the counter simply
+    stays above the limit until window rollover, and retry_after is computed
+    arithmetically from the window boundary at zero extra Redis cost.
+
+    Fails OPEN (returns not-limited) if Redis is unreachable — identical to
+    the legacy algorithm, including the Slack failure alert.
+    """
+    from redis_client import redis_client
+
+    if redis_client is None:
+        # Redis not initialised yet — fail open, log warning (same as legacy)
+        logger.warning("[RATE_LIMITER] Redis client not ready, failing open for %s/%s", category, identifier)
+        return False, None
+
+    config = LIMITS[category]
+    window = config["window_seconds"]
+    max_req = config["max_requests"]
+    now = time.time()
+    window_index = int(now // window)
+    key = f"rl_fw:{category}:{identifier}:{window_index}"
+
+    try:
+        pipe = redis_client.pipeline()
+        pipe.incr(key)                          # count this request
+        pipe.expire(key, window + 1, nx=True)   # TTL only on the window's first request
+        results = await pipe.execute()
+
+        count = results[0]  # INCR result = requests so far in this window
+
+        if count > max_req:
+            retry_after = max(1, int((window_index + 1) * window - now))
+            return True, retry_after
+
+        return False, None
+
+    except Exception as exc:
+        # Redis unreachable — fail open, alert Slack (same as legacy)
+        logger.error("[RATE_LIMITER] Redis error, failing open: %s", exc)
+        await _send_redis_failure_alert(str(exc))
+        return False, None
+
+
 async def _send_redis_failure_alert(error: str):
     try:
         context = AlertContext(
@@ -256,7 +333,10 @@ async def _send_rate_limit_alert(
 async def _check(request: Request, identifier: str, category: str, is_authenticated: bool, user_id: Optional[str]):
     """Run the appropriate backend check and raise 429 if limited."""
     if RATE_LIMITER_BACKEND == "redis":
-        is_limited, retry_after = await _redis_check_and_record(identifier, category)
+        if RATE_LIMITER_ALGO == "fixed_window":
+            is_limited, retry_after = await _redis_fixed_window_check(identifier, category)
+        else:
+            is_limited, retry_after = await _redis_check_and_record(identifier, category)
     else:
         is_limited, retry_after = _memory_backend.check_and_record(identifier, category)
 
@@ -292,6 +372,11 @@ async def check_rate_limit(
 # ── Middleware ────────────────────────────────────────────────────────────────
 
 async def _rate_limit_middleware(request: Request, call_next):
+    # CAPACITY_FIXES_V1: exact-match path exemptions. Empty set short-circuits,
+    # so flag-OFF per-request overhead is a single falsy check.
+    if RATE_LIMITER_EXEMPT_PATHS and request.url.path in RATE_LIMITER_EXEMPT_PATHS:
+        return await call_next(request)
+
     user_id: Optional[str] = None
     subscription_status: Optional[str] = None
 
