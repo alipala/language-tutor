@@ -1109,6 +1109,11 @@ async def save_conversation(
                     'stats.lifetime.total_xp': xp_earned_total,
                     'stats.lifetime.xp_by_source.conversations': xp_earned_total,
                     'stats.lifetime.total_sessions': 1,
+                    # Conversation-only counter — `total_sessions` is also
+                    # bumped by the challenge pipeline, which let game
+                    # sessions satisfy "Five conversations in" badges. The
+                    # speaking badge family reads this honest counter.
+                    'stats.lifetime.conversation_sessions': 1,
                     'stats.lifetime.total_time_minutes': integer_duration,
                 }
                 if conversation_type == 'news':
@@ -1373,6 +1378,9 @@ async def save_conversation(
                     'stats.lifetime.total_xp': xp_earned_total,
                     'stats.lifetime.xp_by_source.conversations': xp_earned_total,
                     'stats.lifetime.total_sessions': 1,
+                    # Conversation-only counter — mirrors the existing-session
+                    # branch above; see comment there.
+                    'stats.lifetime.conversation_sessions': 1,
                     'stats.lifetime.total_time_minutes': integer_duration,
                 }
                 if conversation_type == 'news':

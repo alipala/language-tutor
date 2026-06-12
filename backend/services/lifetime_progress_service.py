@@ -229,6 +229,9 @@ def calculate_lifetime_summary(user: Dict[str, Any], stats: Dict[str, Any], life
         # Per-language news counters ({language: count}) — lets the
         # Polyglot Reader badge check real news activity per language.
         'news_by_language': lifetime.get('news_by_language', {}) or {},
+        # Conversation-only session count — `total_sessions` also counts
+        # challenge sessions, which inflated the speaking badge family.
+        'conversation_sessions': int(lifetime.get('conversation_sessions', 0) or 0),
         # Time-window counters: a session counts toward Early Bird when
         # it was started before 8am local time, and toward Late Night
         # Talker when started at 10pm or later. Honest signal vs. the
