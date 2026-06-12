@@ -384,6 +384,37 @@ async def assess_speaking(request: SpeakingAssessmentRequest, current_user: Opti
 
             except Exception as save_error:
                 print(f"[ASSESSMENT_SAVE] Error saving assessment data: {str(save_error)}")
+
+            # CEFR ladder: assessments are the most direct read of the
+            # user's level, so let them raise `by_language.{lang}.highest_level`
+            # the same way the challenge pipeline does (rank-compare, only
+            # ever upward). Fully isolated — a failure here never touches
+            # the assessment response.
+            try:
+                from services.stats_service import get_cefr_level_rank
+
+                _new_level = str(assessment.get('recommended_level') or '').strip().upper()
+                if _new_level and get_cefr_level_rank(_new_level) > 0:
+                    _lang_key = request.language.lower()
+                    _level_field = f"stats.lifetime.by_language.{_lang_key}.highest_level"
+                    _user_doc = await users_collection.find_one(
+                        {"_id": ObjectId(current_user.id)},
+                        {_level_field: 1},
+                    )
+                    _current_level = (
+                        (((_user_doc or {}).get('stats') or {}).get('lifetime') or {})
+                        .get('by_language', {})
+                        .get(_lang_key, {})
+                        .get('highest_level')
+                    )
+                    if not _current_level or get_cefr_level_rank(_new_level) > get_cefr_level_rank(_current_level):
+                        await users_collection.update_one(
+                            {"_id": ObjectId(current_user.id)},
+                            {"$set": {_level_field: _new_level}},
+                        )
+                        print(f"[ASSESSMENT_SAVE] highest_level for {_lang_key}: {_current_level} -> {_new_level}")
+            except Exception as _lvl_err:
+                print(f"[ASSESSMENT_SAVE] highest_level update skipped: {_lvl_err}")
         else:
             print(f"[ASSESSMENT_SAVE] No authenticated user - skipping data save")
 

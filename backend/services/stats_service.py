@@ -236,6 +236,12 @@ async def update_lifetime_stats(session_data: Dict[str, Any]) -> None:
             f'stats.lifetime.by_type.{challenge_type}.total_challenges': session_data['total_challenges'],
             f'stats.lifetime.by_type.{challenge_type}.correct': session_data['correct_answers'],
             f'stats.lifetime.by_type.{challenge_type}.incorrect': session_data['wrong_answers'],
+
+            # Per-language-per-level counters — feed the CEFR earn gate
+            # below. Additive; older documents simply start at zero.
+            f'stats.lifetime.by_language.{language}.by_level.{level}.total_challenges': session_data['total_challenges'],
+            f'stats.lifetime.by_language.{language}.by_level.{level}.correct': session_data['correct_answers'],
+            f'stats.lifetime.by_language.{language}.by_level.{level}.incorrect': session_data['wrong_answers'],
         }
 
         updates = {
@@ -243,20 +249,45 @@ async def update_lifetime_stats(session_data: Dict[str, Any]) -> None:
             f'stats.lifetime.by_language.{language}.last_practiced': datetime.utcnow(),
         }
 
-        # Check if we need to update highest level
+        # Check if we need to update highest level.
+        #
+        # CEFR earn gate: completing a single game at a level used to raise
+        # `highest_level` unconditionally, which let a day-one user claim a
+        # C2 (legendary) badge by simply selecting C2 in the level picker
+        # and finishing one session at any accuracy. Challenges now have to
+        # EARN the level: at least CEFR_GATE_MIN_CHALLENGES at that level
+        # with CEFR_GATE_MIN_ACCURACY overall accuracy (post-session,
+        # per-language). Speaking assessments remain the direct path — the
+        # assessment route raises highest_level from recommended_level
+        # without this gate, because there the level is measured, not picked.
+        CEFR_GATE_MIN_CHALLENGES = 20
+        CEFR_GATE_MIN_ACCURACY = 0.75
+
         user = await users_collection.find_one({'_id': ObjectId(user_id)})
         if user:
-            current_highest = (user.get('stats', {})
-                              .get('lifetime', {})
-                              .get('by_language', {})
-                              .get(language, {})
-                              .get('highest_level'))
+            lang_stats = (user.get('stats', {})
+                          .get('lifetime', {})
+                          .get('by_language', {})
+                          .get(language, {}))
+            current_highest = lang_stats.get('highest_level')
 
-            if not current_highest or get_cefr_level_rank(level) > get_cefr_level_rank(current_highest):
-                updates[f'stats.lifetime.by_language.{language}.highest_level'] = level
+            if get_cefr_level_rank(level) > get_cefr_level_rank(current_highest or ''):
+                # Post-session totals for this language+level (pre-image +
+                # this session, since $inc applies after our read).
+                lvl_stats = (lang_stats.get('by_level', {}) or {}).get(level, {}) or {}
+                new_total = int(lvl_stats.get('total_challenges', 0) or 0) + int(session_data['total_challenges'] or 0)
+                new_correct = int(lvl_stats.get('correct', 0) or 0) + int(session_data['correct_answers'] or 0)
+                new_accuracy = (new_correct / new_total) if new_total > 0 else 0.0
+                if new_total >= CEFR_GATE_MIN_CHALLENGES and new_accuracy >= CEFR_GATE_MIN_ACCURACY:
+                    updates[f'stats.lifetime.by_language.{language}.highest_level'] = level
+                    print(f"[STATS_SERVICE] 🎓 CEFR gate passed: {language} -> {level} "
+                          f"({new_total} challenges @ {round(new_accuracy * 100)}%)")
+                else:
+                    print(f"[STATS_SERVICE] CEFR gate not met for {language} {level}: "
+                          f"{new_total}/{CEFR_GATE_MIN_CHALLENGES} challenges @ {round(new_accuracy * 100)}%")
 
             # Set started_at if this is first time for this language
-            if not current_highest:
+            if not lang_stats.get('started_at') and not current_highest:
                 updates[f'stats.lifetime.by_language.{language}.started_at'] = datetime.utcnow()
 
         # Phase A: persist the derived gameplay level alongside total_xp so

@@ -1839,6 +1839,96 @@ class SpeakingDNAService:
                 }
             })
 
+        # ── Speed / fluency / grammar / anxiety breakthroughs ──────────────
+        # All four use strict crossing semantics (old below threshold, new at
+        # or above) so they self-dedupe: a re-fire requires regressing below
+        # the line and crossing it again. When acoustic strands are pinned
+        # (no-audio sessions) old and new rhythm/emotional dicts are the same
+        # object, so their deltas are zero and nothing fires. Wrapped in one
+        # defensive try/except — a malformed strand must never break the
+        # analyze pipeline.
+        try:
+            _ctx = {"session_type": session_data.get("session_type", "learning")}
+
+            # Speed Boost — WPM jumped 20%+ vs the profile average.
+            old_wpm = old_strands.get("rhythm", {}).get("words_per_minute_avg", 0) or 0
+            new_wpm = new_strands.get("rhythm", {}).get("words_per_minute_avg", 0) or 0
+            if old_wpm > 0 and new_wpm >= old_wpm * (1 + self.BREAKTHROUGH_THRESHOLDS["speed_improvement"]):
+                breakthroughs.append({
+                    "user_id": user_id,
+                    "language": language,
+                    "breakthrough_type": "speed_improvement",
+                    "category": "rhythm",
+                    "title": "Speed Boost!",
+                    "description": f"Your speaking pace jumped from {int(old_wpm)} to {int(new_wpm)} words per minute!",
+                    "emoji": "⚡",
+                    "metrics": {
+                        "before": {"words_per_minute": old_wpm},
+                        "after": {"words_per_minute": new_wpm},
+                        "improvement_percent": round(((new_wpm - old_wpm) / old_wpm) * 100, 1),
+                    },
+                    "context": _ctx,
+                })
+
+            # Fluency Streak — fluency score crossed the 'natural' line (0.75).
+            old_fluency = old_strands.get("fluency", {}).get("score", 0) or 0
+            new_fluency = new_strands.get("fluency", {}).get("score", 0) or 0
+            if old_fluency < 0.75 <= new_fluency:
+                breakthroughs.append({
+                    "user_id": user_id,
+                    "language": language,
+                    "breakthrough_type": "fluency_streak",
+                    "category": "fluency",
+                    "title": "Fluency Unlocked!",
+                    "description": "Your speech now flows at a natural level — minimal hesitation, real momentum!",
+                    "emoji": "🌊",
+                    "metrics": {
+                        "before": {"score": old_fluency},
+                        "after": {"score": new_fluency},
+                    },
+                    "context": _ctx,
+                })
+
+            # Grammar Mastery — grammar accuracy crossed 85%.
+            old_grammar = old_strands.get("accuracy", {}).get("grammar_accuracy", 0) or 0
+            new_grammar = new_strands.get("accuracy", {}).get("grammar_accuracy", 0) or 0
+            if old_grammar < 0.85 <= new_grammar:
+                breakthroughs.append({
+                    "user_id": user_id,
+                    "language": language,
+                    "breakthrough_type": "grammar_mastery",
+                    "category": "accuracy",
+                    "title": "Grammar Mastery!",
+                    "description": f"Your grammar accuracy reached {int(new_grammar * 100)}% — precision unlocked!",
+                    "emoji": "🎓",
+                    "metrics": {
+                        "before": {"grammar_accuracy": old_grammar},
+                        "after": {"grammar_accuracy": new_grammar},
+                    },
+                    "context": _ctx,
+                })
+
+            # Anxiety Overcome — previously detected triggers all cleared.
+            old_triggers = old_strands.get("emotional", {}).get("anxiety_triggers", []) or []
+            new_triggers = new_strands.get("emotional", {}).get("anxiety_triggers", []) or []
+            if len(old_triggers) > 0 and len(new_triggers) == 0:
+                breakthroughs.append({
+                    "user_id": user_id,
+                    "language": language,
+                    "breakthrough_type": "anxiety_overcome",
+                    "category": "emotional",
+                    "title": "Anxiety Overcome!",
+                    "description": "No anxiety triggers detected anymore — you spoke through the wall!",
+                    "emoji": "🛡️",
+                    "metrics": {
+                        "before": {"trigger_count": len(old_triggers)},
+                        "after": {"trigger_count": 0},
+                    },
+                    "context": _ctx,
+                })
+        except Exception as bt_err:
+            logger.warning(f"[DNA] extended breakthrough detection skipped: {bt_err}")
+
         return breakthroughs
 
     def _generate_session_insights(self, metrics: Dict, strands: Dict) -> Dict:
