@@ -1113,6 +1113,9 @@ async def save_conversation(
                 }
                 if conversation_type == 'news':
                     lifetime_inc['stats.lifetime.news_sessions'] = 1
+                    # Per-language news bucket — Polyglot Reader badge needs
+                    # to know news activity per language, not just the total.
+                    lifetime_inc[f'stats.lifetime.news_by_language.{(request.language or "unknown").lower()}'] = 1
                 # Time-window counters for Early Bird (<8am) and Late
                 # Night Talker (≥10pm). Read against the user's own
                 # timezone so the badges fire on the time they
@@ -1374,6 +1377,9 @@ async def save_conversation(
                 }
                 if conversation_type == 'news':
                     lifetime_inc['stats.lifetime.news_sessions'] = 1
+                    # Per-language news bucket — mirrors the existing-session
+                    # branch above for the Polyglot Reader badge.
+                    lifetime_inc[f'stats.lifetime.news_by_language.{(request.language or "unknown").lower()}'] = 1
                 # Same time-window logic as the existing-session branch.
                 from services.timezone_utils import get_user_timezone_obj
                 _local_hour = datetime.now(get_user_timezone_obj(

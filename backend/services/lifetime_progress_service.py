@@ -226,6 +226,9 @@ def calculate_lifetime_summary(user: Dict[str, Any], stats: Dict[str, Any], life
         # Newsie badges so they fire on actual news sessions rather than
         # any session of any kind (the old stand-in behaviour).
         'news_sessions': int(lifetime.get('news_sessions', 0) or 0),
+        # Per-language news counters ({language: count}) — lets the
+        # Polyglot Reader badge check real news activity per language.
+        'news_by_language': lifetime.get('news_by_language', {}) or {},
         # Time-window counters: a session counts toward Early Bird when
         # it was started before 8am local time, and toward Late Night
         # Talker when started at 10pm or later. Honest signal vs. the
