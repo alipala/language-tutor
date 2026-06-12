@@ -345,6 +345,46 @@ async def init_db():
         )
         # ── END PHASE E ───────────────────────────────────────────────────────
 
+        # ── CAPACITY_FIXES_V2: indexes for verified collection-scan queries ──
+        # Prod index audit (2026-06-12) found these collections served hot
+        # queries without a supporting index. Small collections today — these
+        # are future-proofing; create_index is idempotent and online.
+
+        # speaking_time_tracking had ONLY _id. Covers:
+        #   - find({user_id}).sort(date, -1)        (cache_helpers TaalCoach ctx)
+        #   - aggregate $match {user_id}            (profile_story proof_builder)
+        await speaking_time_tracking_collection.create_index(
+            [("user_id", 1), ("date", -1)], background=True
+        )
+        #   - find_one({user_id, session_id}) idempotency check on EVERY
+        #     session save (improved_subscription_service)
+        await speaking_time_tracking_collection.create_index(
+            [("user_id", 1), ("session_id", 1)], background=True
+        )
+
+        # flashcards: words-mastered count {user_id, is_active, mastery_level>=N}
+        # (profile_story proof_builder) — equality fields first, range last
+        await flashcards_collection.create_index(
+            [("user_id", 1), ("is_active", 1), ("mastery_level", 1)], background=True
+        )
+
+        # learning_plans: per-language first-plan lookup {user_id, language} sort created_at
+        await learning_plans_collection.create_index(
+            [("user_id", 1), ("language", 1), ("created_at", 1)], background=True
+        )
+
+        # challenge_sessions: first-game lookup {user_id, language} sort start_time
+        await challenge_sessions_collection.create_index(
+            [("user_id", 1), ("language", 1), ("start_time", 1)], background=True
+        )
+
+        # user_notifications: unread-count {user_id, is_read, deleted_at}
+        # (notification poll endpoint — fully covers the count query)
+        await user_notifications_collection.create_index(
+            [("user_id", 1), ("is_read", 1), ("deleted_at", 1)], background=True
+        )
+        # ── END CAPACITY_FIXES_V2 ─────────────────────────────────────────────
+
         print("Database indexes initialized successfully")
     except Exception as e:
         print(f"ERROR initializing database indexes: {str(e)}")
