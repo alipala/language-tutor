@@ -615,6 +615,9 @@ async def _run_sentence_analysis_background(
             await user_notifications_collection.insert_one(user_notification_doc)
             print(f"[TAALCOACH_NOTIFY] ✅ Created analysis notification for user {user_id}, session {session_id}")
 
+            from cache_helpers import invalidate_notif_poll_cache
+            await invalidate_notif_poll_cache(user_id)  # CAPACITY_FIXES_V1
+
             # Note: In-app notification is sufficient - user will see badge in TaalCoach
             # Push notifications can be added later if needed
 

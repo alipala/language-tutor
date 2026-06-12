@@ -4,8 +4,17 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 import asyncio
 
+from fastapi.encoders import jsonable_encoder
+
 from database import database, notifications_collection, user_notifications_collection, users_collection
 from auth import get_current_user
+# CAPACITY_FIXES_V1: 45s Redis cache for the two hot poll signatures
+from cache_helpers import (
+    notif_poll_cache_enabled,
+    get_notif_poll_cached,
+    set_notif_poll_cached,
+    invalidate_notif_poll_cache,
+)
 from models import (
     UserInDB, NotificationCreate, NotificationInDB, NotificationResponse,
     UserNotificationInDB, UserNotificationResponse, NotificationListResponse,
@@ -244,6 +253,9 @@ async def delete_notification_admin(
             )
         
         # Also delete all user notifications for this notification
+        # accepted per CAPACITY_FIXES_V1: admin bulk operations rely on TTL
+        # expiry; per-user invalidation at broadcast scale would consume
+        # seconds of the entire Redis ops budget. Worst-case staleness: 45s.
         await user_notifications_collection.delete_many({"notification_id": notification_id})
         
         return {"data": {"id": notification_id, "message": "Notification deleted successfully"}}
@@ -280,6 +292,19 @@ async def get_user_notifications(
 
     print(f"[NOTIFICATION_API] 🔍 Fetching notifications for user: {current_user.id}")
     print(f"[NOTIFICATION_API] Parameters: skip={skip}, limit={limit}, unread_only={unread_only}, include_session_analysis={include_session_analysis}")
+
+    # CAPACITY_FIXES_V1: serve the two hot poll signatures from a 45s Redis
+    # cache. Only the exact default pagination (skip=0, limit=20,
+    # unread_only=False) is cached; any other parameter combination bypasses
+    # the cache and hits Mongo directly, exactly as before.
+    use_cache = (
+        notif_poll_cache_enabled()
+        and skip == 0 and limit == 20 and not unread_only
+    )
+    if use_cache:
+        cached = await get_notif_poll_cached(current_user.id, include_session_analysis)
+        if cached is not None:
+            return NotificationListResponse(**cached)
 
     # Build query - exclude deleted notifications
     query = {"user_id": current_user.id, "deleted_at": None}
@@ -373,12 +398,20 @@ async def get_user_notifications(
 
     print(f"[NOTIFICATION_API] 📊 Results: {len(notifications)} notifications returned")
     print(f"[NOTIFICATION_API] 📊 Total: {total_count}, Unread: {unread_count} (include_session_analysis={include_session_analysis})")
-    
-    return NotificationListResponse(
+
+    response = NotificationListResponse(
         notifications=notifications,
         unread_count=unread_count,
         total_count=total_count
     )
+
+    if use_cache:
+        # CAPACITY_FIXES_V1: store via jsonable_encoder so datetimes are cached
+        # exactly as FastAPI would serialize them — cache hits return
+        # byte-identical responses to the uncached path.
+        await set_notif_poll_cached(current_user.id, include_session_analysis, jsonable_encoder(response))
+
+    return response
 
 @router.get("/unread-count")
 async def get_unread_count(
@@ -460,6 +493,8 @@ async def mark_notification_read(
         }
     )
 
+    await invalidate_notif_poll_cache(current_user.id)  # CAPACITY_FIXES_V1
+
     return {"success": True, "message": "Notification marked as read"}
 
 @router.post("/mark-all-read")
@@ -480,6 +515,8 @@ async def mark_all_notifications_read(
             }
         }
     )
+
+    await invalidate_notif_poll_cache(current_user.id)  # CAPACITY_FIXES_V1
 
     return {"message": f"Marked {result.modified_count} notifications as read"}
 
@@ -509,6 +546,8 @@ async def delete_notification(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Notification not found or already deleted"
         )
+
+    await invalidate_notif_poll_cache(current_user.id)  # CAPACITY_FIXES_V1
 
     return {
         "success": True,
@@ -560,6 +599,9 @@ async def process_notification(notification_id: str):
         print(f"DEBUG: Creating {len(user_notifications)} user notifications")
         
         if user_notifications:
+            # accepted per CAPACITY_FIXES_V1: admin bulk operations rely on TTL
+            # expiry; per-user invalidation at broadcast scale would consume
+            # seconds of the entire Redis ops budget. Worst-case staleness: 45s.
             result = await user_notifications_collection.insert_many(user_notifications)
             print(f"DEBUG: Inserted {len(result.inserted_ids)} user notifications")
 

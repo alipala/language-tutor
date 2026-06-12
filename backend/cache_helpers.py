@@ -14,6 +14,7 @@ Key Caching Strategies:
 from typing import Optional, Dict, Any, List
 from bson import ObjectId
 import logging
+import os
 from datetime import datetime
 
 from redis_client import get_cached, set_cached, delete_cached, delete_pattern
@@ -1104,6 +1105,80 @@ async def clear_cache(pattern: str = "*"):
     await delete_pattern(pattern)
     return {"status": "success", "pattern": pattern, "message": f"Cleared cache matching pattern: {pattern}"}
 
+# ============================================================================
+# NOTIFICATION POLL CACHING (CAPACITY_FIXES_V1)
+# ============================================================================
+
+NOTIF_POLL_TTL_SECONDS = 45
+
+
+def notif_poll_cache_enabled() -> bool:
+    """
+    CAPACITY_FIXES_V1 flag (NOTIF_POLL_CACHE_V1, default OFF).
+
+    Read at call time — same pattern as NEWS_MULTI_PROVIDER_V1
+    (news_generation/config.py) — so tests can flip the env var without
+    module reloads.
+    """
+    return (os.getenv("NOTIF_POLL_CACHE_V1", "") or "").strip().lower() in {"true", "1", "yes"}
+
+
+def _notif_poll_key(user_id: str, include_session_analysis: bool) -> str:
+    """
+    Cache key: notif_poll:{user_id}:{sig}
+
+    Exactly two hot signatures are cached (locked decision per
+    CAPACITY_FIXES_V1): the route defaults with include_session_analysis=True
+    ("sa1", TaalCoach badge) and the bell-icon variant with
+    include_session_analysis=False ("sa0"). Any other parameter combination
+    bypasses the cache entirely.
+    """
+    return f"notif_poll:{user_id}:{'sa1' if include_session_analysis else 'sa0'}"
+
+
+async def get_notif_poll_cached(user_id: str, include_session_analysis: bool) -> Optional[Dict[str, Any]]:
+    """
+    Get the cached notification poll payload for one of the two hot signatures.
+
+    TTL: 45 seconds. Returns None on miss or Redis error (caller falls through
+    to the direct Mongo path — Redis outage never breaks notifications).
+    """
+    return await get_cached(_notif_poll_key(user_id, include_session_analysis))
+
+
+async def set_notif_poll_cached(user_id: str, include_session_analysis: bool, payload: Dict[str, Any]):
+    """Cache the notification poll payload (45s TTL). Redis errors swallowed."""
+    await set_cached(_notif_poll_key(user_id, include_session_analysis), payload, ttl_seconds=NOTIF_POLL_TTL_SECONDS)
+
+
+async def invalidate_notif_poll_cache(user_id: str):
+    """
+    Drop BOTH signature keys for a user after a per-user notification write
+    (create / mark-read / mark-all-read / soft delete).
+
+    - No-op when NOTIF_POLL_CACHE_V1 is off, so the flag-OFF Redis command
+      stream stays byte-identical to legacy.
+    - One pipeline, two explicit DELETEs — never scan_iter.
+    - Redis errors are swallowed: the Mongo write already succeeded and the
+      cache self-heals via the 45s TTL.
+    """
+    if not notif_poll_cache_enabled():
+        return
+
+    from redis_client import redis_client
+    if not redis_client:
+        return
+
+    try:
+        pipe = redis_client.pipeline()
+        pipe.delete(_notif_poll_key(user_id, True))
+        pipe.delete(_notif_poll_key(user_id, False))
+        await pipe.execute()
+        logger.info(f"🗑️  [CACHE] Invalidated notif poll cache: {user_id}")
+    except Exception as e:
+        logger.error(f"❌ Redis DELETE error for notif poll cache {user_id}: {str(e)}")
+
+
 # Export all functions
 __all__ = [
     "get_user_cached",
@@ -1120,5 +1195,11 @@ __all__ = [
     "get_taalcoach_context_cached",
     "invalidate_taalcoach_context",
     "invalidate_coach_context_smart",  # PHASE 4.1: Smart cache invalidation
+    # CAPACITY_FIXES_V1: notification poll cache
+    "notif_poll_cache_enabled",
+    "get_notif_poll_cached",
+    "set_notif_poll_cached",
+    "invalidate_notif_poll_cache",
+    "NOTIF_POLL_TTL_SECONDS",
     "router"
 ]

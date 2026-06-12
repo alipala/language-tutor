@@ -1605,6 +1605,9 @@ async def send_recommendation(
     }
     await database.user_notifications.insert_one(user_notification_doc)
 
+    from cache_helpers import invalidate_notif_poll_cache
+    await invalidate_notif_poll_cache(user_id)  # CAPACITY_FIXES_V1
+
     # 5. Send push as best-effort hint (navigate to bell icon on tap)
     # Not a blocking failure — notification already saved to DB above.
     push_sent = False
