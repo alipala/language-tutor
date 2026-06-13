@@ -555,7 +555,9 @@ async def _get_or_generate_missions(
         silver_reason = doc.get("silver_reason", "") if doc else ""
         silver_source = doc.get("silver_source", "") if doc else ""
 
-    hydrated = await _hydrate_progress(user_id, local_date, raw, silver_reason=silver_reason)
+    hydrated = await _hydrate_progress(
+        user_id, local_date, raw, silver_reason=silver_reason, language=lang_key or None
+    )
     return [m.dict() for m in hydrated], silver_reason, silver_source
 
 

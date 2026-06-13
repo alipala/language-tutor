@@ -80,7 +80,18 @@ from database import (
     database,
 )
 from services.timezone_utils import get_current_local_date, get_day_start_end
+from services.profile_story.language_normalizer import language_match_filter
 from bson import ObjectId
+
+
+def _lang_filter(language: Optional[str]) -> dict:
+    """Return a Mongo filter fragment that scopes a query to one language,
+    matching BOTH the English name and the ISO code (activity is stored under
+    either spelling across collections — e.g. 'dutch' and 'nl'). Returns an
+    empty dict for an unknown/empty language so the caller's query is
+    unchanged (preserves pre-fix behavior when no language is resolvable)."""
+    variants = language_match_filter(language)
+    return {"language": {"$in": variants}} if variants else {}
 
 router = APIRouter()
 
@@ -538,11 +549,14 @@ async def _resolve_language(user_id: str, language: Optional[str]) -> Optional[s
     return plan.get("language") if plan else None
 
 
-async def _get_today_freestyle_sessions(user_id: str, local_date: str) -> int:
+async def _get_today_freestyle_sessions(
+    user_id: str, local_date: str, language: Optional[str] = None
+) -> int:
     """Count freestyle/practice conversation sessions completed today.
     The mobile saves free conversations as conversation_type='practice' (the default
     when no explicit sessionType is passed). Both 'freestyle' and 'practice' count.
     Uses the user's local date window to avoid UTC-midnight timezone mismatch.
+    Language-scoped so another language's sessions don't complete this one.
     """
     try:
         day_start, day_end = get_day_start_end(local_date, "UTC")
@@ -550,6 +564,7 @@ async def _get_today_freestyle_sessions(user_id: str, local_date: str) -> int:
             "user_id": user_id,
             "conversation_type": {"$in": ["freestyle", "practice"]},
             "created_at": {"$gte": day_start, "$lte": day_end},
+            **_lang_filter(language),
         })
     except Exception:
         return 0
@@ -837,6 +852,7 @@ async def _hydrate_progress(
     local_date: str,
     missions: List[Dict],
     silver_reason: Optional[str] = None,
+    language: Optional[str] = None,
 ) -> List[DailyMission]:
     """
     Attach live progress to each mission.
@@ -844,6 +860,13 @@ async def _hydrate_progress(
       - daily_stats learning_plan_sessions OR news_sessions → bronze
       - challenge_sessions count      → silver (completed 10-Q sessions today)
       - flashcard_sets reviewed count → gold
+
+    `language` scopes the news/challenge/flashcard/freestyle counts so that
+    activity in one language can't pre-complete another language's missions.
+    Without it, finishing Dutch made every other language report all_complete
+    and the mobile fired the "session complete" celebration on every switch.
+    When language is None (older callers), counts fall back to all-language
+    behavior — preserving prior semantics.
 
     Phase 0 additive enrichment: populates skill_label, skill_strand, reason,
     and xp on every returned mission. silver_reason is optional so existing
@@ -855,13 +878,20 @@ async def _hydrate_progress(
         "micro_quiz",
     )
 
+    # NOTE: learning_plan_sessions is read from daily_stats, which has no
+    # per-language breakdown. That's acceptable: the plan_session bronze is
+    # only emitted when the user has an ACTIVE PLAN in THIS language
+    # (_build_missions scopes plan_filter by language), so it can't appear for
+    # a language the user has no plan in — i.e. it never leaks across the
+    # languages this bug was about. The news_session bronze (used for
+    # plan-less languages) IS language-scoped below.
     (today_learning_plan_sessions, today_news_sessions, completed_challenge_sessions, reviewed_sets, today_freestyle) = \
         await asyncio.gather(
             _get_today_learning_plan_sessions(user_id, local_date),
-            _get_today_news_sessions(user_id, local_date),
-            _get_completed_challenge_sessions_today(user_id, local_date, challenge_type),
-            _get_reviewed_flashcard_count(user_id, local_date),
-            _get_today_freestyle_sessions(user_id, local_date),
+            _get_today_news_sessions(user_id, local_date, language),
+            _get_completed_challenge_sessions_today(user_id, local_date, challenge_type, language),
+            _get_reviewed_flashcard_count(user_id, local_date, language),
+            _get_today_freestyle_sessions(user_id, local_date, language),
         )
 
     # Build flashcard subtitle live (works from cache too)
@@ -902,7 +932,7 @@ async def _hydrate_progress(
         elif m["id"] == "challenge_gold":
             gold_challenge_type = m.get("challenge_type", "")
             gold_count = await _get_completed_challenge_sessions_today(
-                user_id, local_date, gold_challenge_type
+                user_id, local_date, gold_challenge_type, language
             ) if gold_challenge_type else 0
             current = min(target, gold_count)
 
@@ -960,17 +990,21 @@ async def _get_today_learning_plan_sessions(user_id: str, local_date: str) -> in
     return int(doc.get("learning_plan_sessions", 0)) if doc else 0
 
 
-async def _get_today_news_sessions(user_id: str, local_date: str) -> int:
+async def _get_today_news_sessions(
+    user_id: str, local_date: str, language: Optional[str] = None
+) -> int:
     """
     Count news conversation sessions completed today.
     News sessions are stored in conversation_sessions with conversation_type='news'.
     daily_stats.total_sessions includes them, so we need this to isolate news vs plan.
+    Language-scoped so another language's news sessions don't complete this one.
     """
     day_start, day_end = get_day_start_end(local_date, "UTC")
     return await conversation_sessions_collection.count_documents({
         "user_id": user_id,
         "conversation_type": "news",
         "created_at": {"$gte": day_start, "$lte": day_end},
+        **_lang_filter(language),
     })
 
 
@@ -978,6 +1012,7 @@ async def _get_completed_challenge_sessions_today(
     user_id: str,
     local_date: str,
     challenge_type: str,
+    language: Optional[str] = None,
 ) -> int:
     """
     Count fully completed challenge sessions (10 questions) today
@@ -988,6 +1023,9 @@ async def _get_completed_challenge_sessions_today(
       - total_challenges >= 10  (full 10-question round)
       - local_date matches today
       - challenge_type matches
+      - language matches (so another language's activity can't pre-complete
+        this language's mission — drove a false all_complete + celebration
+        on every language switch)
     """
     return await challenge_sessions_collection.count_documents({
         "user_id": user_id,
@@ -995,18 +1033,23 @@ async def _get_completed_challenge_sessions_today(
         "challenge_type": challenge_type,
         "is_active": False,
         "total_challenges": {"$gte": 10},
+        **_lang_filter(language),
     })
 
 
-async def _get_reviewed_flashcard_count(user_id: str, local_date: str) -> int:
+async def _get_reviewed_flashcard_count(
+    user_id: str, local_date: str, language: Optional[str] = None
+) -> int:
     """Count flashcard sets reviewed TODAY — not all-time — so the mission
-    resets properly each day and can't be pre-completed by past activity."""
+    resets properly each day and can't be pre-completed by past activity.
+    Language-scoped so another language's reviews don't complete this one."""
     day_start, day_end = get_day_start_end(local_date, "UTC")
     return await flashcard_sets_collection.count_documents(
         {
             "user_id": user_id,
             "is_reviewed": True,
             "reviewed_at": {"$gte": day_start, "$lte": day_end},
+            **_lang_filter(language),
         }
     )
 
@@ -1046,13 +1089,15 @@ async def get_today_missions(
     if cached:
         raw       = cached["missions"]
         generated = cached["generated_at"].isoformat()
+        language  = cached.get("language") or None
     else:
         language  = getattr(current_user, "preferred_language", None)
         raw       = await _generate_missions_for_today(user_id, local_date, tz, language)
         generated = datetime.utcnow().isoformat()
 
-    # Always hydrate progress live
-    missions   = await _hydrate_progress(user_id, local_date, raw)
+    # Always hydrate progress live — language-scoped so another language's
+    # activity can't complete this language's missions (see _hydrate_progress).
+    missions   = await _hydrate_progress(user_id, local_date, raw, language=language)
     all_done   = all(m.progress.done for m in missions)
 
     return DailyMissionsResponse(
