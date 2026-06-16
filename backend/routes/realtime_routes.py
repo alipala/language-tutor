@@ -1348,6 +1348,14 @@ async def process_usage_log_background(
         from openai_organization_costs import fetch_organization_costs, datetime_to_unix_timestamp
 
         # OpenAI Realtime API Pricing Configuration
+        #
+        # NOTE: This dict prices only the gpt-realtime-mini *voice* model (audio/text
+        # tokens). The input transcription model is billed SEPARATELY and is not
+        # reflected here. gpt-realtime-whisper is billed per minute of *user-spoken*
+        # audio (~$0.017/min), not per token — roughly +$0.83/user/month at 150 min
+        # sessions with ~50% user-speech ratio. If precise per-session transcribe
+        # cost is ever needed, capture spoken-audio seconds client-side and multiply
+        # by REALTIME_TRANSCRIBE_RATE here.
         PRICING = {
             "gpt-realtime": {
                 "audio_input": 32.0 / 1_000_000,
@@ -1991,7 +1999,21 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         # GA API shape: session config nested under "session" key.
         # Endpoint: /v1/realtime/client_secrets (GA, replaces beta /v1/realtime/sessions)
         # GA requires: type="realtime", audio.input/output nested structure, output_modalities
-        transcription_model = "gpt-4o-transcribe" if os.getenv("USE_GPT4O_TRANSCRIBE", "true").lower() == "true" else "whisper-1"
+        #
+        # TRANSCRIPTION MODEL: gpt-realtime-whisper is the only model in the
+        # gpt-realtime-* family designed for *streaming* transcription, so it stays
+        # consistent with the gpt-realtime-mini voice model. gpt-4o-transcribe is a
+        # file/request-response model that mis-decodes short, accented A1/A2 speech
+        # in the Realtime path (wrong-language output, garbled transcripts) even
+        # though the voice model understood the user correctly — this breaks the
+        # displayed transcript, grammar corrections, and Speaking DNA. It is also
+        # retired (2026-06-01) along with whisper-1 / gpt-4o-mini-transcribe.
+        #
+        # Override via REALTIME_TRANSCRIBE_MODEL to roll back to gpt-4o-transcribe
+        # if needed. delay=high trades ~200-400ms latency for higher accuracy,
+        # which is the right call for non-native beginners.
+        transcription_model = os.getenv("REALTIME_TRANSCRIBE_MODEL", "gpt-realtime-whisper")
+        transcription_delay = os.getenv("REALTIME_TRANSCRIBE_DELAY", "high")
         session_config = {
             "type": "realtime",
             "model": model,
@@ -2001,7 +2023,10 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                 "input": {
                     "transcription": {
                         "model": transcription_model,
-                        "language": get_language_iso_code(request.language) if request.language else "en"
+                        "language": get_language_iso_code(request.language) if request.language else "en",
+                        # delay tunes the latency/accuracy tradeoff (minimal|low|medium|high|xhigh).
+                        # Only gpt-realtime-whisper supports it; omitted for other models.
+                        **({"delay": transcription_delay} if transcription_model == "gpt-realtime-whisper" else {})
                     },
                     "turn_detection": {
                         "type": "semantic_vad",

@@ -17,39 +17,41 @@ async def get_transcription_status():
     Monitor transcription model configuration and usage
     """
     try:
-        use_gpt4o = os.getenv("USE_GPT4O_TRANSCRIBE", "true").lower() == "true"
+        # Realtime (streaming) transcription — gpt-realtime-whisper, consistent with
+        # the gpt-realtime-mini voice model. See routes/realtime_routes.py.
+        realtime_model = os.getenv("REALTIME_TRANSCRIBE_MODEL", "gpt-realtime-whisper")
+        realtime_delay = os.getenv("REALTIME_TRANSCRIBE_DELAY", "high")
 
-        # Get current model configuration
-        realtime_model = "gpt-4o-transcribe" if use_gpt4o else "whisper-1"
-        sentence_assessment_model = "gpt-4o-transcribe (with whisper-1 fallback)" if use_gpt4o else "whisper-1 only"
+        # File-based (non-realtime) transcription — gpt-4o-transcribe-diarize,
+        # retirement-safe until 2027-04-16. See sentence_assessment.py.
+        file_primary = os.getenv("FILE_TRANSCRIBE_MODEL", "gpt-4o-transcribe-diarize")
+        file_fallback = os.getenv("FILE_TRANSCRIBE_FALLBACK_MODEL", "gpt-4o-transcribe-diarize")
 
         return {
             "success": True,
             "timestamp": datetime.now().isoformat(),
             "configuration": {
-                "USE_GPT4O_TRANSCRIBE": use_gpt4o,
-                "environment_variable": os.getenv("USE_GPT4O_TRANSCRIBE", "not_set"),
-                "realtime_api_model": realtime_model,
-                "sentence_assessment_model": sentence_assessment_model
+                "REALTIME_TRANSCRIBE_MODEL": realtime_model,
+                "REALTIME_TRANSCRIBE_DELAY": realtime_delay,
+                "FILE_TRANSCRIBE_MODEL": file_primary,
+                "FILE_TRANSCRIBE_FALLBACK_MODEL": file_fallback,
             },
             "models": {
-                "primary": "gpt-4o-transcribe" if use_gpt4o else "whisper-1",
-                "fallback": "whisper-1" if use_gpt4o else "none",
                 "realtime_api": realtime_model,
-                "sentence_assessment": "gpt-4o-transcribe" if use_gpt4o else "whisper-1"
+                "sentence_assessment": file_primary,
+                "sentence_assessment_fallback": file_fallback,
             },
             "features": {
-                "enhanced_multilingual_accuracy": use_gpt4o,
-                "advanced_prompting": use_gpt4o,
-                "streaming_support": use_gpt4o,
-                "automatic_fallback": use_gpt4o
+                "realtime_streaming_native": realtime_model == "gpt-realtime-whisper",
+                "retirement_safe": file_primary == "gpt-4o-transcribe-diarize",
+                "automatic_fallback": file_fallback != file_primary,
             },
             "supported_languages": [
                 "English", "Dutch", "Spanish", "German", "French", "Portuguese"
             ],
             "instructions": {
-                "enable_gpt4o": "Set USE_GPT4O_TRANSCRIBE=true in environment variables",
-                "disable_gpt4o": "Set USE_GPT4O_TRANSCRIBE=false in environment variables",
+                "rollback_realtime": "Set REALTIME_TRANSCRIBE_MODEL=gpt-4o-transcribe to revert",
+                "rollback_file": "Set FILE_TRANSCRIBE_MODEL=gpt-4o-transcribe to revert",
                 "restart_required": "Changes require application restart to take effect"
             }
         }

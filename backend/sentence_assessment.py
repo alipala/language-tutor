@@ -41,14 +41,28 @@ class SentenceAssessmentResponse(BaseModel):
     corrected_text: Optional[str] = None
     level_appropriate_alternatives: Optional[List[str]] = None
 
-# Helper function for speech recognition using OpenAI's audio transcription with gpt-4o-transcribe and fallback
+# Helper function for speech recognition using OpenAI's audio transcription.
+#
+# This is the FILE-BASED (non-realtime) path: the full audio clip is sent to
+# /audio/transcriptions. Unlike the Realtime path, file transcription does NOT
+# suffer the wrong-language / garbled-output bug, so the only reason to migrate
+# here is the 2026-06-01 retirement of gpt-4o-transcribe / whisper-1 /
+# gpt-4o-mini-transcribe. gpt-4o-transcribe-diarize is GA until 2027-04-16 and is
+# the retirement-safe replacement.
+#
+# NOTE: gpt-4o-transcribe-diarize does NOT support the `prompt` parameter and
+# REQUIRES `chunking_strategy`. We use it in plain "text" mode (no speaker labels)
+# and pass `language` to lock the target language. Override the model via
+# FILE_TRANSCRIBE_MODEL to roll back to gpt-4o-transcribe if needed.
 async def recognize_speech(audio_base64: str, language: str) -> str:
     # Import the audio format validator
     from audio_format_validator import AudioFormatValidator
-    
-    # 🎛️ Configuration: Allow switching between models via environment variable
-    USE_GPT4O_TRANSCRIBE = os.getenv("USE_GPT4O_TRANSCRIBE", "true").lower() == "true"
-    
+
+    # 🎛️ Configuration: primary + fallback transcription model via env vars.
+    # Default to the retirement-safe gpt-4o-transcribe-diarize.
+    PRIMARY_MODEL = os.getenv("FILE_TRANSCRIBE_MODEL", "gpt-4o-transcribe-diarize")
+    FALLBACK_MODEL = os.getenv("FILE_TRANSCRIBE_FALLBACK_MODEL", "gpt-4o-transcribe-diarize")
+
     # Map language codes
     language_map = {
         "english": "en",
@@ -86,46 +100,51 @@ async def recognize_speech(audio_base64: str, language: str) -> str:
         
         # Create OpenAI client using helper function
         client = create_openai_client()
-        
+
+        # Build model-specific transcription kwargs. Each model family accepts a
+        # different parameter set:
+        #   - gpt-4o-transcribe-diarize: requires chunking_strategy, NO prompt
+        #   - gpt-4o-transcribe:         supports prompt, NO language
+        #   - whisper-1:                 supports language, NO prompt steering
+        def _transcribe_kwargs(model_name: str) -> dict:
+            kwargs = {"model": model_name, "response_format": "text"}
+            if model_name == "gpt-4o-transcribe-diarize":
+                kwargs["language"] = speech_language
+                kwargs["chunking_strategy"] = "auto"
+            elif model_name == "gpt-4o-transcribe":
+                kwargs["prompt"] = (
+                    f"This is a {language} language learning conversation. "
+                    f"Focus on accurate transcription of student speech for language assessment."
+                )
+            else:  # whisper-1 and other language-aware models
+                kwargs["language"] = speech_language
+            return kwargs
+
         # Open the audio file
         with open(temp_audio_path, "rb") as audio_file:
-            if USE_GPT4O_TRANSCRIBE:
-                try:
-                    # 🚀 FIXED: gpt-4o-transcribe with proper parameters (no language param!)
-                    transcript = await client.audio.transcriptions.create(
-                        model="gpt-4o-transcribe",
-                        file=audio_file,
-                        response_format="text",
-                        prompt=f"This is a {language} language learning conversation. Focus on accurate transcription of student speech for language assessment."
-                    )
-                    print(f"✅ [TRANSCRIPTION] Used gpt-4o-transcribe for {language} transcription")
-                    return transcript
-                    
-                except Exception as gpt4o_error:
-                    print(f"⚠️ [TRANSCRIPTION] gpt-4o-transcribe failed: {gpt4o_error}")
-                    print(f"🔄 [TRANSCRIPTION] Falling back to whisper-1 for {language}")
-                    
-                    # Reset file pointer for fallback
-                    audio_file.seek(0)
-                    
-                    # Fallback to whisper-1
-                    transcript = await client.audio.transcriptions.create(
-                        model="whisper-1",
-                        file=audio_file,
-                        language=speech_language,
-                        response_format="text"
-                    )
-                    print(f"✅ [TRANSCRIPTION] Used whisper-1 fallback for {language} transcription")
-                    return transcript
-            else:
-                # Use whisper-1 directly when GPT-4o transcribe is disabled
+            try:
                 transcript = await client.audio.transcriptions.create(
-                    model="whisper-1",
                     file=audio_file,
-                    language=speech_language,
-                    response_format="text"
+                    **_transcribe_kwargs(PRIMARY_MODEL),
                 )
-                print(f"✅ [TRANSCRIPTION] Used whisper-1 (GPT-4o transcribe disabled) for {language} transcription")
+                print(f"✅ [TRANSCRIPTION] Used {PRIMARY_MODEL} for {language} transcription")
+                return transcript
+
+            except Exception as primary_error:
+                print(f"⚠️ [TRANSCRIPTION] {PRIMARY_MODEL} failed: {primary_error}")
+
+                # Skip the fallback call if it would just repeat the primary model.
+                if FALLBACK_MODEL == PRIMARY_MODEL:
+                    raise
+
+                print(f"🔄 [TRANSCRIPTION] Falling back to {FALLBACK_MODEL} for {language}")
+                # Reset file pointer for fallback
+                audio_file.seek(0)
+                transcript = await client.audio.transcriptions.create(
+                    file=audio_file,
+                    **_transcribe_kwargs(FALLBACK_MODEL),
+                )
+                print(f"✅ [TRANSCRIPTION] Used {FALLBACK_MODEL} fallback for {language} transcription")
                 return transcript
     
     except HTTPException:

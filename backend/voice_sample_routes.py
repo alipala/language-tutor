@@ -105,8 +105,11 @@ Use your natural {request.voice_id} voice with your {voice_info['personality']} 
             "voice": request.voice_id,
             "instructions": instructions,
             "modalities": ["audio", "text"],
+            # Voice-sample sessions are TTS-only (no user speech is transcribed),
+            # but keep the model consistent with the main realtime path and off the
+            # retired gpt-4o-transcribe.
             "input_audio_transcription": {
-                "model": "gpt-4o-transcribe"
+                "model": os.getenv("REALTIME_TRANSCRIBE_MODEL", "gpt-realtime-whisper")
             },
             "turn_detection": {
                 "type": "semantic_vad",

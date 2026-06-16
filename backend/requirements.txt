@@ -7,7 +7,11 @@ pydantic~=2.11.9
 python-multipart==0.0.9
 
 # OpenAI API - Updated for GPT-5-mini support
-openai>=1.90.0
+# Pinned floor to 2.30.0: required for gpt-4o-transcribe-diarize + chunking_strategy
+# (file transcription) and gpt-realtime-whisper (realtime transcription). Earlier
+# versions may not ship these model schemas, and >= alone lets Railway pull an
+# unverified build at deploy time.
+openai>=2.30.0,<3
 
 # MongoDB and authentication packages
 # Pin specific compatible versions to avoid import errors
