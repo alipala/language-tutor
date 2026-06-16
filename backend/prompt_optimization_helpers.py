@@ -2832,6 +2832,8 @@ def build_beginner_instructions(
     _v2_enabled = os.getenv("BEGINNER_PROMPT_V2", "false").lower() == "true"
     _is_learning_plan = bool(learning_plan_data and learning_plan_data.get("plan_content"))
     if _v2_enabled and not _is_learning_plan:
+        _v2_path = "news" if news_context else "custom" if user_prompt else "topic" if topic else "general"
+        print(f"[BEGINNER_V2] ✅ V2 prompt active — level={level.upper()} path={_v2_path} lang={language.lower()}")
         return _build_beginner_instructions_v2(
             language=language,
             level=level,
