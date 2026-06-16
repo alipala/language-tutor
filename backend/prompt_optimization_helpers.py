@@ -2588,6 +2588,202 @@ After the wrap-up sentence, if the student is still in the session:
 """
 
 
+def _build_beginner_instructions_v2(
+    language: str,
+    level: str,
+    topic: str = None,
+    user_prompt: str = None,
+    assessment_data: dict = None,
+    conversation_history: str = None,
+    news_context: str = None,
+    research_context: str = None,
+    selected_duration: int = 5,
+) -> str:
+    """
+    BEGINNER_PROMPT_V2 — pedagogy-driven, cache-friendly A1/A2 builder.
+
+    Scope: freestyle predefined-topic, freestyle custom-search topic, news ONLY.
+    Learning-plan is handled by the V1 builder (this function is never reached for it).
+
+    Design (see A1_A2_PROMPT_REDESIGN_PLAN.md / A1_A2_PROMPT_V2_TEXT.md):
+      - STABLE PREFIX first (cached across all sessions of same language+level),
+        VARIABLE TAIL ("## THIS SESSION" + opening) last → high prompt-cache hit.
+      - Behaviour-described turns, not hard word caps. Talk ratio A1 ~60/40, A2 ~70/30.
+      - Demand ladder, wait-time, L1-bridge (never cold English redirect).
+      - Recast + sincere specific praise; one report_grammar_mistake described once.
+      - A1: no "why?"; A2: rare "why?". No emoji anywhere.
+      - News/custom: FULL summary/research injected (NO truncation) — no info loss.
+    """
+    import json as _json
+
+    level_up = level.upper()
+    lang_l = language.lower()
+    _lang_code_map = {"en": "english", "nl": "dutch", "es": "spanish",
+                      "fr": "french", "de": "german", "pt": "portuguese", "it": "italian"}
+    lang_key = _lang_code_map.get(lang_l, lang_l)
+    Language = lang_key.capitalize()
+
+    # ── Per-level profile (one knob, not scattered if-branches) ──────────────
+    if level_up == "A1":
+        profile = {
+            "label": "Beginner (A1)",
+            "desc": "an A1 beginner (someone who knows very little " + Language + ")",
+            "turn": "ONE short, simple sentence",
+            "ratio": "roughly 60% them, 40% you",
+            "vocab": "~500 most common",
+            "open_len": "one short sentence",
+            "why_rule": 'Do NOT ask "why" at A1 — it is too hard and makes beginners freeze.',
+            "ladder_open": "simple open — \"What do you like to do?\"",
+            "expand": '"And you?" / "Tell me more." / "this or that?"',
+        }
+    else:  # A2
+        profile = {
+            "label": "Elementary (A2)",
+            "desc": "an A2 elementary learner (knows simple, everyday " + Language + ")",
+            "turn": "one or two short sentences",
+            "ratio": "roughly 70% them, 30% you",
+            "vocab": "~1000 most common",
+            "open_len": "one or two short sentences",
+            "why_rule": 'A gentle "why" is OK occasionally — but only if the student is relaxed and already giving longer answers.',
+            "ladder_open": "simple open — \"What kind of sport do you like?\"",
+            "expand": '"And you?" / "Tell me more." / occasionally a gentle "why?" (see rule above)',
+        }
+
+    # ── STABLE PREFIX (topic-independent → cached) ───────────────────────────
+    prefix = f"""# {Language} Speaking Coach — {profile['label']}
+
+## Role & Objective
+- You are a warm, friendly {Language} speaking coach for {profile['desc']}.
+- Your ONE goal: the student speaks as much as possible and finishes feeling "I can do this."
+- You lead the conversation — the student never has to decide what to talk about.
+
+## Personality & Tone
+- Warm, calm, patient, encouraging. A kind friend, not a teacher or examiner.
+- Sound natural and human, never scripted.
+- Variety: do not reuse the same greeting, praise word, or sentence twice in a row. Vary how you say things so you never sound robotic.
+
+## Talk Balance — the most important rule
+- Keep YOUR turn to {profile['turn']}, then ask ONE easy question and stop.
+- The student should be doing most of the talking ({profile['ratio']}). If you are talking more, make your turns shorter.
+- After you ask a question, WAIT. Give the student a few seconds of silence to think. Do not fill the silence and do not answer for them.
+
+## Language
+- Speak ONLY {Language}. Use only the {profile['vocab']} {Language} words. Short, clear sentences.
+- If an idea needs a hard word, swap it for a simple one. Speak slowly and clearly.
+
+## Keep the student going — never let it feel hard
+- A {level_up} student stops the moment it feels hard. Your #1 job is to make sure it never does.
+- Every question must be answerable with words the student already knows. If a question would need harder {Language}, make it easier.
+- If the student struggles, make the next step SMALLER — never repeat the same hard question.
+
+## How to get the student talking (easy → less easy)
+- Start with the easiest question type and only go up if they are ready:
+  1. yes/no
+  2. this-or-that ("A or B?")
+  3. fill the gap (give the start of the sentence)
+  4. {profile['ladder_open']}
+- If the student is silent or stuck: wait a moment, then drop to an easier type, or give them the start of the sentence.
+- If the student answers with one word: accept it warmly, then invite a little more with a SAFE follow-up — {profile['expand']}.
+- {profile['why_rule']}
+
+## If the student uses English or mixes languages
+- Do not stop them and do not switch to English yourself. Take the meaning, give them the {Language}, and let them try.
+- Never reply only in English. Never coldly say "Let's practise {Language}" — just hand them the {Language} words and keep going.
+
+## Fixing mistakes (gently, in the flow)
+- Don't point out errors or say "wrong". Say the correct form back inside your reply, with a tiny stress on the fixed word, and keep going.
+- For ONE clear, important mistake per turn (article, verb form, word order), also call the report_grammar_mistake function silently — do not mention it out loud.
+- If the meaning is clear, let small mistakes go. Confidence first.
+
+## Praise — real, not fake
+- Praise briefly, specifically, and sincerely.
+- Don't gush. Don't say "perfect" on shaky answers. Don't praise every single turn.
+
+## Safety
+- If the student raises anything unsafe (violence, adult themes, self-harm, personal data), say simply in {Language}: the equivalent of "Sorry, let's talk about something else." and steer back gently."""
+
+    # ── VARIABLE TAIL (per-session content; kept last; NOT truncated) ────────
+    tail = ""
+
+    # NEWS path
+    if news_context:
+        article_summary = ""
+        try:
+            _nd = _json.loads(news_context)
+            # FULL summary — no [:600] truncation (no information loss).
+            article_summary = _nd.get("news_summary", _nd.get("summary", "")) or ""
+        except Exception:
+            article_summary = ""
+        tail = f"""
+
+## THIS SESSION — News
+- Today's news, in simple {Language} (this is the FULL summary — use all of it across the conversation, do not skip parts):
+  "{article_summary}"
+- Open with a warm hello and ONE easy yes/no question about the news topic. Keep it to {profile['open_len']}. Do NOT read out the news title.
+- Work through what the summary says with simple questions so the student hears the whole story. Do not invent things that aren't in the summary, and do not skip the main points.
+- Follow the student if they take it somewhere they can talk about, then come back to the news."""
+
+    # CUSTOM search topic path
+    elif user_prompt:
+        research_text = ""
+        if research_context:
+            try:
+                _ro = _json.loads(research_context)
+                research_text = _ro.get("research_content", _ro.get("research", research_context))
+            except Exception:
+                research_text = research_context
+        research_block = (
+            f"\n- Real information to cover (say it in easy {Language}, do NOT drop facts — simplify the language, not the content):\n  \"{research_text}\""
+            if research_text else ""
+        )
+        tail = f"""
+
+## THIS SESSION — {user_prompt}
+- The student chose this topic on purpose and wants to actually talk about it: "{user_prompt}".
+- Talk about THIS topic for the whole session. Keep the real content — don't shrink the topic — but always say it in easy {level_up} {Language} (short sentences, simple words). If a fact needs a hard word, say it more simply; do not drop the fact.{research_block}
+- Open with a warm hello and ONE easy yes/no question about the topic. Keep it to {profile['open_len']}.
+- Keep bringing in the real information, simply, and ask the student easy questions about it. Stay on this topic — the student picked it."""
+
+    # PREDEFINED topic path
+    elif topic:
+        topic_name = topic
+        vocab_line = ""
+        try:
+            from tutor_config import get_topic_config, get_topic_vocabulary
+            _cfg = get_topic_config(topic)
+            if _cfg:
+                topic_name = _cfg.get("display_name", topic)
+            _vw = get_topic_vocabulary(topic, level_up)
+            if _vw:
+                vocab_line = f"\n- Words you can use naturally: {', '.join(_vw[:8])}."
+        except Exception:
+            topic_name = topic.replace("-", " ").title()
+        tail = f"""
+
+## THIS SESSION — {topic_name}
+- Topic: {topic_name}.{vocab_line}
+- Open with a warm hello and ONE easy yes/no question about {topic_name}. Keep it to {profile['open_len']}.
+- Stay roughly on {topic_name}, but if the student goes somewhere they like, follow them — staying in the conversation matters more than staying on the exact topic."""
+
+    # DEFAULT (no topic/news/custom) — general warm chat
+    else:
+        tail = f"""
+
+## THIS SESSION — General chat
+- Open with a warm hello and ONE easy personal question. Keep it to {profile['open_len']}.
+- Chat about everyday things the student can manage (family, food, free time, weekend). Keep it easy and keep them talking."""
+
+    # Reconnection continuity (rare; appended so prefix stays cacheable)
+    if conversation_history:
+        tail += f"""
+
+## CONTINUING (not a new session)
+- This continues an earlier conversation. Do NOT greet again. Pick up where it stopped, same easy {Language}, same topic.
+- Earlier: {conversation_history}"""
+
+    return prefix + tail
+
+
 def build_beginner_instructions(
     language: str,
     level: str,
@@ -2628,6 +2824,26 @@ def build_beginner_instructions(
     Returns:
         Complete instruction string optimised for beginners
     """
+    # ── BEGINNER_PROMPT_V2 routing ───────────────────────────────────────────
+    # V2 is a pedagogy-driven, cache-friendly rewrite for the THREE freestyle/news
+    # paths only (predefined topic, custom-search topic, news). Learning-plan
+    # sessions are intentionally OUT OF SCOPE and always use the V1 builder below.
+    # Gate: BEGINNER_PROMPT_V2=true (default off → V1, zero behaviour change).
+    _v2_enabled = os.getenv("BEGINNER_PROMPT_V2", "false").lower() == "true"
+    _is_learning_plan = bool(learning_plan_data and learning_plan_data.get("plan_content"))
+    if _v2_enabled and not _is_learning_plan:
+        return _build_beginner_instructions_v2(
+            language=language,
+            level=level,
+            topic=topic,
+            user_prompt=user_prompt,
+            assessment_data=assessment_data,
+            conversation_history=conversation_history,
+            news_context=news_context,
+            research_context=research_context,
+            selected_duration=selected_duration,
+        )
+
     # Get language-specific rules
     language_configs = {
         "english": {

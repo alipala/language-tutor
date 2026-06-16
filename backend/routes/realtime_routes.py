@@ -1371,7 +1371,10 @@ async def process_usage_log_background(
                 "text_input": 0.6 / 1_000_000,
                 "text_output": 2.4 / 1_000_000,
                 "cached_audio": 0.30 / 1_000_000,
-                "cached_text": 0.30 / 1_000_000
+                # Cached text input is 90% off uncached ($0.60 → $0.06). Was 0.30 here,
+                # which over-reported cached-text cost ~5x (reporting only — billing
+                # is OpenAI-side and unaffected).
+                "cached_text": 0.06 / 1_000_000
             }
         }
 
