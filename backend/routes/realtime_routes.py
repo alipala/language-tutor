@@ -227,8 +227,14 @@ async def build_universal_instructions(request: TutorSessionRequest) -> str:
     # Roleplay mode bypasses all specialized paths — handled at end of this function
     _session_mode = getattr(request, 'session_mode', 'conversation') or 'conversation'
 
-    # ROUTE A1/A2 BEGINNERS TO SPECIALIZED PROMPTS (skipped in roleplay mode)
-    if level in ['A1', 'A2'] and _session_mode != 'roleplay':
+    # ROUTE BEGINNER/INTERMEDIATE/ADVANCED TO build_beginner_instructions.
+    # When BEGINNER_PROMPT_V2 is on, that builder serves ALL CEFR levels (A1–C2)
+    # via per-level profiles, so freestyle/news/custom stays consistent across
+    # levels. When the flag is off, only A1/A2 route here (legacy behaviour);
+    # B1–C2 fall through to build_universal_instructions below.
+    _v2_on = os.getenv("BEGINNER_PROMPT_V2", "false").lower() == "true"
+    _levels_for_beginner_builder = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] if _v2_on else ['A1', 'A2']
+    if level in _levels_for_beginner_builder and _session_mode != 'roleplay':
         if DEBUG_REALTIME:
             print(f"[BEGINNER_MODE] Routing {level} to specialized beginner instructions")
         from prompt_optimization_helpers import build_beginner_instructions

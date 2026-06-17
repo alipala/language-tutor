@@ -2628,26 +2628,197 @@ def _build_beginner_instructions_v2(
         profile = {
             "label": "Beginner (A1)",
             "desc": "an A1 beginner (someone who knows very little " + Language + ")",
-            "turn": "ONE short, simple sentence",
+            "turn": "ONE short, simple sentence (max ~8 words)",
             "ratio": "roughly 60% them, 40% you",
             "vocab": "~500 most common",
             "open_len": "one short sentence",
-            "why_rule": 'Do NOT ask "why" at A1 — it is too hard and makes beginners freeze.',
-            "ladder_open": "simple open — \"What do you like to do?\"",
+            "why_rule": (
+                'FORBIDDEN at A1 (too hard, makes beginners freeze): "why?", '
+                '"what do you think?", "how do you feel?", times/numbers like '
+                '"what time...?", and anything needing an opinion or a reason. '
+                'Ask only simple facts the student can answer with words they know.'
+            ),
+            "ladder_open": 'simple open — "What do you like?"',
             "expand": '"And you?" / "Tell me more." / "this or that?"',
+            # How much of the news/topic content to actually cover at this level.
+            "news_depth": (
+                "Share 1-2 of the SIMPLEST facts from the summary, one at a time, in very "
+                "short sentences. After each fact, ask ONE easy yes/no or this-or-that "
+                "question — about the fact OR about the student's own life — whichever is "
+                "easier for them. Do NOT ask for dates, numbers, names, scores, or opinions."
+            ),
+            # Sample dialogue — the model copies this rhythm. Keep it A1-true:
+            # one short question per turn, builds on the answer, no drilling, no opinions.
+            "sample": (
+                'Tutor: "Hou je van voetbal?"\n'
+                'Student: "Ja."\n'
+                'Tutor: "Leuk! Kijk je vaak?"\n'
+                'Student: "Soms."\n'
+                'Tutor: "Mooi! Heb je een team?"\n'
+                'Student: "Portugal."\n'
+                'Tutor: "Goed! Speelt Portugal vandaag?"'
+            ),
+            # News-specific rhythm: share ONE simple fact, then ONE easy question.
+            # The model copies this — so it actually mentions the news, A1-simply.
+            "news_sample": (
+                'Tutor: "Today, fun news! A leader gave Trump a football shirt."\n'
+                'Tutor: "Do you like football?"\n'
+                'Student: "Yes."\n'
+                'Tutor: "Me too! The shirt was a birthday gift. Do you like gifts?"\n'
+                'Student: "Yes, I do."\n'
+                'Tutor: "Nice! Germany and the USA play football too. Do you watch football?"'
+            ),
         }
-    else:  # A2
+    elif level_up == "A2":
         profile = {
             "label": "Elementary (A2)",
             "desc": "an A2 elementary learner (knows simple, everyday " + Language + ")",
-            "turn": "one or two short sentences",
+            "turn": "one or two short sentences (max ~12 words total)",
             "ratio": "roughly 70% them, 30% you",
             "vocab": "~1000 most common",
             "open_len": "one or two short sentences",
-            "why_rule": 'A gentle "why" is OK occasionally — but only if the student is relaxed and already giving longer answers.',
-            "ladder_open": "simple open — \"What kind of sport do you like?\"",
+            "why_rule": (
+                'Keep it mostly simple facts. A gentle "why?" or "what do you think?" '
+                'is OK only occasionally, and only when the student is relaxed and '
+                'already giving longer answers. Never open a topic with an opinion question.'
+            ),
+            "ladder_open": 'simple open — "What kind of sport do you like?"',
             "expand": '"And you?" / "Tell me more." / occasionally a gentle "why?" (see rule above)',
+            "news_depth": (
+                "Cover the main facts of the summary, a few at a time, in simple short "
+                "sentences. After sharing a fact, ask ONE simple question about it "
+                "(what / where / who / did you...) or connect it to the student's life. "
+                "Keep questions answerable; one gentle opinion question ('do you find it "
+                "good or bad?') is fine once the student is comfortable."
+            ),
+            "sample": (
+                'Tutor: "Volg jij het voetbal?"\n'
+                'Student: "Ja, soms."\n'
+                'Tutor: "Leuk! Welk team vind je goed?"\n'
+                'Student: "Portugal, denk ik."\n'
+                'Tutor: "Mooi! Speelt Portugal vandaag?"\n'
+                'Student: "Ja, vanavond."\n'
+                'Tutor: "Spannend! Ga je kijken?"'
+            ),
+            "news_sample": (
+                'Tutor: "Here is the news. A German leader gave Trump a football shirt for his birthday."\n'
+                'Tutor: "What do you give for a birthday?"\n'
+                'Student: "Maybe a book or a cake."\n'
+                'Tutor: "Nice! Germany and the USA also played football and won. Do you like football?"\n'
+                'Student: "Yes, sometimes."\n'
+                'Tutor: "Cool! Which team do you like?"'
+            ),
         }
+    elif level_up in ("B1", "B2"):
+        # Intermediate: student carries most of the conversation; opinions/"why" welcome.
+        _b2 = level_up == "B2"
+        profile = {
+            "label": f"Intermediate ({level_up})",
+            "desc": f"a {level_up} intermediate learner who can hold an everyday conversation in {Language}",
+            "turn": "two to three natural sentences" if _b2 else "one or two natural sentences",
+            "ratio": "roughly 80% them, 20% you",
+            "vocab": ("a broad everyday range, including some idioms" if _b2 else "everyday vocabulary plus common topic words"),
+            "open_len": "one or two sentences",
+            "why_rule": (
+                'Open questions and "why?" are good here — push the student to explain, '
+                'give reasons, and compare. Just keep YOUR turns short so they do the talking.'
+            ),
+            "ladder_open": 'open question — "What do you think about ...?"',
+            "expand": '"Why do you say that?" / "Can you give an example?" / "How is that different from ...?"',
+            "sample": (
+                'Tutor: "What did you do last weekend?"\n'
+                'Student: "I went hiking with friends."\n'
+                'Tutor: "Nice! What do you enjoy about hiking?"\n'
+                'Student: "It\'s relaxing and I like nature."\n'
+                'Tutor: "I get that. Do you prefer hiking alone or with people? Why?"'
+            ),
+            "news_depth": (
+                "Discuss the real content of the news. Give a couple of facts, then ask the "
+                "student what they think, why, and how it compares to their own country or "
+                "experience. Encourage reasons and short explanations, not one-word answers."
+            ),
+            "news_sample": (
+                'Tutor: "In the news: a German leader gave Trump a football shirt as a birthday gift at the G7."\n'
+                'Tutor: "What do you think a gift like that says between two countries?"\n'
+                'Student: "Maybe they want to look friendly."\n'
+                'Tutor: "Good point. Do leaders in your country use gifts like this? Why or why not?"'
+            ),
+        }
+    else:  # C1 / C2 — advanced
+        _c2 = level_up == "C2"
+        profile = {
+            "label": f"Advanced ({level_up})",
+            "desc": f"a {level_up} advanced, near-fluent speaker of {Language}",
+            "turn": "a natural, concise turn — usually one or two sentences",
+            "ratio": "roughly 85% them, 15% you — you mostly listen and prompt",
+            "vocab": "full, natural range including idiomatic and abstract language",
+            "open_len": "one or two sentences",
+            "why_rule": (
+                'Use probing, open-ended questions: ask for nuance, counter-arguments, '
+                'implications, and critical analysis. Challenge the student gently to go deeper. '
+                'Avoid simple yes/no questions — they are below this level.'
+            ),
+            "ladder_open": 'probing open question — "What\'s the strongest argument against your view?"',
+            "expand": '"What are the implications of that?" / "How would a critic respond?" / "Can you steelman the other side?"',
+            "sample": (
+                'Tutor: "What\'s a topic you\'ve changed your mind about recently?"\n'
+                'Student: "Remote work — I used to think it hurt teams."\n'
+                'Tutor: "Interesting. What evidence shifted your view?"\n'
+                'Student: "Mostly seeing my own team stay productive."\n'
+                'Tutor: "Fair. What would make you change back?"'
+            ),
+            "news_depth": (
+                "Engage critically with the news. Briefly establish the facts, then explore "
+                "motives, implications, bias, and alternative interpretations. Ask for nuanced, "
+                "well-reasoned positions and counter-arguments. Treat the student as a peer in discussion."
+            ),
+            "news_sample": (
+                'Tutor: "In the news: a German chancellor gave Trump a \'47\' football jersey for his birthday at the G7."\n'
+                'Tutor: "What do you read into a gesture like that — genuine diplomacy or theatre?"\n'
+                'Student: "Probably some of both — symbolism with an audience in mind."\n'
+                'Tutor: "Agreed. Who do you think the real audience is, and does that change how you judge it?"'
+            ),
+        }
+
+    # ── Level-aware blocks (beginner A1/A2 vs intermediate+/advanced) ────────
+    _is_beginner = level_up in ("A1", "A2")
+
+    if _is_beginner:
+        _language_block = (
+            f"- Speak ONLY {Language}. Use only the {profile['vocab']} {Language} words. Short, clear sentences.\n"
+            f"- If an idea needs a hard word, swap it for a simple one. Speak slowly and clearly."
+        )
+        _keep_going_block = f"""## Keep the student going — never let it feel hard
+- A {level_up} student stops the moment it feels hard. Your #1 job is to make sure it never does.
+- Every question must be answerable with words the student already knows. If a question would need harder {Language}, make it easier.
+- If the student struggles, make the next step SMALLER — never repeat the same hard question.
+
+## How to get the student talking (easy → less easy)
+- Start with the easiest question type and only go up if they are ready:
+  1. yes/no
+  2. this-or-that ("A or B?")
+  3. fill the gap (give the start of the sentence)
+  4. {profile['ladder_open']}
+- If the student is silent or stuck: wait a moment, then drop to an easier type, or give them the start of the sentence.
+- If the student answers with one word: accept it warmly, then invite a little more with a SAFE follow-up — {profile['expand']}.
+- {profile['why_rule']}"""
+        _l1_block = f"""## If the student uses English or mixes languages
+- Do not stop them and do not switch to English yourself. Take the meaning, give them the {Language}, and let them try.
+- Never reply only in English. Never coldly say "Let's practise {Language}" — just hand them the {Language} words and keep going."""
+        _sample_note = "(Notice: every tutor turn is ONE short question, builds on what the student said, no drilling, no opinion questions.)"
+    else:
+        _language_block = (
+            f"- Speak ONLY {Language}. Use {profile['vocab']}. Speak naturally at a normal pace.\n"
+            f"- Match the student's level — challenge them a little, but stay clear."
+        )
+        _keep_going_block = f"""## Keep the student talking — let them carry it
+- This is a {level_up} learner: they can handle real conversation. Your job is to keep THEM talking, not to simplify everything.
+- Ask open questions, follow up on what they say, and let them do most of the work.
+- If the student gives a short answer, dig deeper — {profile['expand']}.
+- {profile['why_rule']}"""
+        _l1_block = f"""## If the student slips into another language
+- Gently bring them back to {Language} and keep the conversation going — no drilling, no lecturing."""
+        _sample_note = "(Notice: short tutor turns, ONE question each, building on the student's answer and pushing them to say more.)"
 
     # ── STABLE PREFIX (topic-independent → cached) ───────────────────────────
     prefix = f"""# {Language} Speaking Coach — {profile['label']}
@@ -2663,32 +2834,25 @@ def _build_beginner_instructions_v2(
 - Variety: do not reuse the same greeting, praise word, or sentence twice in a row. Vary how you say things so you never sound robotic.
 
 ## Talk Balance — the most important rule
-- Keep YOUR turn to {profile['turn']}, then ask ONE easy question and stop.
+- Keep YOUR turn to {profile['turn']}, then ask EXACTLY ONE easy question and stop.
+- ONE question per turn — NEVER two. (Not "Where do you watch? TV or computer?" — pick one.)
 - The student should be doing most of the talking ({profile['ratio']}). If you are talking more, make your turns shorter.
 - After you ask a question, WAIT. Give the student a few seconds of silence to think. Do not fill the silence and do not answer for them.
 
+## NEVER drill — this is a chat, not an exercise
+- NEVER ask the student to repeat, say, or try a phrase. No "Say this", no "Try that", no "Probeer dat eens", no "Zeg eens".
+- When the student makes a mistake, just say the correct form back naturally and ask your next question. Do not stop to practise a word.
+
+## How a good turn sounds — copy this exact rhythm
+{profile['sample']}
+{_sample_note}
+
 ## Language
-- Speak ONLY {Language}. Use only the {profile['vocab']} {Language} words. Short, clear sentences.
-- If an idea needs a hard word, swap it for a simple one. Speak slowly and clearly.
+{_language_block}
 
-## Keep the student going — never let it feel hard
-- A {level_up} student stops the moment it feels hard. Your #1 job is to make sure it never does.
-- Every question must be answerable with words the student already knows. If a question would need harder {Language}, make it easier.
-- If the student struggles, make the next step SMALLER — never repeat the same hard question.
+{_keep_going_block}
 
-## How to get the student talking (easy → less easy)
-- Start with the easiest question type and only go up if they are ready:
-  1. yes/no
-  2. this-or-that ("A or B?")
-  3. fill the gap (give the start of the sentence)
-  4. {profile['ladder_open']}
-- If the student is silent or stuck: wait a moment, then drop to an easier type, or give them the start of the sentence.
-- If the student answers with one word: accept it warmly, then invite a little more with a SAFE follow-up — {profile['expand']}.
-- {profile['why_rule']}
-
-## If the student uses English or mixes languages
-- Do not stop them and do not switch to English yourself. Take the meaning, give them the {Language}, and let them try.
-- Never reply only in English. Never coldly say "Let's practise {Language}" — just hand them the {Language} words and keep going.
+{_l1_block}
 
 ## Fixing mistakes (gently, in the flow)
 - Don't point out errors or say "wrong". Say the correct form back inside your reply, with a tiny stress on the fixed word, and keep going.
@@ -2717,11 +2881,16 @@ def _build_beginner_instructions_v2(
         tail = f"""
 
 ## THIS SESSION — News
-- Today's news, in simple {Language} (this is the FULL summary — use all of it across the conversation, do not skip parts):
+- Today's news, in simple {Language}:
   "{article_summary}"
-- Open with a warm hello and ONE easy yes/no question about the news topic. Keep it to {profile['open_len']}. Do NOT read out the news title.
-- Work through what the summary says with simple questions so the student hears the whole story. Do not invent things that aren't in the summary, and do not skip the main points.
-- Follow the student if they take it somewhere they can talk about, then come back to the news."""
+- This session IS about this news — talk about it, at a {level_up} level the student can handle.
+- {profile['news_depth']}
+- Open with a warm hello and ONE easy question about the GENERAL topic of the news. Keep it to {profile['open_len']}. Do NOT read out the news title.
+- Keep the student talking and relaxed. If a fact is too hard to ask about, connect it to the student's own life instead — but stay on the news topic.
+
+## How to talk about the news — copy this rhythm
+{profile['news_sample']}
+(Notice: the tutor shares ONE simple news fact, then asks ONE easy question. It actually tells the student the news, simply.)"""
 
     # CUSTOM search topic path
     elif user_prompt:
@@ -2733,16 +2902,21 @@ def _build_beginner_instructions_v2(
             except Exception:
                 research_text = research_context
         research_block = (
-            f"\n- Real information to cover (say it in easy {Language}, do NOT drop facts — simplify the language, not the content):\n  \"{research_text}\""
+            f"\n  \"{research_text}\""
             if research_text else ""
         )
         tail = f"""
 
 ## THIS SESSION — {user_prompt}
-- The student chose this topic on purpose and wants to actually talk about it: "{user_prompt}".
-- Talk about THIS topic for the whole session. Keep the real content — don't shrink the topic — but always say it in easy {level_up} {Language} (short sentences, simple words). If a fact needs a hard word, say it more simply; do not drop the fact.{research_block}
-- Open with a warm hello and ONE easy yes/no question about the topic. Keep it to {profile['open_len']}.
-- Keep bringing in the real information, simply, and ask the student easy questions about it. Stay on this topic — the student picked it."""
+- The student chose this topic: "{user_prompt}". Stay on it the whole session — they picked it.
+- Background info to draw on, at a {level_up} level in {Language}:{research_block}
+- {profile['news_depth']}
+- Open with a warm hello and ONE question about the topic. Keep it to {profile['open_len']}.
+- Keep the student talking. If a detail is too hard to ask about at this level, connect it to the student's own experience instead — but stay on this topic.
+
+## How to share the topic — copy this rhythm
+{profile['news_sample']}
+(Notice: the tutor shares ONE simple fact, then asks ONE easy question. It actually tells the student something, simply.)"""
 
     # PREDEFINED topic path
     elif topic:
