@@ -2826,11 +2826,23 @@ def build_beginner_instructions(
     """
     # ── BEGINNER_PROMPT_V2 routing ───────────────────────────────────────────
     # V2 is a pedagogy-driven, cache-friendly rewrite for the THREE freestyle/news
-    # paths only (predefined topic, custom-search topic, news). Learning-plan
+    # paths only (predefined topic, custom-search topic, news). Genuine learning-plan
     # sessions are intentionally OUT OF SCOPE and always use the V1 builder below.
+    #
+    # IMPORTANT: a session counts as a "learning-plan session" ONLY when it has no
+    # news/custom/topic context. The token endpoint fetches the user's active
+    # learning plan for CONTEXT on every session, so learning_plan_data can be
+    # present even on a news/custom/freestyle session. In that case the explicit
+    # session context (news/user_prompt/topic) wins and we still route to V2 —
+    # otherwise a user with an active plan would get plan content (e.g. "familie")
+    # bleeding over their chosen custom/news topic.
     # Gate: BEGINNER_PROMPT_V2=true (default off → V1, zero behaviour change).
     _v2_enabled = os.getenv("BEGINNER_PROMPT_V2", "false").lower() == "true"
-    _is_learning_plan = bool(learning_plan_data and learning_plan_data.get("plan_content"))
+    _has_session_context = bool(news_context or user_prompt or topic)
+    _is_learning_plan = bool(
+        learning_plan_data and learning_plan_data.get("plan_content")
+        and not _has_session_context
+    )
     if _v2_enabled and not _is_learning_plan:
         _v2_path = "news" if news_context else "custom" if user_prompt else "topic" if topic else "general"
         print(f"[BEGINNER_V2] ✅ V2 prompt active — level={level.upper()} path={_v2_path} lang={language.lower()}")
