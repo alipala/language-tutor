@@ -89,6 +89,24 @@ HARD RULES:
     to respond — e.g. "{open_ex}"). NEVER put the player's own line here.
   * `me` = the PLAYER's response that satisfies the goal (e.g. "{me_ex}").
   * They must never be the same sentence or two halves of one exchange swapped.
+- CRITICAL — the four fields of EACH scene must form ONE coherent exchange. Build every
+  scene by reading it as a real back-and-forth and checking ALL of these:
+  * `goal` describes what THE PLAYER must do, written from the PLAYER's side of the
+    conversation — never something the character already did. If `open.line` already
+    asks the question or makes the request, the goal MUST be to ANSWER/respond to it,
+    not to ask the same thing again. (Bad: open.line = "Can you help me?" with goal =
+    "ask for help" — the character already asked; the player should AGREE to help.)
+  * `me` must be the natural, correct reply to `open.line` AND fully satisfy `goal`.
+    Read open.line → me out loud: it must sound like a real two-person exchange.
+  * `help.suggestion` MUST be the SAME utterance as `me` (or a trivially close variant
+    that also satisfies the goal). It is the line a stuck learner copies to win the
+    scene. NEVER make `help.suggestion` an unrelated phrase (e.g. goal = answer a
+    question, but help = "Say 'Thank you'" is WRONG).
+  * `reply.line` must be the character's natural reaction to `me` (acknowledging what
+    the player just said), then nudge the story forward.
+- SELF-CHECK each scene before finalising: does open.line → me → reply.line read as one
+  natural mini-dialogue, does `me` achieve `goal`, and is `help.suggestion` == `me`?
+  If any answer is no, REWRITE the scene.
 - Difficulty MUST match {level}: A1 = single short survival phrases; B1 = connected
   talk, the character pushes back and asks for reasons; C1+ = nuanced persuasion.
 - Each scene's `me` is the SHORTEST natural utterance that achieves the goal — it is
@@ -158,14 +176,14 @@ Return JSON with this EXACT shape:
   "scenes": [
     {{
       "label": "Scene 1 of {scene_count} · short title",
-      "goal": "the in-story objective, in the TARGET language (what the learner must do)",
+      "goal": "what THE PLAYER must do, in the TARGET language — a direct response to open.line, from the player's side (never restate what the character already did)",
       "goal_en": "the same goal in English (admin reference)",
-      "open": {{ "line": "the character's opening line in target language",
+      "open": {{ "line": "the character's opening line in target language — asks/requests something and hands the turn to the player",
                  "translations": {{ {", ".join(f'"{l}": "..."' for l in SUPPORT_LANGS)} }} }},
-      "me": "the shortest natural learner utterance that solves the scene (target language)",
-      "reply": {{ "line": "character's reaction once solved (target language)",
+      "me": "the shortest natural learner utterance that REPLIES to open.line and satisfies goal (target language)",
+      "reply": {{ "line": "character's natural reaction to `me` once solved, then nudge the story forward (target language)",
                   "translations": {{ {", ".join(f'"{l}": "..."' for l in SUPPORT_LANGS)} }} }},
-      "help": {{ "suggestion": "the phrase to coach a stuck learner (target language)",
+      "help": {{ "suggestion": "MUST equal `me` (the exact winning line a stuck learner copies) — never an unrelated phrase (target language)",
                  "translations": {{ {", ".join(f'"{l}": "..."' for l in SUPPORT_LANGS)} }},
                  "why": "1-line tip in English on the structure used" }},
       "vocab": ["3-5 target words the learner practised this scene"],
