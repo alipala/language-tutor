@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Request
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
@@ -687,14 +687,31 @@ async def play_turn(body: TurnRequest):
 # Image serving — covers are stored as base64 in image_cache
 # ---------------------------------------------------------------------------
 @router.get("/api/img/{image_id}")
-async def serve_image(image_id: str):
-    """Serve a cached image (e.g. a generated story cover) by id."""
-    doc = await database.image_cache.find_one({"_id": image_id})
+async def serve_image(image_id: str, request: Request):
+    """
+    Serve a cached image (story cover) by id. Covers are immutable, so we attach a
+    strong ETag and honour If-None-Match: when the client already has the image, we
+    return an empty 304 instead of re-sending ~1.3 MB. Combined with the client-side
+    disk cache (expo-image), the bytes are fetched at most once per device.
+    """
+    # The id already uniquely identifies the immutable bytes → it IS the ETag.
+    etag = f'"{image_id}"'
+    if request.headers.get("if-none-match") == etag:
+        # client already has it — no DB read, no body
+        return Response(status_code=304, headers={
+            "ETag": etag,
+            "Cache-Control": "public, max-age=31536000, immutable",
+        })
+
+    doc = await database.image_cache.find_one({"_id": image_id}, {"data_base64": 1, "content_type": 1})
     if not doc or not doc.get("data_base64"):
         raise HTTPException(404, "Image not found")
     img_bytes = base64.b64decode(doc["data_base64"])
     return Response(
         content=img_bytes,
         media_type=doc.get("content_type", "image/png"),
-        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+        headers={
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "ETag": etag,
+        },
     )
