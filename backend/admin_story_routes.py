@@ -23,7 +23,7 @@ from pydantic import BaseModel
 from database import database
 from admin_routes import get_current_admin, AdminUser
 from story_generation.story_generator import generate_world, GENRES, SCENES_BY_LEVEL
-from story_generation.cover_generator import generate_cover
+from story_generation.cover_generator import generate_cover, generate_character_portrait
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +131,22 @@ async def _generate_full_series(
     ep1_doc = await worlds_collection.find_one({"_id": episode_ids[0]}, {"cover_url": 1})
     series_cover = (ep1_doc or {}).get("cover_url")
 
+    # Character portrait — ONE per series (the lead is the same across episodes via
+    # style_bible). Used as the in-game chat avatar so it matches the actual character
+    # (e.g. Luis the male hat-seller) instead of a fixed generic avatar. Best-effort:
+    # a portrait failure must never abort the series.
+    character = (first_world or {}).get("character", {}) or {}
+    setting = (first_world or {}).get("setting", "") or ""
+    character_portrait_url = None
+    await _emit("portrait", "Character portrait", EPISODES_PER_SERIES,
+                f"{label} — painting {character.get('name', 'the character')}")
+    try:
+        character_portrait_url = await generate_character_portrait(
+            series_id, character, genre=genre, setting=setting, style_bible=style_bible,
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("[STORY] character portrait failed for %s: %s", series_id, e)
+
     series_doc = {
         "_id": series_id,
         "title": first_world.get("title"),
@@ -140,6 +156,8 @@ async def _generate_full_series(
         "level": level.upper(),
         "genre": genre,
         "cover_url": series_cover,
+        "character": character,                          # name/role/persona
+        "character_portrait_url": character_portrait_url,  # in-game chat avatar
         "style_bible": style_bible,
         "episode_ids": episode_ids,
         "episode_count": len(episode_ids),
@@ -373,6 +391,47 @@ async def admin_generate_cover(
         {"$set": {"cover_url": url, "updated_at": datetime.now(timezone.utc)}},
     )
     return {"cover_url": url}
+
+
+@router.post("/api/admin/story-series/{series_id}/generate-portrait")
+async def admin_generate_portrait(
+    series_id: str,
+    current_admin: AdminUser = Depends(get_current_admin),
+):
+    """
+    Generate (or regenerate) the series-level character portrait (the in-game chat
+    avatar) via gpt-image-1. Also backfills older series created before portraits
+    existed. Uses the series' character + style_bible for a consistent look.
+    """
+    series = await series_collection.find_one({"_id": series_id})
+    if not series:
+        raise HTTPException(404, "Series not found")
+    # character/setting live on episode 1; style_bible is on the series
+    character = series.get("character") or {}
+    setting = ""
+    if not character or not setting:
+        ep_ids = series.get("episode_ids", [])
+        if ep_ids:
+            ep1 = await worlds_collection.find_one({"_id": ep_ids[0]}, {"character": 1, "setting": 1})
+            character = character or (ep1 or {}).get("character", {}) or {}
+            setting = (ep1 or {}).get("setting", "") or ""
+    try:
+        url = await generate_character_portrait(
+            series_id, character,
+            genre=series.get("genre", ""),
+            setting=setting,
+            style_bible=series.get("style_bible", ""),
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.exception("[STORY] portrait failed")
+        raise HTTPException(502, f"Portrait generation failed: {e}")
+
+    await series_collection.update_one(
+        {"_id": series_id},
+        {"$set": {"character_portrait_url": url, "character": character,
+                  "updated_at": datetime.now(timezone.utc)}},
+    )
+    return {"character_portrait_url": url}
 
 
 @router.get("/api/admin/story-worlds")
@@ -642,7 +701,16 @@ async def public_get_world(world_id: str):
     doc = await worlds_collection.find_one({"_id": world_id, "status": "published"})
     if not doc:
         raise HTTPException(404, "World not found")
-    return _serialize(doc)
+    out = _serialize(doc)
+    # Attach the series-level character portrait (the in-game chat avatar). It's
+    # stored on the series (one lead character shared across episodes), so the
+    # episode doc doesn't carry it — look it up. Falls back to null → the client
+    # uses its generic avatar.
+    sid = doc.get("series_id")
+    if sid:
+        series = await series_collection.find_one({"_id": sid}, {"character_portrait_url": 1})
+        out["character_portrait_url"] = (series or {}).get("character_portrait_url")
+    return out
 
 
 class TurnRequest(BaseModel):

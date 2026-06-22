@@ -12,6 +12,7 @@ gpt-4o-mini, response_format=json_object. No multiplayer — single-player only.
 
 import json
 import logging
+import random
 from typing import Any, Dict, List
 
 from openai_client import get_async_openai
@@ -19,6 +20,29 @@ from openai_client import get_async_openai
 logger = logging.getLogger(__name__)
 
 MODEL = "gpt-4o-mini"  # cost-efficient, same as news generation
+
+# Creative-seed pools. gpt-4o-mini collapses to the same "most likely" answer for
+# a given (genre, level) — e.g. EVERY supernatural prompt produced a silver-haired
+# forest guide named "Luna". Injecting a random seed per series steers the model
+# off that default toward distinct characters and settings, so two stories with the
+# same genre don't clone each other. Seeds are flavour nudges, not hard constraints.
+_SEED_TONES = [
+    "cozy and heartwarming", "tense and suspenseful", "playful and comedic",
+    "bittersweet and reflective", "epic and grand", "quirky and offbeat",
+    "warm and nostalgic", "mysterious and dreamlike",
+]
+_SEED_SETTINGS = [
+    "a bustling city", "a quiet coastal town", "a remote mountain village",
+    "a busy market", "an old train station", "a rooftop garden", "a night bazaar",
+    "a sleepy farm", "a harbour at dawn", "a desert outpost", "a forgotten library",
+    "a lively street festival", "a snowed-in cabin", "a riverside café",
+]
+_SEED_LEADS = [
+    "an unexpected elderly mentor", "a witty street vendor", "a nervous newcomer",
+    "a retired traveller", "a curious child", "a no-nonsense shopkeeper",
+    "a wandering musician", "a local guide with a secret", "a rival turned ally",
+    "a cheerful baker", "a grumpy neighbour with a soft heart", "a daring explorer",
+]
 
 # Scenes scale by CEFR — DEPTH grows with level, count stays in a tight band
 # (per the progression spec: A1=5, C2 up to ~12).
@@ -157,11 +181,18 @@ def _looks_non_target(title: str, language: str) -> bool:
     return False
 
 
-def _user_prompt(language: str, level: str, genre: str, scene_count: int, theme: str = "") -> str:
+def _user_prompt(language: str, level: str, genre: str, scene_count: int, theme: str = "", seed: str = "") -> str:
     lang_name = LANG_NAMES.get(language.lower(), language.title())
     theme_line = f"\nTheme hint: {theme}" if theme else ""
+    seed_line = f"\n{seed}" if seed else ""
     return f"""Create one {genre} story world that teaches {lang_name}, for level {level},
-with exactly {scene_count} scenes. ALL in-game spoken lines must be in {lang_name}.{theme_line}
+with exactly {scene_count} scenes. ALL in-game spoken lines must be in {lang_name}.{theme_line}{seed_line}
+
+ORIGINALITY (important): invent a FRESH character and setting. Do NOT default to
+overused fantasy/AI names like Luna, Max, Lily, Aria, Nova, Leo, Sam, or Mia, and
+avoid the generic "silver-haired magical forest guide" trope. Give the lead a
+specific, ordinary, culturally-fitting name and a concrete, non-cliché setting.
+Two stories of the same genre should feel clearly different from each other.
 
 Return JSON with this EXACT shape:
 {{
@@ -245,7 +276,19 @@ async def generate_world(
     logger.info("[STORY-GEN] Generating %s/%s %s ep %d/%d (%d scenes)",
                 language, level, genre, episode_number, total_episodes, scene_count)
 
-    user_prompt = _user_prompt(language, level, genre, scene_count, theme)
+    # Creative seed — only on EPISODE 1 (it defines the cast/setting; episodes 2..N
+    # inherit them via continuity_hint + style_bible, so we must NOT re-seed them or
+    # the character would drift mid-series). Random per series → breaks the "every
+    # supernatural story is Luna in a forest" collapse.
+    seed = ""
+    if episode_number <= 1:
+        seed = (
+            f"Creative direction for THIS story (use as inspiration, not literal text): "
+            f"tone — {random.choice(_SEED_TONES)}; setting — {random.choice(_SEED_SETTINGS)}; "
+            f"the lead character is {random.choice(_SEED_LEADS)}."
+        )
+
+    user_prompt = _user_prompt(language, level, genre, scene_count, theme, seed=seed)
     user_prompt += _continuity_block(episode_number, total_episodes, continuity_hint, style_bible)
 
     resp = await client.chat.completions.create(

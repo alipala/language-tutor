@@ -22,6 +22,7 @@ from pydantic import BaseModel
 
 from database import database
 from auth import get_current_user
+from services.stats_service import credit_games_xp
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["story-progress"])
@@ -29,6 +30,18 @@ router = APIRouter(tags=["story-progress"])
 series_collection = database.story_series
 worlds_collection = database.story_worlds
 progress_collection = database.story_progress
+
+# ── Story Worlds XP economy (server-authoritative) ──────────────────────────
+# One scene ≈ one game question, but the scene is a richer, typed exchange in the
+# flagship game, so it carries a small premium: a 5-scene episode (= 50 XP) plus
+# the episode-complete bonus (= 70 XP total) mirrors one perfect 10-question quick
+# game session. A full 5-episode series ≈ 5×70 + 50 finale = 400 XP (~1.5 levels
+# for a mid-level player). Flat values — NO CEFR / hint / combo scaling — so the
+# games-level currency stays consistent with quick games (A1 and C2 earn the same).
+# These feed `xp_by_source.challenges`, the exact bucket the Games-tab level reads.
+STORY_XP_PER_SCENE = 10        # first clear of a scene
+STORY_XP_EPISODE_BONUS = 20    # first completion of an episode (→ episode = 70)
+STORY_XP_FINALE_BONUS = 50     # first completion of the final episode (series done)
 
 
 def _clean(v):
@@ -358,9 +371,37 @@ async def scene_complete(body: SceneCompleteRequest, current_user=Depends(get_cu
         completed_eps.add(body.episode_number)
     series_just_completed = len(completed_eps) >= len(series.get("episode_ids", []))
 
-    # XP/stars only count on FIRST clear of a scene (anti-farm)
-    xp_delta = body.xp if not already else 0
-    star_delta = 1 if (not already and body.star in ("gold", "silver")) else 0
+    # ── Server-authoritative XP (anti-farm + anti-cheat) ────────────────────
+    # XP is computed on the SERVER from flat constants — the client's body.xp is
+    # ignored for crediting. Only the FIRST clear of a scene awards XP/stars, and
+    # episode/finale bonuses fire only on first completion (the `status` flip).
+    is_first_scene_clear = not already
+    scene_xp = STORY_XP_PER_SCENE if is_first_scene_clear else 0
+    bonus_xp = 0
+    if episode_just_completed:
+        bonus_xp += STORY_XP_FINALE_BONUS if series_just_completed else STORY_XP_EPISODE_BONUS
+    games_xp_delta = scene_xp + bonus_xp
+    # local story_progress bucket mirrors the same server value (replaces body.xp)
+    star_delta = 1 if (is_first_scene_clear and body.star in ("gold", "silver")) else 0
+
+    # Atomic first-clear gate for the SHARED games economy. The read-then-write
+    # `already` check above is not race-safe on its own; routing XP into the
+    # lifetime/Games level means a double-tap would permanently inflate the
+    # level. So we credit the games economy only when this conditional update
+    # actually flips the per-scene `credited` flag (modified_count == 1) — at
+    # most once per scene, even under concurrent retries.
+    credit_now = False
+    if games_xp_delta > 0:
+        flag_res = await progress_collection.update_one(
+            {"_id": prog["_id"], f"episodes.{en}.scenes.{si}.credited": {"$ne": True}},
+            {"$set": {f"episodes.{en}.scenes.{si}.credited": True}},
+        )
+        credit_now = flag_res.modified_count == 1
+    # Always carry the credited flag forward in the block we re-$set below, so a
+    # losing concurrent request can never clear a flag a winner just set (which
+    # would re-open the farm window). True if we won the flip OR it was already set.
+    if games_xp_delta > 0:
+        ep_block["scenes"][si]["credited"] = True
 
     await progress_collection.update_one(
         {"_id": prog["_id"]},
@@ -370,13 +411,27 @@ async def scene_complete(body: SceneCompleteRequest, current_user=Depends(get_cu
             "completed_episodes": sorted(completed_eps),
             "status": "completed" if series_just_completed else "in_progress",
             "last_played_at": datetime.now(timezone.utc),
-        }, "$inc": {"total_xp": xp_delta, "total_stars": star_delta}},
+        }, "$inc": {"total_xp": games_xp_delta if credit_now else 0,
+                    "total_stars": star_delta}},
     )
+
+    # Feed the SAME buckets the Games-tab level reads (xp_by_source.challenges +
+    # daily challenge_xp). Gated on the atomic first-clear flag so it fires once.
+    if credit_now and games_xp_delta > 0:
+        tz = getattr(current_user, "timezone", None) or "UTC"
+        await credit_games_xp(
+            user_id,
+            series.get("language", ""),
+            games_xp_delta,
+            user_timezone=tz,
+            source_type="story_worlds",
+        )
 
     return {
         "saved": True,
         "episode_completed": episode_just_completed,
         "series_completed": series_just_completed,
+        "xp_awarded": games_xp_delta if credit_now else 0,  # server-authoritative
         "next": new_current,           # where to go next (episode/scene) | null
         "next_hook": ep.get("next_hook") if episode_just_completed and not series_just_completed else None,
     }
