@@ -625,9 +625,11 @@ async def _resolve_gold_mission(
 
     # P3 — speaks a lot but avoids games
     if total_conversations > 5 and total_challenges < 3:
+        # smart_flashcard intentionally excluded — it's a passive, 0-XP review game
+        # (also dropped from the recommender), not a coherent "gold challenge".
         GOLD_FALLBACK_ORDER = [
             "error_spotting", "native_check", "story_builder",
-            "brain_tickler", "micro_quiz", "smart_flashcard",
+            "brain_tickler", "micro_quiz",
         ]
         gold_type = next(
             (t for t in GOLD_FALLBACK_ORDER if t != silver_winner),
@@ -643,18 +645,11 @@ async def _resolve_gold_mission(
             "target":         gold_cfg["target"],
         }
 
-    # P4 — has unreviewed flashcard sets
-    if unreviewed > 0:
-        flash_target = min(3, unreviewed)
-        title_key = "i18n:gold_flash_title_plural" if flash_target > 1 else "i18n:gold_flash_title"
-        return {
-            "id":             "flashcards",
-            "tier":           "gold",
-            "title":          f"{title_key}:{flash_target}",
-            "subtitle":       None,  # filled live in _hydrate_progress
-            "challenge_type": None,
-            "target":         flash_target,
-        }
+    # (Former P4 "review unreviewed flashcard sets" mission was REMOVED: the
+    # flashcard-set review surface no longer exists in the mobile You-tab — only
+    # the "Smart Flashcards" game under Games remains — so that mission routed to a
+    # dead destination and could never be completed. Users who would have hit P4
+    # now fall through to the P5 freestyle gold mission below.)
 
     # P5 — balanced / default
     return {
