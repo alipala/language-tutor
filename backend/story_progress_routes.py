@@ -108,6 +108,10 @@ async def list_series(
         completed = (prog or {}).get("completed_episodes", [])
         cur = (prog or {}).get("current")
         ep_ids = s.get("episode_ids", [])
+        # Recency for in-progress tiebreak — when a user has several series at
+        # the same status, the most recently *played* one should surface first
+        # (Continue-Watching semantics), not the most recently *created*.
+        last_played = (prog or {}).get("last_played_at")
 
         # the episode whose scene-progress the card's segment line shows:
         # the current episode if playing, else episode 1.
@@ -162,10 +166,41 @@ async def list_series(
             "active_scenes_done": ep_scenes_done,
             # horizontal episode preview slider (locked ones are swipeable but not enterable)
             "episodes": ep_preview,
+            # internal sort keys (stripped before returning)
+            "_last_played": last_played,
+            "_created": s.get("created_at"),
         })
-    # in-progress first, then not-started, then completed
-    order = {"in_progress": 0, "not_started": 1, "completed": 2}
-    out.sort(key=lambda x: order.get(x["status"], 1))
+
+    # Ordering, in priority tiers:
+    #   1. in-progress first, then not-started, then completed
+    #   2. within in-progress: most recently PLAYED first (resume the series the
+    #      user actually last touched, not the newest-generated one)
+    #   3. within not-started/completed: most recently CREATED first (freshest
+    #      content surfaces as the next "NEW STORY")
+    # datetimes can be tz-aware/naive/None across rows; normalize to a sortable
+    # epoch so mixed types never raise during comparison.
+    def _epoch(dt) -> float:
+        if dt is None:
+            return 0.0
+        try:
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.timestamp()
+        except Exception:
+            return 0.0
+
+    status_order = {"in_progress": 0, "not_started": 1, "completed": 2}
+
+    def _sort_key(x):
+        status = x["status"]
+        recency = _epoch(x["_last_played"]) if status == "in_progress" else _epoch(x["_created"])
+        # negative recency → most-recent first within the tier
+        return (status_order.get(status, 1), -recency)
+
+    out.sort(key=_sort_key)
+    for x in out:
+        x.pop("_last_played", None)
+        x.pop("_created", None)
     return out
 
 
