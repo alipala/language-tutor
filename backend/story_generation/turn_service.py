@@ -77,11 +77,14 @@ async def score_turn_text(
     answer = (text or "").strip()
 
     if not answer:
+        open_blk = scene.get("open", {})
         return {
             "text": "",
             "goal_met": False,
-            "character_line": scene.get("open", {}).get("line", "…?"),
-            "character_line_translation": "",
+            "character_line": open_blk.get("line", "…?"),
+            # fall back to the scene's pre-translated open line so the empty-input
+            # case still shows a translation (the open block is fully localized)
+            "character_line_translation": (open_blk.get("translations", {}) or {}).get(support_lang.lower(), ""),
             "spelling_feedback": None,
             "reason": "empty",
             "spoke_target_language": True,
@@ -100,11 +103,30 @@ async def score_turn_text(
     )
     verdict = json.loads(judge.choices[0].message.content)
 
+    reply_blk = scene.get("reply", {})
+    goal_met = bool(verdict.get("goal_met"))
+    embedded_tr = (reply_blk.get("translations", {}) or {}).get(support_lang.lower(), "")
+
+    # When the goal is met, PREFER the scene's canonical reply + its pre-translated
+    # text over the model's improvised line. Two reasons:
+    #   1) the canonical reply is hand-authored to advance the story correctly, and
+    #   2) the judge model frequently returns character_line_translation in the
+    #      WRONG language (often English) regardless of the requested support_lang,
+    #      so the embedded translation is the only reliably-localized source.
+    # On a miss we keep the model's in-character nudge (there's no canonical line
+    # for a wrong answer) and fall back to the embedded translation if missing.
+    if goal_met and reply_blk.get("line"):
+        character_line = reply_blk["line"]
+        translation = embedded_tr or verdict.get("character_line_translation") or ""
+    else:
+        character_line = verdict.get("character_line") or reply_blk.get("line", "")
+        translation = verdict.get("character_line_translation") or embedded_tr or ""
+
     return {
         "text": answer,
-        "goal_met": bool(verdict.get("goal_met")),
-        "character_line": verdict.get("character_line") or scene.get("reply", {}).get("line", ""),
-        "character_line_translation": verdict.get("character_line_translation") or "",
+        "goal_met": goal_met,
+        "character_line": character_line,
+        "character_line_translation": translation,
         "spelling_feedback": verdict.get("spelling_feedback"),
         "reason": verdict.get("reason"),
         "spoke_target_language": verdict.get("spoke_target_language", True),
