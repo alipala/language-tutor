@@ -291,19 +291,34 @@ async def generate_world(
     user_prompt = _user_prompt(language, level, genre, scene_count, theme, seed=seed)
     user_prompt += _continuity_block(episode_number, total_episodes, continuity_hint, style_bible)
 
-    resp = await client.chat.completions.create(
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": _system_prompt(language, level, scene_count)},
-            {"role": "user", "content": user_prompt},
-        ],
-        response_format={"type": "json_object"},
-        temperature=0.8,  # a little spice for varied stories
-        max_tokens=4000,
-    )
-
-    raw = resp.choices[0].message.content
-    world = json.loads(raw)
+    messages = [
+        {"role": "system", "content": _system_prompt(language, level, scene_count)},
+        {"role": "user", "content": user_prompt},
+    ]
+    # B1/6-scene worlds with 7-language translations per scene are large; 4000
+    # tokens truncated the JSON mid-string ("Unterminated string"). Give ample
+    # headroom AND retry once on a parse failure (gpt-4o-mini occasionally emits
+    # malformed JSON) so a single bad generation doesn't kill the whole series.
+    world = None
+    last_err = None
+    for attempt in range(2):
+        resp = await client.chat.completions.create(
+            model=MODEL,
+            messages=messages,
+            response_format={"type": "json_object"},
+            temperature=0.8 if attempt == 0 else 0.4,  # cooler on retry → more reliable JSON
+            max_tokens=8000,
+        )
+        raw = resp.choices[0].message.content
+        try:
+            world = json.loads(raw)
+            break
+        except json.JSONDecodeError as e:
+            last_err = e
+            logger.warning("[STORY-GEN] JSON parse failed (attempt %d) for %s/%s %s ep %d: %s",
+                           attempt + 1, language, level, genre, episode_number, e)
+    if world is None:
+        raise ValueError(f"Model returned unparseable JSON after retries: {last_err}")
 
     # Light validation + normalisation so the mobile app gets a stable shape.
     world["language"] = language

@@ -108,24 +108,38 @@ async def _generate_full_series(
     continuity = ""
     style_bible = ""  # locked from episode 1, reused by 2..N
 
-    for ep_num in range(1, EPISODES_PER_SERIES + 1):
-        await _emit("episode", f"Episode {ep_num}/{EPISODES_PER_SERIES}", ep_num,
-                    f"{label} — writing episode {ep_num}/{EPISODES_PER_SERIES}")
-        world = await generate_world(
-            language, level, genre, theme,
-            episode_number=ep_num, total_episodes=EPISODES_PER_SERIES,
-            continuity_hint=continuity, style_bible=style_bible,
-        )
-        if ep_num == 1:
-            first_world = world
-            style_bible = world.get("style_bible", "") or ""  # lock the series look
-        wid = await _persist_episode(world, series_id, admin_email)
-        episode_ids.append(wid)
-        # cover per episode, consistent via the shared style_bible
-        await _emit("cover", f"Cover {ep_num}/{EPISODES_PER_SERIES}", ep_num,
-                    f"{label} — painting cover {ep_num}/{EPISODES_PER_SERIES}")
-        await _cover_for_episode(wid, world, style_bible)
-        continuity = _continuity_from(world)
+    try:
+        for ep_num in range(1, EPISODES_PER_SERIES + 1):
+            await _emit("episode", f"Episode {ep_num}/{EPISODES_PER_SERIES}", ep_num,
+                        f"{label} — writing episode {ep_num}/{EPISODES_PER_SERIES}")
+            world = await generate_world(
+                language, level, genre, theme,
+                episode_number=ep_num, total_episodes=EPISODES_PER_SERIES,
+                continuity_hint=continuity, style_bible=style_bible,
+            )
+            if ep_num == 1:
+                first_world = world
+                style_bible = world.get("style_bible", "") or ""  # lock the series look
+            wid = await _persist_episode(world, series_id, admin_email)
+            episode_ids.append(wid)
+            # cover per episode, consistent via the shared style_bible
+            await _emit("cover", f"Cover {ep_num}/{EPISODES_PER_SERIES}", ep_num,
+                        f"{label} — painting cover {ep_num}/{EPISODES_PER_SERIES}")
+            await _cover_for_episode(wid, world, style_bible)
+            continuity = _continuity_from(world)
+    except Exception:
+        # A mid-series failure (e.g. unparseable JSON on episode N) used to leave
+        # the already-persisted episodes + covers ORPHANED (no series doc points
+        # at them). Roll them back so a failed story leaves NO trace, then re-raise
+        # for the batch job to record as a failure.
+        if episode_ids:
+            await worlds_collection.delete_many({"_id": {"$in": episode_ids}})
+            await database.image_cache.delete_many(
+                {"_id": {"$in": [f"story_cover_{w}" for w in episode_ids]}}
+            )
+            logger.warning("[STORY] %s failed mid-series — rolled back %d orphan episode(s)",
+                           label, len(episode_ids))
+        raise
 
     # series cover = episode 1's cover (already generated)
     ep1_doc = await worlds_collection.find_one({"_id": episode_ids[0]}, {"cover_url": 1})
