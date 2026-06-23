@@ -322,7 +322,10 @@ async def get_subscription_status(
             "limits": status.limits.dict() if status.limits else None,
             "is_in_trial": status.is_in_trial,
             "trial_end_date": status.trial_end_date.isoformat() if status.trial_end_date else None,
-            "trial_days_remaining": status.trial_days_remaining
+            "trial_days_remaining": status.trial_days_remaining,
+            # active-subscription expiry (so the benefits modal can show "renews/ends in N days")
+            "expires_at": status.expires_at.isoformat() if status.expires_at else None,
+            "days_until_expiry": status.days_until_expiry,
         }
         
         logger.info(f"[SUBSCRIPTION_STATUS] ✅ Response served for user {current_user.id}")
