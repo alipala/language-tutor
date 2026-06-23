@@ -15,7 +15,7 @@ untouched. Unlock state is DERIVED server-side (never stored → never stale).
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -372,36 +372,54 @@ async def scene_complete(body: SceneCompleteRequest, current_user=Depends(get_cu
     series_just_completed = len(completed_eps) >= len(series.get("episode_ids", []))
 
     # ── Server-authoritative XP (anti-farm + anti-cheat) ────────────────────
-    # XP is computed on the SERVER from flat constants — the client's body.xp is
-    # ignored for crediting. Only the FIRST clear of a scene awards XP/stars, and
-    # episode/finale bonuses fire only on first completion (the `status` flip).
-    is_first_scene_clear = not already
-    scene_xp = STORY_XP_PER_SCENE if is_first_scene_clear else 0
-    bonus_xp = 0
-    if episode_just_completed:
-        bonus_xp += STORY_XP_FINALE_BONUS if series_just_completed else STORY_XP_EPISODE_BONUS
-    games_xp_delta = scene_xp + bonus_xp
-    # local story_progress bucket mirrors the same server value (replaces body.xp)
-    star_delta = 1 if (is_first_scene_clear and body.star in ("gold", "silver")) else 0
+    # XP is computed on the SERVER from flat constants (client body.xp is ignored).
+    # CRITICAL anti-farm rule: a scene/bonus is credited to the games economy at
+    # most ONCE PER LIFETIME of this (user, series), tracked in the PERSISTENT sets
+    # `xp_credited_scenes` / `xp_credited_bonuses`. These sets are NEVER cleared —
+    # NOT by reset-episode, NOT by replay — so replaying a finished episode awards
+    # ZERO games XP (replay is for re-experiencing the story, not farming levels).
+    # (The old per-scene `episodes.{en}.scenes.{si}.credited` flag lived inside the
+    # episode block, which reset-episode deletes → that re-opened the farm window
+    # and inflated levels. Moving it to a top-level set fixes that.)
+    scene_token = f"{en}:{si}"
+    credited_scenes = set(prog.get("xp_credited_scenes", []) or [])
+    credited_bonuses = set(prog.get("xp_credited_bonuses", []) or [])
 
-    # Atomic first-clear gate for the SHARED games economy. The read-then-write
-    # `already` check above is not race-safe on its own; routing XP into the
-    # lifetime/Games level means a double-tap would permanently inflate the
-    # level. So we credit the games economy only when this conditional update
-    # actually flips the per-scene `credited` flag (modified_count == 1) — at
-    # most once per scene, even under concurrent retries.
+    scene_xp = STORY_XP_PER_SCENE if scene_token not in credited_scenes else 0
+
+    bonus_xp = 0
+    bonus_token = None
+    if episode_just_completed:
+        bonus_token = f"finale:{en}" if series_just_completed else f"ep:{en}"
+        if bonus_token not in credited_bonuses:
+            bonus_xp = STORY_XP_FINALE_BONUS if series_just_completed else STORY_XP_EPISODE_BONUS
+
+    games_xp_delta = scene_xp + bonus_xp
+    # star credited once per scene-lifetime too (same persistent gate as XP)
+    star_delta = 1 if (scene_xp > 0 and body.star in ("gold", "silver")) else 0
+
+    # Atomic credit gate: only credit when THIS request is the one that adds the
+    # token to the persistent set (addToSet + modified_count == 1) — race-safe
+    # against double-taps. Build the $addToSet for whatever is newly credited.
+    add_to_set: Dict[str, Any] = {}
+    if scene_xp > 0:
+        add_to_set["xp_credited_scenes"] = scene_token
+    if bonus_xp > 0 and bonus_token:
+        add_to_set["xp_credited_bonuses"] = bonus_token
+
     credit_now = False
-    if games_xp_delta > 0:
+    if games_xp_delta > 0 and add_to_set:
+        # Condition on at least one token being genuinely new so a retry can't
+        # double-credit. We re-check membership server-side via the filter.
+        gate_filter: Dict[str, Any] = {"_id": prog["_id"]}
+        if "xp_credited_scenes" in add_to_set:
+            gate_filter["xp_credited_scenes"] = {"$ne": scene_token}
+        # (bonus fires on the episode-complete request, which is also the scene's
+        #  first clear, so gating on the scene token is sufficient and atomic.)
         flag_res = await progress_collection.update_one(
-            {"_id": prog["_id"], f"episodes.{en}.scenes.{si}.credited": {"$ne": True}},
-            {"$set": {f"episodes.{en}.scenes.{si}.credited": True}},
+            gate_filter, {"$addToSet": {k: v for k, v in add_to_set.items()}}
         )
         credit_now = flag_res.modified_count == 1
-    # Always carry the credited flag forward in the block we re-$set below, so a
-    # losing concurrent request can never clear a flag a winner just set (which
-    # would re-open the farm window). True if we won the flip OR it was already set.
-    if games_xp_delta > 0:
-        ep_block["scenes"][si]["credited"] = True
 
     await progress_collection.update_one(
         {"_id": prog["_id"]},
@@ -412,11 +430,11 @@ async def scene_complete(body: SceneCompleteRequest, current_user=Depends(get_cu
             "status": "completed" if series_just_completed else "in_progress",
             "last_played_at": datetime.now(timezone.utc),
         }, "$inc": {"total_xp": games_xp_delta if credit_now else 0,
-                    "total_stars": star_delta}},
+                    "total_stars": star_delta if credit_now else 0}},
     )
 
     # Feed the SAME buckets the Games-tab level reads (xp_by_source.challenges +
-    # daily challenge_xp). Gated on the atomic first-clear flag so it fires once.
+    # daily challenge_xp). Gated on the atomic lifetime-credit flag so it fires once.
     if credit_now and games_xp_delta > 0:
         tz = getattr(current_user, "timezone", None) or "UTC"
         await credit_games_xp(
