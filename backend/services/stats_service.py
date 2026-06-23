@@ -141,6 +141,86 @@ async def update_daily_stats(session_data: Dict[str, Any]) -> None:
         print(traceback.format_exc())
 
 
+async def credit_games_xp(
+    user_id: str,
+    language: str,
+    xp: int,
+    *,
+    user_timezone: str = "UTC",
+    source_type: str = "story_worlds",
+) -> None:
+    """
+    Credit standalone games XP into the EXACT same buckets the Games-tab level
+    reads — without faking a 10-question challenge session.
+
+    Quick games flow through `update_daily_stats`/`update_lifetime_stats`, which
+    also bump session/challenge volume counters, the CEFR earn-gate, and streaks.
+    Story Worlds awards XP per scene/episode (not per session) and is deliberately
+    NOT a streak machine, so it must NOT touch those counters. This helper writes
+    ONLY the XP buckets:
+      - daily:    total_xp, challenge_xp (the games slice), by_language.{lang}.xp,
+                  by_type.{source_type}.xp
+      - lifetime: total_xp, xp_by_source.challenges, by_language.{lang}.total_xp,
+                  and recomputes stats.lifetime.level
+
+    Idempotency/anti-farm is the CALLER's responsibility — only call this with the
+    first-clear delta, gated atomically (see story_progress_routes scene-complete).
+    """
+    if xp <= 0:
+        return
+
+    language = (language or "").lower()
+    local_date = get_current_local_date(user_timezone)
+
+    # Daily — challenge_xp is the slice /progression?source=games reads; total_xp
+    # is the unified bucket. Mirrors update_daily_stats field names exactly.
+    daily_inc = {
+        "total_xp": xp,
+        "challenge_xp": xp,
+    }
+    if language:
+        daily_inc[f"by_language.{language}.xp"] = xp
+    daily_inc[f"by_type.{source_type}.xp"] = xp
+
+    await daily_stats_collection.update_one(
+        {"user_id": user_id, "local_date": local_date},
+        {
+            "$inc": daily_inc,
+            "$set": {"user_timezone": user_timezone, "updated_at": datetime.utcnow()},
+            "$setOnInsert": {"created_at": datetime.utcnow(), "is_streak_day": True},
+        },
+        upsert=True,
+    )
+
+    # Lifetime — xp_by_source.challenges is what the Games level is derived from.
+    # Read prev total then recompute level (same one-event-lag race as the
+    # existing update_lifetime_stats path; self-heals on the next credit).
+    user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    prev_total = int(
+        (user or {}).get("stats", {}).get("lifetime", {}).get("total_xp", 0) or 0
+    )
+    life_inc = {
+        "stats.lifetime.total_xp": xp,
+        "stats.lifetime.xp_by_source.challenges": xp,
+    }
+    if language:
+        life_inc[f"stats.lifetime.by_language.{language}.total_xp"] = xp
+
+    await users_collection.update_one(
+        {"_id": ObjectId(user_id)},
+        {
+            "$inc": life_inc,
+            "$set": {
+                "stats.lifetime.level": compute_level(prev_total + xp),
+                "stats.last_calculated": datetime.utcnow(),
+            },
+        },
+    )
+
+    await invalidate_recent_performance_cache(user_id)
+    print(f"[STATS_SERVICE] ✅ Credited {xp} games XP ({source_type}) to user {user_id}")
+
+
 async def recalculate_daily_accuracy(user_id: str, local_date: str) -> None:
     """
     Recalculate accuracy percentages for a daily stat document.

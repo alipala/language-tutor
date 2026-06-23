@@ -114,6 +114,14 @@ app.include_router(contextual_chat_router)
 from admin_routes import router as admin_router
 app.include_router(admin_router)
 
+# Story Worlds — admin generation/management + public read + cover serving
+from admin_story_routes import router as story_worlds_router
+app.include_router(story_worlds_router)
+
+# Story Worlds — episode/series + per-user progress
+from story_progress_routes import router as story_progress_router
+app.include_router(story_progress_router)
+
 # Include stripe routes
 from stripe_routes import router as stripe_router
 app.include_router(stripe_router)
