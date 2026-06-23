@@ -11,6 +11,7 @@ Quality is `medium` by design (founder decision: good-looking, low cost ~$0.04/i
 
 import base64
 import logging
+import os
 from typing import Optional
 
 from openai_client import get_async_openai
@@ -18,15 +19,28 @@ from database import database
 
 logger = logging.getLogger(__name__)
 
-IMAGE_MODEL = "gpt-image-1"  # dall-e-3 is retired from the OpenAI API
+# Image model. gpt-image-1-mini is OpenAI's cost-efficient image model (recommended
+# for high-volume work since Mar 2026) and ~60% cheaper than gpt-image-1 at medium
+# quality (~$0.015-0.02 vs ~$0.04 / 1024² image). Our covers are stylised storybook
+# illustrations, not photoreal, so mini's quality is a good fit. Also note gpt-image-1
+# is being deprecated (Oct 2026), so mini is the forward path. Override via env for an
+# instant rollback to the old model/quality if a generation looks worse.
+IMAGE_MODEL = os.getenv("STORY_IMAGE_MODEL", "gpt-image-1-mini")
 SIZE = "1024x1024"
-QUALITY = "medium"  # low | medium | high — medium balances cost/quality
+QUALITY = os.getenv("STORY_IMAGE_QUALITY", "medium")  # low | medium | high
 
 # Brand palette woven into the prompt so covers feel native to the app.
+# NOTE: the app uses a near-black dark theme, so covers must be BRIGHT and luminous
+# or they vanish into the background and read as gloomy. We deliberately steer the
+# model toward bright daylight + vivid colour (not "dramatic"/low-key lighting, which
+# was producing dark, murky covers). This is a prompt-only change — quality/size/cost
+# (medium, 1024², ~$0.04) are unchanged.
 STYLE = (
-    "Cinematic storybook cover illustration, warm dramatic lighting, rich saturated "
-    "colours, painterly digital art, sense of adventure and mystery, no text, no words, "
-    "no letters, no UI. Mood evokes a language-learning adventure game."
+    "Bright, vibrant storybook cover illustration, luminous daylight, clear airy "
+    "atmosphere, vivid saturated colours, high key lighting with strong light-to-dark "
+    "contrast so the subject pops, uplifting and inviting mood, painterly digital art, "
+    "a sense of wonder and adventure, no text, no words, no letters, no UI. Avoid dark, "
+    "murky, gloomy, or night scenes — keep it light and colourful."
 )
 
 
@@ -98,8 +112,9 @@ async def generate_cover(
 # so it reads clearly when cropped into a small circular avatar in the chat UI.
 PORTRAIT_STYLE = (
     "Character portrait, head-and-shoulders bust, face clearly visible and centered, "
-    "looking toward the viewer, warm cinematic lighting, painterly digital storybook "
-    "art, clean simple background, no text, no words, no letters, no UI."
+    "looking toward the viewer, bright luminous lighting, soft warm key light, painterly "
+    "digital storybook art, clean light simple background, vivid colours, friendly "
+    "inviting mood, no text, no words, no letters, no UI. Avoid dark or murky lighting."
 )
 
 

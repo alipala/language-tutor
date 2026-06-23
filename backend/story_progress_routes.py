@@ -166,6 +166,7 @@ async def list_series(
             "title": s.get("title"),
             "title_en": s.get("title_en"),
             "tagline": s.get("tagline"),
+            "synopsis": s.get("synopsis"),
             "genre": s.get("genre"),
             "cover_url": s.get("cover_url"),
             "episode_count": s.get("episode_count", len(ep_ids)),
@@ -262,6 +263,9 @@ async def series_detail(series_id: str, current_user=Depends(get_current_user)):
             "scenes_completed": ep_done.get("scenes_completed", 0),
             "is_finale": (n == len(ep_ids)),
             "title_teaser": ep.get("episode_title_en") or ep.get("title_en") if state == "locked" else None,
+            # per-episode "what happens here" summary (target language). Hidden for
+            # locked episodes so we don't spoil what's coming.
+            "episode_synopsis": ep.get("episode_synopsis") if state != "locked" else None,
         })
 
     return {
@@ -269,6 +273,7 @@ async def series_detail(series_id: str, current_user=Depends(get_current_user)):
         "title": s.get("title"),
         "title_en": s.get("title_en"),
         "tagline": s.get("tagline"),
+        "synopsis": s.get("synopsis"),
         "genre": s.get("genre"),
         "cover_url": s.get("cover_url"),
         "language": s.get("language"),

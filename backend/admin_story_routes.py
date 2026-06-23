@@ -22,7 +22,7 @@ from pydantic import BaseModel
 
 from database import database
 from admin_routes import get_current_admin, AdminUser
-from story_generation.story_generator import generate_world, GENRES, SCENES_BY_LEVEL
+from story_generation.story_generator import generate_world, plan_series_arc, GENRES, SCENES_BY_LEVEL
 from story_generation.cover_generator import generate_cover, generate_character_portrait
 
 logger = logging.getLogger(__name__)
@@ -43,6 +43,27 @@ def _continuity_from(world: dict) -> str:
     ch = world.get("character", {})
     hook = world.get("next_hook") or (world.get("scenes", [{}])[-1].get("narr") if world.get("scenes") else "")
     return f"Character {ch.get('name','the lead')} ({ch.get('role','')}) in {world.get('setting','the setting')}. Cliffhanger: {hook}"
+
+
+def _episode_summary(world: dict) -> str:
+    """A REAL summary of the episode just generated, fed to the next episode so it
+    continues what actually happened (title + the beats it played out + how it ended),
+    not a vague one-liner. This is the second half of the continuity fix (the first is
+    the season arc planned up front)."""
+    title = world.get("episode_title_en") or world.get("title_en") or world.get("title") or "the previous episode"
+    beats = []
+    for sc in world.get("scenes", []) or []:
+        n = sc.get("narr") or sc.get("goal_en") or sc.get("label")
+        if n:
+            beats.append(str(n).strip())
+    beat_line = " → ".join(beats[:5]) if beats else ""
+    ending = world.get("next_hook") or (world.get("scenes", [{}])[-1].get("narr") if world.get("scenes") else "")
+    parts = [f'Episode titled "{title}".']
+    if beat_line:
+        parts.append(f"What played out: {beat_line}.")
+    if ending:
+        parts.append(f"It ended on: {ending}")
+    return " ".join(parts)
 
 
 async def _persist_episode(world: dict, series_id: str, admin_email: str) -> str:
@@ -106,7 +127,14 @@ async def _generate_full_series(
     episode_ids = []
     first_world = None
     continuity = ""
-    style_bible = ""  # locked from episode 1, reused by 2..N
+    prev_summary = ""  # the REAL summary of the previous episode
+    style_bible = ""   # locked from episode 1, reused by 2..N
+
+    # SHOWRUNNER: plan the whole season arc up front so the 5 episodes read as ONE
+    # continuous story (fixes the "library mystery becomes a concert by ep 2" drift).
+    # Best-effort: arc={} falls back to per-episode continuity.
+    await _emit("plan", "Planning season arc", 1, f"{label} — planning the season")
+    arc = await plan_series_arc(language, level, genre, EPISODES_PER_SERIES, theme)
 
     try:
         for ep_num in range(1, EPISODES_PER_SERIES + 1):
@@ -116,6 +144,7 @@ async def _generate_full_series(
                 language, level, genre, theme,
                 episode_number=ep_num, total_episodes=EPISODES_PER_SERIES,
                 continuity_hint=continuity, style_bible=style_bible,
+                arc=arc, prev_summary=prev_summary,
             )
             if ep_num == 1:
                 first_world = world
@@ -127,6 +156,7 @@ async def _generate_full_series(
                         f"{label} — painting cover {ep_num}/{EPISODES_PER_SERIES}")
             await _cover_for_episode(wid, world, style_bible)
             continuity = _continuity_from(world)
+            prev_summary = _episode_summary(world)
     except Exception:
         # A mid-series failure (e.g. unparseable JSON on episode N) used to leave
         # the already-persisted episodes + covers ORPHANED (no series doc points
@@ -165,7 +195,13 @@ async def _generate_full_series(
         "_id": series_id,
         "title": first_world.get("title"),
         "title_en": first_world.get("title_en"),
-        "tagline": first_world.get("description"),
+        # target-language hook for the lobby card (was the English description, which
+        # wrapped + told the user nothing). Falls back to the English description.
+        "tagline": first_world.get("tagline") or first_world.get("description"),
+        # target-language 2-3 sentence back-cover summary, shown on the series screen
+        "synopsis": first_world.get("synopsis"),
+        "description": first_world.get("description"),  # English, admin reference
+        "arc": arc or None,                              # the planned season spine
         "language": language.lower(),
         "level": level.upper(),
         "genre": genre,
