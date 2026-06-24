@@ -216,6 +216,23 @@ async def get_dashboard_metrics(current_admin: AdminUser = Depends(get_current_a
             detail="Failed to fetch dashboard metrics"
         )
 
+def _minutes_quota(user: dict) -> dict:
+    """Practice-minute usage for a user, mirroring improved_subscription_service limits
+    (fluency_builder monthly=150 / annual=1800, team_mastery=unlimited, else try_learn=15).
+    Returns used / limit / remaining. limit=None means unlimited."""
+    plan = user.get("subscription_plan") or "try_learn"
+    period = user.get("subscription_period") or "monthly"
+    used = round(float(user.get("practice_minutes_used", 0) or 0), 1)
+    if plan == "fluency_builder":
+        limit = 150 if period == "monthly" else 1800
+    elif plan == "team_mastery":
+        limit = None  # unlimited
+    else:  # try_learn / free
+        limit = 15
+    remaining = None if limit is None else max(0, round(limit - used, 1))
+    return {"minutes_used": used, "minutes_limit": limit, "minutes_remaining": remaining}
+
+
 @router.get("/users", response_model=UserListResponse)
 async def get_users_admin(
     page: int = 1,
@@ -328,7 +345,9 @@ async def get_users_admin(
                     "current_period_end": safe_isoformat(user.get("current_period_end")),
                     "practice_sessions_used": user.get("practice_sessions_used", 0),
                     "assessments_used": user.get("assessments_used", 0),
-                    "learning_plan_preserved": user.get("learning_plan_preserved", False)
+                    "learning_plan_preserved": user.get("learning_plan_preserved", False),
+                    # practice-minute usage (used / plan limit / remaining) for the list view
+                    **_minutes_quota(user),
                 }
                 formatted_users.append(user_dict)
             except Exception as format_error:
@@ -1435,6 +1454,414 @@ async def get_institution_learner_details_admin(
         "practice_sessions": formatted_sessions,
         "challenge_sessions": formatted_challenges,
         "daily_stats": stats_summary
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# USER 360 — rich per-user admin views (overview / activity / dna / stories /
+# challenges / engagement). All read-only, all behind get_current_admin. Field
+# names verified against the live collections (daily_stats uses local_date /
+# total_xp / is_streak_day; conversation_sessions has duration_minutes directly;
+# challenge_sessions has total_xp / accuracy / correct_answers).
+# ─────────────────────────────────────────────────────────────────────────────
+def _iso(dt):
+    """datetime/date -> ISO string, defensively (handles None + non-datetime)."""
+    if dt is None:
+        return None
+    return dt.isoformat() if hasattr(dt, "isoformat") else str(dt)
+
+
+async def _load_user_or_404(user_id: str) -> dict:
+    from bson import ObjectId
+    try:
+        user = await database.users.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user ID")
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@router.get("/users/{user_id}/overview")
+async def get_user_overview_admin(
+    user_id: str,
+    current_admin: AdminUser = Depends(get_current_admin),
+):
+    """Single-call snapshot: who this user is, what they did, what state they're in.
+    Lifetime aggregates across every per-user collection an admin cares about."""
+    user = await _load_user_or_404(user_id)
+
+    # ---- lifetime aggregates (run concurrently) ----
+    conv_count = await database.conversation_sessions.count_documents({"user_id": user_id})
+    chal_count = await database.challenge_sessions.count_documents({"user_id": user_id})
+
+    # speaking minutes: sum conversation durations (duration_minutes is stored directly)
+    conv_minutes = 0.0
+    langs = set()
+    async for s in database.conversation_sessions.find(
+        {"user_id": user_id}, {"duration_minutes": 1, "language": 1, "xp_earned": 1}
+    ):
+        conv_minutes += float(s.get("duration_minutes") or 0)
+        if s.get("language"):
+            langs.add(s["language"])
+
+    # XP + streak from daily_stats (authoritative gamification ledger)
+    total_xp = 0
+    active_days = 0
+    streak_days = 0
+    last_active = None
+    daily_rows = await database.daily_stats.find(
+        {"user_id": user_id}
+    ).sort("local_date", -1).to_list(length=400)
+    for r in daily_rows:
+        total_xp += int(r.get("total_xp") or 0)
+        active_days += 1
+        if r.get("by_language"):
+            langs.update((r.get("by_language") or {}).keys())
+    # current streak = consecutive most-recent days flagged is_streak_day
+    for r in daily_rows:
+        if r.get("is_streak_day"):
+            streak_days += 1
+        else:
+            break
+    if daily_rows:
+        last_active = daily_rows[0].get("local_date")
+
+    # challenge accuracy (weighted by attempts)
+    correct = wrong = 0
+    async for c in database.challenge_sessions.find(
+        {"user_id": user_id}, {"correct_answers": 1, "wrong_answers": 1}
+    ):
+        correct += int(c.get("correct_answers") or 0)
+        wrong += int(c.get("wrong_answers") or 0)
+    accuracy = round(100 * correct / (correct + wrong), 1) if (correct + wrong) else None
+
+    # stories
+    stories_completed = await database.story_progress.count_documents(
+        {"user_id": user_id, "status": "completed"})
+    stories_in_progress = await database.story_progress.count_documents(
+        {"user_id": user_id, "status": "in_progress"})
+
+    # speaking-DNA archetype (one per language; surface the most recently updated)
+    dna = await database.speaking_dna_profiles.find_one(
+        {"user_id": user_id}, sort=[("updated_at", -1)])
+    dna_summary = None
+    if dna:
+        op = dna.get("overall_profile") or {}
+        dna_summary = {
+            "language": dna.get("language"),
+            "speaker_archetype": op.get("speaker_archetype"),
+            "sessions_analyzed": dna.get("sessions_analyzed", 0),
+            "total_speaking_minutes": round(dna.get("total_speaking_minutes", 0), 1),
+        }
+
+    return {
+        "profile": {
+            "id": str(user["_id"]),
+            "name": user.get("name"),
+            "email": user.get("email"),
+            "is_active": user.get("is_active", True),
+            "is_verified": user.get("is_verified", False),
+            "created_at": _iso(user.get("created_at")),
+            "last_login": _iso(user.get("last_login")),
+            "preferred_language": user.get("preferred_language"),
+            "preferred_level": user.get("preferred_level"),
+            "timezone": user.get("timezone", "UTC"),
+            "onboarding_goal": user.get("onboarding_goal"),
+        },
+        "subscription": {
+            "status": user.get("subscription_status", "none"),
+            "plan": user.get("subscription_plan"),
+            "period": user.get("subscription_period"),
+            "expires_at": _iso(user.get("subscription_expires_at")),
+            "is_in_trial": user.get("is_in_trial", False),
+            **_minutes_quota(user),  # minutes_used / minutes_limit / minutes_remaining
+        },
+        "engagement": {
+            "total_xp": total_xp,
+            "current_streak": streak_days,
+            "days_active": active_days,
+            "last_active_date": _iso(last_active),
+            "conversation_sessions": conv_count,
+            "challenge_sessions": chal_count,
+            "speaking_minutes": round(conv_minutes, 1),
+            "challenge_accuracy": accuracy,
+            "languages": sorted(langs),
+            "stories_completed": stories_completed,
+            "stories_in_progress": stories_in_progress,
+        },
+        "speaking_dna": dna_summary,
+    }
+
+
+@router.get("/users/{user_id}/activity")
+async def get_user_activity_admin(
+    user_id: str,
+    days: int = 30,
+    current_admin: AdminUser = Depends(get_current_admin),
+):
+    """Daily time-series for charts: per-day XP, streak flag, and per-language XP
+    split, from daily_stats (local_date keyed). Newest-first capped to `days`."""
+    await _load_user_or_404(user_id)
+    days = max(1, min(days, 365))
+    rows = await database.daily_stats.find(
+        {"user_id": user_id}
+    ).sort("local_date", -1).to_list(length=days)
+    series = []
+    for r in reversed(rows):  # oldest -> newest for charting
+        by_lang = r.get("by_language") or {}
+        series.append({
+            "date": _iso(r.get("local_date")),
+            "total_xp": int(r.get("total_xp") or 0),
+            "challenge_xp": int(r.get("challenge_xp") or 0),
+            "is_streak_day": bool(r.get("is_streak_day")),
+            "by_language": {k: (v.get("xp", 0) if isinstance(v, dict) else v)
+                            for k, v in by_lang.items()},
+        })
+    return {
+        "days": days,
+        "series": series,
+        "totals": {
+            "xp": sum(s["total_xp"] for s in series),
+            "active_days": len([s for s in series if s["total_xp"] > 0]),
+            "streak_days": len([s for s in series if s["is_streak_day"]]),
+        },
+    }
+
+
+@router.get("/users/{user_id}/speaking-dna")
+async def get_user_speaking_dna_admin(
+    user_id: str,
+    current_admin: AdminUser = Depends(get_current_admin),
+):
+    """Speaking-DNA profile(s) per language + recent breakthroughs."""
+    await _load_user_or_404(user_id)
+    profiles = []
+    async for d in database.speaking_dna_profiles.find({"user_id": user_id}):
+        op = d.get("overall_profile") or {}
+        profiles.append({
+            "language": d.get("language"),
+            "speaker_archetype": op.get("speaker_archetype"),
+            "summary": op.get("summary"),
+            "strengths": op.get("strengths", []),
+            "growth_areas": op.get("growth_areas", []),
+            "strands": d.get("dna_strands") or {},
+            "sessions_analyzed": d.get("sessions_analyzed", 0),
+            "total_speaking_minutes": round(d.get("total_speaking_minutes", 0), 1),
+            "updated_at": _iso(d.get("updated_at")),
+        })
+    breakthroughs = []
+    async for b in database.speaking_breakthroughs.find(
+        {"user_id": user_id}
+    ).sort("created_at", -1).limit(20):
+        breakthroughs.append({
+            "title": b.get("title"),
+            "description": b.get("description"),
+            "category": b.get("category"),
+            "emoji": b.get("emoji"),
+            "language": b.get("language"),
+            "created_at": _iso(b.get("created_at")),
+        })
+    return {"profiles": profiles, "breakthroughs": breakthroughs}
+
+
+@router.get("/users/{user_id}/stories")
+async def get_user_stories_admin(
+    user_id: str,
+    current_admin: AdminUser = Depends(get_current_admin),
+):
+    """Story Worlds progress: which series started/completed, episode progress."""
+    await _load_user_or_404(user_id)
+    rows = await database.story_progress.find(
+        {"user_id": user_id}
+    ).sort("last_played_at", -1).to_list(length=200)
+    series_ids = [r.get("series_id") for r in rows if r.get("series_id")]
+    series_docs = {}
+    if series_ids:
+        async for s in database.story_series.find({"_id": {"$in": series_ids}}):
+            series_docs[s["_id"]] = s
+    out = []
+    for r in rows:
+        s = series_docs.get(r.get("series_id"), {})
+        out.append({
+            "series_id": r.get("series_id"),
+            "title": s.get("title") or s.get("title_en"),
+            "title_en": s.get("title_en"),
+            "language": r.get("language"),
+            "level": r.get("level"),
+            "status": r.get("status"),
+            "completed_episodes": r.get("completed_episodes", []),
+            "total_xp": r.get("total_xp", 0),
+            "total_stars": r.get("total_stars", 0),
+            "last_played_at": _iso(r.get("last_played_at")),
+        })
+    return {
+        "total": len(out),
+        "completed": len([x for x in out if x["status"] == "completed"]),
+        "in_progress": len([x for x in out if x["status"] == "in_progress"]),
+        "series": out,
+    }
+
+
+@router.get("/users/{user_id}/challenges")
+async def get_user_challenges_admin(
+    user_id: str,
+    current_admin: AdminUser = Depends(get_current_admin),
+):
+    """Challenge-game history: per-type accuracy + XP, and recent sessions."""
+    await _load_user_or_404(user_id)
+    by_type: Dict[str, Dict[str, Any]] = {}
+    recent = []
+    sessions = await database.challenge_sessions.find(
+        {"user_id": user_id}
+    ).sort("created_at", -1).to_list(length=200)
+    for c in sessions:
+        ct = c.get("challenge_type", "unknown")
+        agg = by_type.setdefault(ct, {"sessions": 0, "correct": 0, "wrong": 0, "xp": 0})
+        agg["sessions"] += 1
+        agg["correct"] += int(c.get("correct_answers") or 0)
+        agg["wrong"] += int(c.get("wrong_answers") or 0)
+        agg["xp"] += int(c.get("total_xp") or 0)
+        if len(recent) < 30:
+            recent.append({
+                "id": str(c["_id"]),
+                "challenge_type": ct,
+                "language": c.get("language"),
+                "level": c.get("level"),
+                "accuracy": round(c.get("accuracy", 0), 1),
+                "correct_answers": c.get("correct_answers", 0),
+                "wrong_answers": c.get("wrong_answers", 0),
+                "total_xp": c.get("total_xp", 0),
+                "max_combo": c.get("max_combo", 0),
+                "created_at": _iso(c.get("created_at")),
+            })
+    by_type_out = []
+    for ct, a in by_type.items():
+        tot = a["correct"] + a["wrong"]
+        by_type_out.append({
+            "challenge_type": ct,
+            "sessions": a["sessions"],
+            "accuracy": round(100 * a["correct"] / tot, 1) if tot else None,
+            "total_xp": a["xp"],
+        })
+    by_type_out.sort(key=lambda x: x["total_xp"], reverse=True)
+    return {"by_type": by_type_out, "recent": recent}
+
+
+@router.get("/users/{user_id}/engagement")
+async def get_user_engagement_admin(
+    user_id: str,
+    current_admin: AdminUser = Depends(get_current_admin),
+):
+    """Retention signals: heart system state, notification opt-ins + unread, feedback."""
+    user = await _load_user_or_404(user_id)
+
+    # heart system lives on the user doc
+    hs = user.get("heart_system") or {}
+    pools = []
+    for ct, pool in (hs.get("heart_pools") or {}).items():
+        pools.append({
+            "challenge_type": ct,
+            "current_hearts": pool.get("current_hearts"),
+            "max_hearts": pool.get("max_hearts"),
+            "streak_shield_active": pool.get("streak_shield_active", False),
+        })
+
+    # notification prefs + unread count
+    prefs = await database.notification_preferences.find_one({"user_id": user_id}) or {}
+    unread = await database.user_notifications.count_documents(
+        {"user_id": user_id, "is_read": False, "deleted_at": None})
+
+    # push reachability
+    push = {
+        "has_push_token": bool(user.get("push_token")),
+        "device_type": user.get("device_type"),
+        "push_token_updated_at": _iso(user.get("push_token_updated_at")),
+    }
+
+    # recent feedback
+    feedback = []
+    async for f in database.session_feedback.find(
+        {"user_id": user_id}
+    ).sort("created_at", -1).limit(10):
+        feedback.append({
+            "session_type": f.get("session_type"),
+            "feedback_type": f.get("feedback_type"),
+            "rating": f.get("rating"),
+            "comment": f.get("comment"),
+            "created_at": _iso(f.get("created_at")),
+        })
+
+    return {
+        "hearts": {"feature_enabled": hs.get("feature_enabled", True), "pools": pools},
+        "notifications": {
+            "unread": unread,
+            "practice_reminders": prefs.get("practice_reminders_enabled"),
+            "achievement_alerts": prefs.get("achievement_alerts_enabled"),
+            "product_updates": prefs.get("product_updates_enabled"),
+            "preferred_time": prefs.get("preferred_notification_time"),
+        },
+        "push": push,
+        "feedback": feedback,
+    }
+
+
+@router.get("/statistics")
+async def get_statistics_admin(
+    current_admin: AdminUser = Depends(get_current_admin),
+):
+    """Platform-wide aggregates for the Statistics dashboard: user totals,
+    subscription mix, language/level distribution, and a 30-day active-user trend."""
+    now = datetime.now(timezone.utc)
+
+    total_users = await database.users.count_documents({})
+    verified_users = await database.users.count_documents({"is_verified": True})
+    active_users = await database.users.count_documents({"is_active": True})
+
+    # subscription mix
+    sub_mix: Dict[str, int] = {}
+    async for u in database.users.find({}, {"subscription_status": 1, "subscription_plan": 1}):
+        key = u.get("subscription_status") or "none"
+        sub_mix[key] = sub_mix.get(key, 0) + 1
+
+    # language preference distribution
+    lang_mix: Dict[str, int] = {}
+    level_mix: Dict[str, int] = {}
+    async for u in database.users.find({}, {"preferred_language": 1, "preferred_level": 1}):
+        if u.get("preferred_language"):
+            lang_mix[u["preferred_language"]] = lang_mix.get(u["preferred_language"], 0) + 1
+        if u.get("preferred_level"):
+            level_mix[u["preferred_level"]] = level_mix.get(u["preferred_level"], 0) + 1
+
+    # 30-day daily-active-users trend (distinct users with a daily_stats row per day)
+    since = (now - timedelta(days=30)).strftime("%Y-%m-%d")
+    dau_pipeline = [
+        {"$match": {"local_date": {"$gte": since}}},
+        {"$group": {"_id": "$local_date", "users": {"$addToSet": "$user_id"},
+                    "xp": {"$sum": "$total_xp"}}},
+        {"$project": {"date": "$_id", "_id": 0, "active_users": {"$size": "$users"}, "xp": 1}},
+        {"$sort": {"date": 1}},
+    ]
+    dau = await database.daily_stats.aggregate(dau_pipeline).to_list(length=40)
+
+    # content footprint
+    total_series = await database.story_series.count_documents({})
+    total_conversations = await database.conversation_sessions.count_documents({})
+
+    return {
+        "users": {
+            "total": total_users,
+            "verified": verified_users,
+            "active": active_users,
+        },
+        "subscription_mix": sub_mix,
+        "language_distribution": lang_mix,
+        "level_distribution": level_mix,
+        "daily_active_users": dau,
+        "content": {
+            "story_series": total_series,
+            "total_conversations": total_conversations,
+        },
     }
 
 
