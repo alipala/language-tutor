@@ -383,6 +383,22 @@ async def init_db():
         await user_notifications_collection.create_index(
             [("user_id", 1), ("is_read", 1), ("deleted_at", 1)], background=True
         )
+
+        # story_progress (Story Worlds per-user progress) had ONLY _id, while every
+        # read goes through {user_id, series_id} or {user_id, status} — both
+        # collection-scans at scale (2k concurrent players). One doc per
+        # (user, series); _id is "{user_id}:{series_id}", so the pair is unique.
+        story_progress_collection = database.story_progress
+        #   - find_one({user_id, series_id})  (get/create progress; lobby per-series;
+        #     scene-clear, episode-complete, reset — the hot path on EVERY turn)
+        await story_progress_collection.create_index(
+            [("user_id", 1), ("series_id", 1)], unique=True, background=True
+        )
+        #   - find_one({user_id, status:"in_progress"}, sort last_played_at desc)
+        #     (the /api/story/continue resume card — filter + sort fully covered)
+        await story_progress_collection.create_index(
+            [("user_id", 1), ("status", 1), ("last_played_at", -1)], background=True
+        )
         # ── END CAPACITY_FIXES_V2 ─────────────────────────────────────────────
 
         print("Database indexes initialized successfully")
