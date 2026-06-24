@@ -15,7 +15,8 @@ import json
 import logging
 import os
 import random
-from typing import Any, Dict, List
+import re
+from typing import Any, Dict, List, Optional
 
 from openai_client import get_async_openai
 
@@ -28,6 +29,99 @@ logger = logging.getLogger(__name__)
 # gpt-4o-mini (turn_service.py) — it's called every turn and only scores one short reply,
 # so it doesn't need the bigger model. Override via STORY_GEN_MODEL for easy rollback.
 MODEL = os.getenv("STORY_GEN_MODEL", "gpt-4o")
+
+# ---------------------------------------------------------------------------
+# STORY_GENERATOR_FIX_V2 — clean-at-the-source generation.
+# Master rollback: STORY_GEN_V2=0 reverts ALL of the V2 behaviour below to legacy
+# (byte-identical generation — same model, temp, prompt, and the old empty/help!=me-only
+# repair gate). STORY_GEN_V2=1 (default) enables the deterministic structural gate, the
+# two-pass (normal→stubborn) repair, and the recoverability prompt block.
+STORY_GEN_V2 = os.getenv("STORY_GEN_V2", "1") != "0"
+# Finer knob: disable ONLY the (more expensive) cold-recall gate while keeping structural + prompt.
+RECOVERABILITY_GATE = os.getenv("STORY_GEN_RECOVERABILITY_GATE", "1") != "0"
+
+# Deterministic detector — single source of truth, mirroring the validated repair-sweep
+# (STORY_SCENE_REPAIR_SWEEP_V1) that cleaned the existing corpus, plus a conservative
+# cold-recall check. No LLM: pure structural rules over the scene dict.
+_ASK_EN = re.compile(r"\b(ask|asks|asking|find out|finds out|finding out|inquire|inquires|"
+                     r"request|requests|requesting|question)\b", re.I)
+_ASK_TARGET = {
+    "english":    _ASK_EN,
+    "dutch":      re.compile(r"\b(vraag\w*|informeer\w*|navraag\w*)\b", re.I),
+    "spanish":    re.compile(r"\b(pregunt\w*|pide\b|pedir\b|solicit\w*|averigua\w*)\b", re.I),
+    "french":     re.compile(r"\b(demand\w*|interrog\w*|renseigne\w*|questionn\w*)\b", re.I),
+    "german":     re.compile(r"\b(frag\w*|erkundig\w*|nachfrag\w*)\b", re.I),
+    "portuguese": re.compile(r"\b(pergunt\w*|pede\b|pedir\b|solicit\w*|averigu\w*)\b", re.I),
+}
+
+# minimal closed-class stopword sets (just enough to isolate CONTENT words for recoverability)
+_STOP = {
+  "english": set("a an the i you he she it we they me my your his her our their is am are be was were do does did have has had can could will would shall yes no and or but to of in on at this that these those what who where when why how not please ok okay here there".split()),
+  "dutch":   set("de het een ik jij je u hij zij ze wij we mijn jouw uw is ben bent zijn was waren heb hebt heeft hebben kan kun kunt zal zul zult ja nee en of maar te van in op aan dit dat deze die wat wie waar wanneer waarom hoe niet alstublieft hier daar".split()),
+  "spanish": set("el la los las un una unos unas yo tu usted el ella nosotros ellos mi tu su es soy eres son era si no y o pero a de en con este ese esta esa esto eso que quien donde cuando como por favor aqui alli".split()),
+  "french":  set("le la les un une des je tu il elle nous ils mon ton son ma ta sa est suis es sont oui non et ou mais a de en ce cet cette ces que qui ou quand comment ne pas pour ici la".split()),
+  "german":  set("der die das ein eine ich du er sie wir mein dein sein ist bin bist sind war waren habe hast hat ja nein und oder aber zu von in auf an dies dieser diese was wer wo wann wie nicht bitte hier da".split()),
+  "portuguese": set("o a os as um uma uns umas eu tu voce ele ela nos eles meu teu seu e ou mas de em com este esse esta essa isto isso que quem onde quando como por favor sim nao aqui ali".split()),
+}
+_YES_NO = {
+  "english": ("yes","yeah","yep","sure","okay","ok","no","nope"),
+  "dutch":   ("ja","jawel","zeker","nee"),
+  "spanish": ("si","sí","claro","vale","no"),
+  "french":  ("oui","non","ouais"),
+  "german":  ("ja","klar","sicher","nein"),
+  "portuguese": ("sim","claro","não","nao"),
+}
+
+
+def _tokens(s: str):
+    return re.findall(r"[\wÀ-ÿ']+", (s or "").lower())
+
+
+def _goal_is_ask(scene: Dict[str, Any], language: str) -> bool:
+    if _ASK_EN.search(scene.get("goal_en") or ""):
+        return True
+    rx = _ASK_TARGET.get((language or "").lower())
+    return bool(rx and rx.search(scene.get("goal") or ""))
+
+
+def _is_recoverable(scene: Dict[str, Any], language: str) -> bool:
+    """Conservative: can the player PRODUCE `me` from open.line ALONE?
+    Recoverable if `me` is a closed (yes/no-led) reply, or at least one of its content words
+    already appears in open.line. False (cold_recall) only when EVERY content word in `me` is
+    absent from open.line and it is not a yes/no reply."""
+    lang = (language or "").lower()
+    me_toks = _tokens(scene.get("me"))
+    if not me_toks:
+        return True  # emptiness handled by empty_me
+    if me_toks[0] in _YES_NO.get(lang, ()):  # "Ja, ...", "Yes, ..." → closed reply
+        return True
+    stop = _STOP.get(lang, set())
+    open_toks = set(_tokens((scene.get("open") or {}).get("line")))
+    content = [t for t in me_toks if t not in stop]
+    if not content:
+        return True  # nothing the player must "know" — fully recoverable
+    return any(t in open_toks for t in content)
+
+
+def scene_breakages(scene: Dict[str, Any], language: str, *, check_recoverability: bool = True) -> List[str]:
+    """Single source of truth. Empty list => scene is healthy."""
+    codes = []
+    me = (scene.get("me") or "").strip()
+    open_line = ((scene.get("open") or {}).get("line") or "").strip()
+    help_sug = ((scene.get("help") or {}).get("suggestion") or "").strip()
+    if not me:
+        codes.append("empty_me")
+    if help_sug != me:
+        codes.append("help_ne_me")
+    char_q = open_line.endswith("?")
+    if char_q and me.endswith("?"):
+        codes.append("echo_question")
+    if char_q and _goal_is_ask(scene, language):
+        codes.append("goal_ask_after_char_asked")
+    if check_recoverability and me and not _is_recoverable(scene, language):
+        codes.append("cold_recall")
+    return codes
+
 
 # Creative-seed pools. gpt-4o-mini collapses to the same "most likely" answer for
 # a given (genre, level) — e.g. EVERY supernatural prompt produced a silver-haired
@@ -200,14 +294,38 @@ def _episode_ramp(episode_number: int, total_episodes: int) -> str:
             f"OVERRIDES the band length where stricter: {band}")
 
 
+_RECOVERABILITY_BLOCK = """
+RECOVERABILITY (critical for low levels — this is the #1 reason beginners get stuck and quit):
+The player must be able to PRODUCE the answer `me` from `open.line` ALONE. They should ONLY have to
+work out HOW to say the reply in {lang_name}, NEVER guess WHAT information to supply from memory.
+- Put any content word the player needs INTO `open.line` (let the CHARACTER name the object, place,
+  or person), OR make `me` a closed response (yes/no, or a choice between options the character
+  stated in open.line).
+- WRONG (cold recall): open.line "What is missing?" → me "An old compass." — the word "compass" is
+  nowhere in the question, so the player cannot know to say it.
+- RIGHT (recoverable): open.line "The compass is gone! Can you help me find it?" → me "Yes, I can."
+  — the character names the compass; the player only confirms.
+- RIGHT (recoverable): open.line "Is the door open or closed?" → me "It is closed." — both options
+  are given; the player just picks one.
+Read every scene back: if the player would have to invent a content word that is not in open.line,
+rewrite open.line so the character supplies it.
+"""
+
+
 def _system_prompt(language: str, level: str, scene_count: int,
-                   episode_number: int = 1, total_episodes: int = 1) -> str:
+                   episode_number: int = 1, total_episodes: int = 1,
+                   v2: bool = None) -> str:
+    if v2 is None:
+        v2 = STORY_GEN_V2
     lang_name = LANG_NAMES.get(language.lower(), language.title())
     # In-target-language example so the model anchors on the RIGHT language
     # (using a Dutch example when target was English caused it to drift).
     open_ex, me_ex = _example_lines(language.lower())
     difficulty = _difficulty_profile(level)
     ramp = _episode_ramp(episode_number, total_episodes)
+    # V2: recoverability guidance appended right after the difficulty/ramp section.
+    # V2 off → empty string → byte-identical to the legacy prompt.
+    recoverability = _RECOVERABILITY_BLOCK.format(lang_name=lang_name) if v2 else ""
     return f"""You are an expert language-learning game designer creating a single-player
 VOICE adventure that teaches the {lang_name.upper()} LANGUAGE to learners at CEFR level {level}.
 
@@ -241,7 +359,7 @@ the level is unmistakable (an A1 story must feel clearly easier than a B1 one):
   {difficulty}
 
 {ramp}
-
+{recoverability}
 WHO IS WHO (read carefully — getting this wrong breaks the whole game):
 - The story is a conversation between the LEAD CHARACTER and the LEARNER (the player).
 - The LEAD CHARACTER (the named character of this world) is the one TALKING TO the player.
@@ -480,8 +598,13 @@ async def generate_world(
     style_bible: str = "",
     arc: Dict[str, Any] = None,
     prev_summary: str = "",
+    _structural_retry: bool = False,
 ) -> Dict[str, Any]:
-    """Generate one episode (world). For episode_number>1 it continues the series."""
+    """Generate one episode (world). For episode_number>1 it continues the series.
+
+    `_structural_retry` is a private bound on the single structural regen (Part B): if dropping
+    unfixable scenes would leave too few, we regenerate the episode ONCE with this set, so the
+    drop loop can never recurse infinitely."""
     language = language.lower()
     level = level.upper()
     scene_count = SCENES_BY_LEVEL.get(level, 6)
@@ -604,7 +727,7 @@ async def generate_world(
     # VALIDATE + REPAIR scenes whose logic is provably broken (backwards goal, missing
     # distractors, help≠me). The generator's own self-check is unreliable, so we run a
     # cheap targeted repair pass — only on flagged scenes, concurrently, never fatal.
-    bad = [i for i, sc in enumerate(scenes) if _scene_needs_repair(sc)]
+    bad = [i for i, sc in enumerate(scenes) if _scene_needs_repair(sc, language)]
     if bad:
         logger.info("[STORY-GEN] repairing %d/%d scene(s) ep %d", len(bad), len(scenes), episode_number)
         repaired = await asyncio.gather(
@@ -614,6 +737,42 @@ async def generate_world(
         for idx, res in zip(bad, repaired):
             if isinstance(res, dict):
                 scenes[idx] = res
+
+    # ---- STRUCTURAL INVARIANT (Part B): drop-and-renumber (V2 only) ----
+    # The repair pass is best-effort, so a scene can still ship structurally broken. This
+    # deterministic sweep GUARANTEES 0 structural breakages in the output: any scene that STILL
+    # trips a structural code (echo_question / goal_ask_after_char_asked / help_ne_me / empty_me)
+    # is dropped. cold_recall is a SOFT target and must NEVER cause a drop (the scene is playable).
+    if STORY_GEN_V2:
+        kept, dropped = [], 0
+        for sc in scenes:
+            if scene_breakages(sc, language, check_recoverability=False):
+                dropped += 1
+                logger.warning("[STORY-GEN] dropping unfixable scene ep%d/%d: %r",
+                               episode_number, total_episodes, sc.get("label"))
+                continue
+            kept.append(sc)
+
+        if dropped:
+            # rare safety net: if too few scenes survive, regenerate this episode ONCE.
+            if len(kept) < 3 and not _structural_retry:
+                logger.warning("[STORY-GEN] only %d clean scenes ep%d — one structural regen",
+                               len(kept), episode_number)
+                return await generate_world(
+                    language, level, genre, theme, episode_number, total_episodes,
+                    continuity_hint, style_bible, arc=arc, prev_summary=prev_summary,
+                    _structural_retry=True,
+                )
+            scenes = kept
+            # renumber labels ("Scene i of N · title"), re-fill, re-mark boss
+            n = len(scenes)
+            for i, sc in enumerate(scenes):
+                sc["fill"] = round(i / max(1, n), 3)
+                sc["is_boss"] = (i == n - 1)
+                lbl = sc.get("label") or ""
+                sc["label"] = re.sub(r"Scene\s+\d+\s+of\s+\d+", f"Scene {i + 1} of {n}", lbl) or lbl
+            world["scenes"] = scenes
+
     world["scene_count"] = len(scenes)
 
     # ---- TAGLINE guarantee (short target-language hook for the lobby card) ----
@@ -777,66 +936,219 @@ def arc_episode_brief(arc: Dict[str, Any], episode_number: int) -> Dict[str, Any
 # ---------------------------------------------------------------------------
 # VALIDATOR / REPAIR — guarantee the per-scene logic the generator self-check misses
 # ---------------------------------------------------------------------------
-def _scene_needs_repair(scene: Dict[str, Any]) -> bool:
+def _scene_needs_repair(scene: Dict[str, Any], language: str = "english") -> bool:
     """Cheap, deterministic pre-screen — catches the failures we can detect without
-    an LLM, so we only pay for a repair call on scenes that actually need it."""
-    me = (scene.get("me") or "").strip()
-    if not me:
-        return True
-    # help.suggestion must equal me (the winning line)
-    if (scene.get("help", {}) or {}).get("suggestion", "").strip() != me:
-        return True
-    return False
+    an LLM, so we only pay for a repair call on scenes that actually need it.
+
+    Under STORY_GEN_V2 this uses the full deterministic detector (structural defects +
+    optional cold-recall). With V2 off it is byte-identical to the legacy gate (empty
+    `me` / help!=me only)."""
+    if not STORY_GEN_V2:
+        # ---- legacy (byte-identical rollback) ----
+        me = (scene.get("me") or "").strip()
+        if not me:
+            return True
+        if (scene.get("help", {}) or {}).get("suggestion", "").strip() != me:
+            return True
+        return False
+    return bool(scene_breakages(scene, language, check_recoverability=RECOVERABILITY_GATE))
 
 
-async def validate_and_repair_scene(
-    scene: Dict[str, Any], language: str, level: str,
-) -> Dict[str, Any]:
-    """
-    Re-author one scene so it obeys the hard logic rules the generator's own
-    self-check is unreliable about (gpt-4o-mini wrote goals like "ask for the clue"
-    right after the character already asked). One cheap JSON call; on any failure we
-    keep the original scene (never block generation). Returns the (possibly) fixed scene.
-    """
-    lang_name = LANG_NAMES.get(language.lower(), language.title())
-    client = get_async_openai()
-    system = (
+_SUPPORT_LANGS = ["english", "turkish", "spanish", "french", "german", "dutch", "portuguese"]
+
+# Recoverability rule appended to BOTH repair passes (the #1 cause of beginners getting stuck).
+_REPAIR_RECOVERABILITY = (
+    "RECOVERABILITY (most important for low levels): the player must be able to PRODUCE `me` from "
+    "open.line ALONE — they should only work out HOW to say it, never guess WHAT to supply from "
+    "memory. Put any content word the player needs INTO open.line (let the character name the "
+    "object/place/person), OR make `me` a closed reply (yes/no, or a choice between options the "
+    "character stated).\n"
+)
+
+# Stubborn-pass instruction — MANDATORY reframe (the exact move that cleared 47/66 stubborn scenes
+# in the migration), now REQUIRED rather than permitted so a structurally-clean reframe is forced.
+_REPAIR_STUBBORN = (
+    "The previous rewrite still failed structurally. You MUST now rewrite open.line as a STATEMENT "
+    "or a REQUEST that does NOT end with '?'. The character states a situation or asks the player to "
+    "do something, and hands the turn over; the player's `me` is then a natural reply. Example: "
+    "open.line 'I can't find the key.' (statement) -> me 'Where could it be?'. open.line MUST NOT be "
+    "a question. Keep it short and at the same level, and keep help.suggestion identical to me.\n"
+)
+
+
+def _repair_system_prompt(lang_name: str, level: str, *, stubborn: bool) -> str:
+    """The repair editor's system prompt. Shared by both passes; the stubborn pass adds the
+    statement-reframe instruction on top."""
+    return (
         f"You are a strict editor for a {lang_name} ({level}) language-learning story "
         "game. You receive ONE scene and rewrite it so it obeys these rules EXACTLY, "
         f"keeping every in-game line in {lang_name} and the difficulty at {level} "
         "(short, high-frequency, winnable on the first try):\n"
         "1. `goal` is what THE PLAYER must say/do in reply to open.line — never a "
         "restatement of what the character already did. If open.line already asks a "
-        "question, the goal is to ANSWER it.\n"
+        "question, the goal is to ANSWER it — NEVER to ask the same thing again.\n"
         "2. open.line → me → reply.line must read as one natural mini-dialogue: the "
         "character asks/invites (open), the player replies (me), the character reacts "
-        "and nudges the story on (reply).\n"
+        "and nudges the story on (reply). NEVER answer a question with the same question.\n"
         "3. `help.suggestion` MUST be identical to `me`.\n"
+        + _REPAIR_RECOVERABILITY
+        + (_REPAIR_STUBBORN if stubborn else "")
+        + "4. If you change ANY of open.line / me / reply.line / help.suggestion, you MUST "
+        "regenerate that field's `translations` so all of these keys are present and correct: "
+        + ", ".join(_SUPPORT_LANGS) + ".\n"
         "Keep the same story intent, characters and vocab. Only fix what breaks the rules."
     )
-    user = (
-        "Rewrite this scene to satisfy all rules. Return STRICT JSON with the SAME shape "
-        "(label, goal, goal_en, open{line,translations}, me, reply{line,"
-        "translations}, help{suggestion,translations,why}, vocab, narr). Keep all "
-        "translation keys.\n\nSCENE:\n" + json.dumps(scene, ensure_ascii=False)
-    )
-    try:
+
+
+def _finalize_repair(original: Dict[str, Any], fixed: Dict[str, Any], language: str) -> Optional[Dict[str, Any]]:
+    """Merge engine fields + fully validate a candidate repair. Returns the accepted scene,
+    or None if it is not strictly better (caller then keeps the original / tries next pass)."""
+    if not isinstance(fixed, dict):
+        return None
+    # preserve engine-set fields the editor must not touch
+    for k in ("fill", "is_boss"):
+        if k in original:
+            fixed[k] = original[k]
+    fixed.pop("choices", None)
+    me = (fixed.get("me") or "").strip()
+    if not me:
+        return None
+    if ((fixed.get("help") or {}).get("suggestion") or "").strip() != me:
+        return None
+    # no structural breakage may remain (cold-recall gated to match the repair pre-screen)
+    if scene_breakages(fixed, language, check_recoverability=RECOVERABILITY_GATE):
+        return None
+    # translations must be intact (all 7 keys, non-empty) for any line the player reads
+    for fld in ("open", "reply", "help"):
+        tr = (fixed.get(fld) or {}).get("translations") or {}
+        if any(not (tr.get(k) or "").strip() for k in _SUPPORT_LANGS):
+            return None
+    return fixed
+
+
+def _finalize_stubborn(original: Dict[str, Any], fixed: Dict[str, Any], language: str) -> Optional[Dict[str, Any]]:
+    """Acceptance for the MANDATORY-reframe pass: STRUCTURAL only (cold_recall is a soft target and
+    must not reject a structurally-clean reframe). Forces help.suggestion = me in code (don't trust
+    the model for that one field), and rejects if open.line is still a question."""
+    if not isinstance(fixed, dict):
+        return None
+    for k in ("fill", "is_boss"):
+        if k in original:
+            fixed[k] = original[k]
+    fixed.pop("choices", None)
+    me = (fixed.get("me") or "").strip()
+    if not me:
+        return None
+    # the reframe MUST have turned open.line into a non-question
+    if ((fixed.get("open") or {}).get("line") or "").strip().endswith("?"):
+        return None
+    # force help.suggestion == me (and mirror its translations from `me`'s carrier if present)
+    help_obj = fixed.get("help")
+    if not isinstance(help_obj, dict):
+        help_obj = {}
+        fixed["help"] = help_obj
+    help_obj["suggestion"] = me
+    # structural-only gate (recoverability explicitly OFF here)
+    if scene_breakages(fixed, language, check_recoverability=False):
+        return None
+    # translations still required for the lines the player reads
+    for fld in ("open", "reply", "help"):
+        tr = (fixed.get(fld) or {}).get("translations") or {}
+        if any(not (tr.get(k) or "").strip() for k in _SUPPORT_LANGS):
+            return None
+    return fixed
+
+
+async def validate_and_repair_scene(
+    scene: Dict[str, Any], language: str, level: str,
+) -> Dict[str, Any]:
+    """
+    Re-author one scene so it obeys the hard logic rules the generator's own self-check is
+    unreliable about (gpt-4o-mini wrote goals like "ask for the clue" right after the character
+    already asked). Under STORY_GEN_V2 this is a TWO-PASS repair: pass 1 (temp 0.3) fixes
+    goal-direction + recoverability; if the result is still broken, pass 2 (stubborn, temp 0.5)
+    is allowed to reframe open.line from a question into a statement/request. Each pass is fully
+    validated by `_finalize_repair`; on any failure we keep the ORIGINAL scene (never block
+    generation, never write a worse scene). With V2 off, behaves like the legacy single pass.
+    """
+    lang_name = LANG_NAMES.get(language.lower(), language.title())
+    client = get_async_openai()
+
+    def _user_msg(sc: Dict[str, Any]) -> str:
+        # strip engine fields from what the editor sees; re-attached in _finalize_repair
+        payload = {k: v for k, v in sc.items() if k not in ("fill", "is_boss")}
+        return (
+            "Rewrite this scene to satisfy all rules. Return STRICT JSON with the SAME shape "
+            "(label, goal, goal_en, open{line,translations}, me, reply{line,"
+            "translations}, help{suggestion,translations,why}, vocab, narr). Keep all "
+            "translation keys.\n\nSCENE:\n" + json.dumps(payload, ensure_ascii=False)
+        )
+
+    async def _one_pass(stubborn: bool) -> Optional[Dict[str, Any]]:
+        system = _repair_system_prompt(lang_name, level, stubborn=stubborn)
         resp = await client.chat.completions.create(
             model=MODEL,
-            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": _user_msg(scene)}],
             response_format={"type": "json_object"},
-            temperature=0.3,
-            max_tokens=1500,
+            temperature=0.5 if stubborn else 0.3,
+            max_tokens=1600,
         )
-        fixed = json.loads(resp.choices[0].message.content)
-        # preserve engine-set fields the editor shouldn't touch
-        for k in ("fill", "is_boss"):
-            if k in scene:
-                fixed[k] = scene[k]
-        fixed.pop("choices", None)
-        # only accept the repair if it actually produced a usable `me`
-        if (fixed.get("me") or "").strip():
-            return fixed
+        parsed = json.loads(resp.choices[0].message.content)
+        # pass 2 (stubborn) accepts on STRUCTURAL grounds only; pass 1 keeps full (incl. recoverability)
+        if stubborn:
+            return _finalize_stubborn(scene, parsed, language)
+        return _finalize_repair(scene, parsed, language)
+
+    try:
+        if not STORY_GEN_V2:
+            # ---- legacy single pass (byte-identical acceptance: usable `me` only) ----
+            system = (
+                f"You are a strict editor for a {lang_name} ({level}) language-learning story "
+                "game. You receive ONE scene and rewrite it so it obeys these rules EXACTLY, "
+                f"keeping every in-game line in {lang_name} and the difficulty at {level} "
+                "(short, high-frequency, winnable on the first try):\n"
+                "1. `goal` is what THE PLAYER must say/do in reply to open.line — never a "
+                "restatement of what the character already did. If open.line already asks a "
+                "question, the goal is to ANSWER it.\n"
+                "2. open.line → me → reply.line must read as one natural mini-dialogue: the "
+                "character asks/invites (open), the player replies (me), the character reacts "
+                "and nudges the story on (reply).\n"
+                "3. `help.suggestion` MUST be identical to `me`.\n"
+                "Keep the same story intent, characters and vocab. Only fix what breaks the rules."
+            )
+            user = (
+                "Rewrite this scene to satisfy all rules. Return STRICT JSON with the SAME shape "
+                "(label, goal, goal_en, open{line,translations}, me, reply{line,"
+                "translations}, help{suggestion,translations,why}, vocab, narr). Keep all "
+                "translation keys.\n\nSCENE:\n" + json.dumps(scene, ensure_ascii=False)
+            )
+            resp = await client.chat.completions.create(
+                model=MODEL,
+                messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+                response_format={"type": "json_object"},
+                temperature=0.3,
+                max_tokens=1500,
+            )
+            fixed = json.loads(resp.choices[0].message.content)
+            for k in ("fill", "is_boss"):
+                if k in scene:
+                    fixed[k] = scene[k]
+            fixed.pop("choices", None)
+            if (fixed.get("me") or "").strip():
+                return fixed
+            return scene
+
+        # ---- V2 two-pass repair ----
+        # pass 1 (normal): fixes goal-direction + recoverability.
+        result = await _one_pass(stubborn=False)
+        if result is not None:
+            return result
+        # pass 2 (mandatory reframe): ONLY escalate when a STRUCTURAL code tripped. A scene whose
+        # only problem is cold_recall is still playable — never escalate it to a reframe.
+        if scene_breakages(scene, language, check_recoverability=False):
+            result = await _one_pass(stubborn=True)
+            if result is not None:
+                return result
     except Exception as e:  # noqa: BLE001 — repair is best-effort
         logger.warning("[STORY-GEN] scene repair failed (%s) — keeping original", e)
     return scene
