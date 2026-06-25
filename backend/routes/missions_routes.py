@@ -1142,6 +1142,16 @@ async def award_mission_xp(
     local_date = body.local_date
     timezone   = body.timezone
 
+    # Persist the device timezone onto the user doc (idempotent, best-effort).
+    # The client sends its IANA zone here every claim, but it was never saved —
+    # so timezone-sensitive features like Story Worlds daily-drip fell back to
+    # UTC and unlocked the next episode at the wrong local midnight. Capturing it
+    # here keeps user.timezone fresh without any mobile-contract change.
+    from services.timezone_utils import persist_user_timezone
+    await persist_user_timezone(
+        users_collection, user_id, getattr(current_user, "timezone", None), timezone
+    )
+
     if tier not in ("bronze", "silver", "gold"):
         return {"success": False, "reason": "invalid_tier"}
 

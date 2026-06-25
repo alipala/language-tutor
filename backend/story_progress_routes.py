@@ -49,21 +49,42 @@ STORY_DAILY_DRIP = os.getenv("STORY_DAILY_DRIP", "1") != "0"
 STORY_SINGLE_ACTIVE_SERIES = os.getenv("STORY_SINGLE_ACTIVE_SERIES", "1") != "0"
 
 
-def _next_day_unlock(user_timezone: str) -> datetime:
-    """UTC instant of the next local midnight in the user's timezone (the moment the
-    next episode becomes available). Computed in local time, returned as UTC."""
+def _next_day_unlock(user_timezone: str, completed_at: Optional[datetime] = None) -> datetime:
+    """UTC instant when the next episode unlocks, anchored on when this one finished.
+
+    `completed_at` (UTC) is the anchor — the moment the episode was completed. It
+    defaults to now() (scene-complete runs at completion, so they're ~equal), but
+    passing the stored episode `completed_at` makes the unlock deterministic and
+    re-derivable from the document.
+
+    From that anchor:
+      - KNOW the user's IANA zone → next LOCAL midnight AFTER the anchor (the drip
+        lines up with their calendar day).
+      - DON'T (zone None/""/"UTC"/unresolvable — device never sent it) → anchor + 24h.
+
+    Why the split: using "next UTC midnight" for a zone-less user is what caused
+    the drip bug — a user at local 00:35 (stored as UTC) saw the next episode stay
+    locked for hours because UTC midnight was still ahead of them. A flat +24h is
+    timezone-independent and never produces that "it's past midnight but still
+    locked" surprise; it just means "one episode every 24h" until we learn the real
+    zone (which the missions endpoint now persists). See
+    services.timezone_utils.persist_user_timezone."""
+    from services.timezone_utils import is_valid_iana_timezone
+    anchor = completed_at or datetime.now(timezone.utc)
+    if anchor.tzinfo is None:
+        anchor = anchor.replace(tzinfo=timezone.utc)
+    if not is_valid_iana_timezone(user_timezone):
+        return anchor + timedelta(hours=24)
     try:
-        local_now = get_local_datetime_now(user_timezone)
         tz = get_user_timezone_obj(user_timezone)
-        local_midnight = (local_now + timedelta(days=1)).replace(
+        local_anchor = anchor.astimezone(tz)
+        local_midnight = (local_anchor + timedelta(days=1)).replace(
             hour=0, minute=0, second=0, microsecond=0)
-        # ensure tz-aware in the user's zone, then convert to UTC for storage
-        if local_midnight.tzinfo is None:
-            local_midnight = local_midnight.replace(tzinfo=tz)
+        # local_anchor is already tz-aware in the user's zone
         return local_midnight.astimezone(timezone.utc)
     except Exception as e:  # noqa: BLE001 — never block completion on a tz hiccup
         logger.warning("[STORY-DRIP] unlock-time calc failed (%s) — 24h fallback", e)
-        return datetime.now(timezone.utc) + timedelta(hours=24)
+        return anchor + timedelta(hours=24)
 
 series_collection = database.story_series
 worlds_collection = database.story_worlds
@@ -556,6 +577,10 @@ async def scene_complete(body: SceneCompleteRequest, current_user=Depends(get_cu
     episode_just_completed = False
     if scenes_done >= total_scenes and ep_block.get("status") != "completed":
         ep_block["status"] = "completed"
+        # Stamp WHEN the episode finished. This is the drip anchor (next-episode
+        # unlock = this instant + one day) and answers "when was it completed"
+        # without having to dig out the last scene's completed_at.
+        ep_block["completed_at"] = datetime.now(timezone.utc).isoformat()
         episode_just_completed = True
 
     # next cursor
@@ -568,10 +593,13 @@ async def scene_complete(body: SceneCompleteRequest, current_user=Depends(get_cu
         if body.episode_number < len(ep_ids):
             nxt_id = ep_ids[body.episode_number]  # 0-based → next episode
             new_current = {"episode_number": body.episode_number + 1, "scene_index": 0, "world_id": nxt_id}
-            # DAILY DRIP: lock the next episode until the user's next local midnight.
+            # DAILY DRIP: lock the next episode, anchored on when THIS episode just
+            # finished (ep_block["completed_at"], set above). With a known zone that's
+            # the next local midnight after completion; without one it's completion+24h.
             if STORY_DAILY_DRIP:
                 tz = getattr(current_user, "timezone", None) or "UTC"
-                new_current["unlocked_at"] = _next_day_unlock(tz)
+                anchor = _parse_dt(ep_block.get("completed_at"))
+                new_current["unlocked_at"] = _next_day_unlock(tz, anchor)
         else:
             new_current = None  # series finished
 

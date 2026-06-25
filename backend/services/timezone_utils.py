@@ -26,6 +26,69 @@ def get_user_timezone_obj(timezone_str: str = "UTC") -> ZoneInfo:
         return ZoneInfo("UTC")
 
 
+def is_valid_iana_timezone(timezone_str: Optional[str]) -> bool:
+    """
+    True only for a usable, non-UTC IANA timezone (e.g. "Europe/Amsterdam").
+
+    We treat empty / None / "UTC" as "not a real local zone" — those are the
+    default we want to *replace* when a client sends its actual zone, never
+    overwrite a real zone with. Anything ZoneInfo can't resolve is also False.
+    """
+    if not timezone_str or timezone_str == "UTC":
+        return False
+    try:
+        ZoneInfo(timezone_str)
+        return True
+    except Exception:
+        return False
+
+
+async def persist_user_timezone(users_collection, user_id, current_tz, incoming_tz) -> Optional[str]:
+    """
+    Persist a client-supplied IANA timezone onto the user document, idempotently.
+
+    Many mobile endpoints (missions, progress, …) carry the device timezone in
+    their request body, but it was never saved — so `user.timezone` stayed None
+    and timezone-sensitive features (e.g. Story Worlds daily-drip unlock) fell
+    back to UTC and computed the wrong local midnight.
+
+    This writes `incoming_tz` to `users.timezone` ONLY when:
+      - the incoming value is a real, resolvable, non-UTC IANA zone, AND
+      - the user has no real zone yet, OR it differs (device moved / was fixed).
+    No-ops otherwise (cheap guard, no write). Never raises — a tz hiccup must
+    not break the calling endpoint.
+
+    Returns the effective timezone to use right now (incoming if valid, else
+    current), so callers can use the freshest value without a re-read.
+    """
+    try:
+        if not is_valid_iana_timezone(incoming_tz):
+            return current_tz  # nothing usable to persist
+        if incoming_tz == current_tz:
+            return current_tz  # already stored, no write
+        # Real zone, and it's new or changed → persist it.
+        from bson import ObjectId
+        try:
+            _id = ObjectId(str(user_id))
+        except Exception:
+            _id = user_id
+        await users_collection.update_one(
+            {"_id": _id}, {"$set": {"timezone": incoming_tz}}
+        )
+        # User docs are Redis-cached (get_user_by_id); without this, the next
+        # request would read the stale cached zone and the fix wouldn't take
+        # effect until the cache expired.
+        try:
+            from cache_helpers import invalidate_user_cache
+            await invalidate_user_cache(str(user_id))
+        except Exception as ce:  # noqa: BLE001
+            print(f"[TIMEZONE] cache invalidate failed for {user_id}: {ce}")
+        return incoming_tz
+    except Exception as e:  # noqa: BLE001 — persistence must never block the caller
+        print(f"[TIMEZONE] persist_user_timezone failed for {user_id}: {e}")
+        return current_tz
+
+
 def convert_to_local_date(dt: datetime, timezone_str: str = "UTC") -> str:
     """
     Convert a UTC datetime to a local date string in the user's timezone.
