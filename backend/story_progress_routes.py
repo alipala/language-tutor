@@ -500,6 +500,11 @@ class SceneCompleteRequest(BaseModel):
     star: str = "gold"        # gold (no hints) | silver (hinted)
     xp: int = 0
     hints_used: int = 0
+    # Device IANA timezone (e.g. "Europe/Amsterdam"). Optional & additive — older
+    # clients omit it and still work. When present it's persisted to the user (so
+    # the daily-drip unlock anchors on the user's real local midnight even if they
+    # never hit the missions endpoint). Shippable over-the-air (pure JS on mobile).
+    timezone: Optional[str] = None
 
 
 @router.post("/api/story/progress/scene-complete")
@@ -598,6 +603,14 @@ async def scene_complete(body: SceneCompleteRequest, current_user=Depends(get_cu
             # the next local midnight after completion; without one it's completion+24h.
             if STORY_DAILY_DRIP:
                 tz = getattr(current_user, "timezone", None) or "UTC"
+                # If the client sent its device zone, persist it (idempotent) and use
+                # it right here — this closes the gap for Story-only users who never
+                # hit the missions endpoint, so the unlock anchors on their real local
+                # midnight from the very first episode. Falls back to the stored zone.
+                from services.timezone_utils import persist_user_timezone
+                tz = await persist_user_timezone(
+                    database.users, user_id, tz, body.timezone
+                ) or tz
                 anchor = _parse_dt(ep_block.get("completed_at"))
                 new_current["unlocked_at"] = _next_day_unlock(tz, anchor)
         else:
