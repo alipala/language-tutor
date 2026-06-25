@@ -23,7 +23,10 @@ from pydantic import BaseModel
 from database import database
 from admin_routes import get_current_admin, AdminUser
 from story_generation.story_generator import generate_world, plan_series_arc, GENRES, SCENES_BY_LEVEL
-from story_generation.cover_generator import generate_cover, generate_character_portrait
+from story_generation.cover_generator import (
+    generate_cover, generate_character_portrait, generate_lobby_promo_draft,
+    LOBBY_PROMO_ID, LOBBY_PROMO_DRAFT_PREFIX,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +34,7 @@ router = APIRouter(tags=["story-worlds"])
 
 worlds_collection = database.story_worlds
 series_collection = database.story_series
+lobby_promos_collection = database.lobby_promos   # Games-lobby "discover" hero covers
 
 
 EPISODES_PER_SERIES = 5  # a "story" = a 5-episode season; episode 5 is the finale
@@ -588,6 +592,135 @@ async def admin_delete_world(
     await worlds_collection.delete_one({"_id": world_id})
     await database.image_cache.delete_one({"_id": f"story_cover_{world_id}"})
     return {"deleted": True}
+
+
+# ---------------------------------------------------------------------------
+# ADMIN — GAMES-LOBBY PROMO COVER (the single shared "discover Story Worlds" hero
+# shown to new users before they pick a story). NOT per language/level — ONE global
+# image, full gpt-image-1 (high quality). DRAFT → PUBLISH flow: each generate makes
+# a DRAFT (the last 2 are kept); the lobby shows nothing until the admin PUBLISHES a
+# draft. Publishing copies the chosen draft onto the published id.
+# ---------------------------------------------------------------------------
+LOBBY_PROMO_MAX_DRAFTS = 2
+
+
+class LobbyPromoRequest(BaseModel):
+    prompt: str = ""   # admin's creative brief (optional → a sensible default is used)
+
+
+class LobbyPromoPublishRequest(BaseModel):
+    draft_id: str
+
+
+def _promo_payload(doc: Optional[dict]) -> Optional[dict]:
+    if not doc:
+        return None
+    return {
+        "id": doc.get("_id"),
+        "prompt": doc.get("prompt", ""),
+        "image_url": doc.get("image_url"),
+        "status": doc.get("status", "draft"),
+        "updated_at": doc.get("updated_at").isoformat() if doc.get("updated_at") else None,
+    }
+
+
+@router.get("/api/admin/lobby-promo")
+async def admin_get_lobby_promo(current_admin: AdminUser = Depends(get_current_admin)):
+    """The published promo (or null) + the kept drafts awaiting approval."""
+    published = await lobby_promos_collection.find_one({"_id": LOBBY_PROMO_ID})
+    drafts = await lobby_promos_collection.find(
+        {"status": "draft"}
+    ).sort("updated_at", -1).to_list(length=LOBBY_PROMO_MAX_DRAFTS)
+    return {
+        "published": _promo_payload(published),
+        "drafts": [_promo_payload(d) for d in drafts],
+    }
+
+
+@router.post("/api/admin/lobby-promo/generate")
+async def admin_generate_lobby_promo(
+    body: LobbyPromoRequest,
+    current_admin: AdminUser = Depends(get_current_admin),
+):
+    """Generate a NEW DRAFT promo from the admin's prompt. Keeps only the last
+    LOBBY_PROMO_MAX_DRAFTS drafts (older ones + their images are pruned). The lobby
+    is unaffected until a draft is published."""
+    draft_id = f"{LOBBY_PROMO_DRAFT_PREFIX}{uuid.uuid4().hex[:12]}"
+    try:
+        url = await generate_lobby_promo_draft(draft_id, body.prompt)
+    except Exception as e:  # noqa: BLE001
+        logger.exception("[LOBBY-PROMO] draft generation failed")
+        raise HTTPException(502, f"Promo generation failed: {e}")
+
+    now = datetime.now(timezone.utc)
+    await lobby_promos_collection.update_one(
+        {"_id": draft_id},
+        {"$set": {
+            "_id": draft_id,
+            "status": "draft",
+            "prompt": body.prompt,
+            "image_url": url,
+            "updated_at": now,
+            "created_at": now,
+            "created_by": current_admin.email,
+        }},
+        upsert=True,
+    )
+
+    # prune: keep only the newest LOBBY_PROMO_MAX_DRAFTS drafts
+    drafts = await lobby_promos_collection.find(
+        {"status": "draft"}
+    ).sort("updated_at", -1).to_list(length=100)
+    for stale in drafts[LOBBY_PROMO_MAX_DRAFTS:]:
+        await lobby_promos_collection.delete_one({"_id": stale["_id"]})
+        await database.image_cache.delete_one({"_id": stale["_id"]})
+
+    return _promo_payload({"_id": draft_id, "status": "draft", "prompt": body.prompt,
+                           "image_url": url, "updated_at": now})
+
+
+@router.post("/api/admin/lobby-promo/publish")
+async def admin_publish_lobby_promo(
+    body: LobbyPromoPublishRequest,
+    current_admin: AdminUser = Depends(get_current_admin),
+):
+    """Publish a draft → it becomes the live lobby promo. Copies the draft's image
+    bytes onto the published image-cache id so the lobby's stable url serves it."""
+    draft = await lobby_promos_collection.find_one({"_id": body.draft_id, "status": "draft"})
+    if not draft:
+        raise HTTPException(404, "Draft not found")
+    draft_img = await database.image_cache.find_one({"_id": body.draft_id})
+    if not draft_img:
+        raise HTTPException(404, "Draft image not found")
+
+    # copy the draft bytes onto the PUBLISHED image-cache id (stable lobby url)
+    await database.image_cache.update_one(
+        {"_id": LOBBY_PROMO_ID},
+        {"$set": {
+            "_id": LOBBY_PROMO_ID,
+            "content_type": draft_img.get("content_type", "image/png"),
+            "data_base64": draft_img.get("data_base64"),
+            "source": "lobby_promo",
+            "model": draft_img.get("model"),
+            "quality": draft_img.get("quality"),
+        }},
+        upsert=True,
+    )
+    now = datetime.now(timezone.utc)
+    await lobby_promos_collection.update_one(
+        {"_id": LOBBY_PROMO_ID},
+        {"$set": {
+            "_id": LOBBY_PROMO_ID,
+            "status": "published",
+            "prompt": draft.get("prompt", ""),
+            "image_url": f"/api/img/{LOBBY_PROMO_ID}",
+            "updated_at": now,
+            "published_by": current_admin.email,
+            "from_draft": body.draft_id,
+        }},
+        upsert=True,
+    )
+    return {"published": True, "image_url": f"/api/img/{LOBBY_PROMO_ID}"}
 
 
 # ---------------------------------------------------------------------------

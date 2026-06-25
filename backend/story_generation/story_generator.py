@@ -148,10 +148,12 @@ _SEED_LEADS = [
 
 # Scenes scale by CEFR — DEPTH grows with level, count stays in a tight band
 # (per the progression spec: A1=5, C2 up to ~12).
-# Tight one-sitting band (4-7 min/episode). Depth scales via DIFFICULTY, not count —
-# long episodes never end and kill the "one more episode" loop.
+# Tight one-sitting band (~5-7 min/episode). Depth scales via DIFFICULTY, not count —
+# but with the daily-drip release (1 episode/day) a slightly longer episode reads more
+# like a real mini-series instalment without breaking the "one sitting" feel. A1/A2=8,
+# B1/B2=10. C1/C2 stay shorter (out of the current A1-B2 content plan).
 SCENES_BY_LEVEL: Dict[str, int] = {
-    "A1": 5, "A2": 5, "B1": 6, "B2": 6, "C1": 7, "C2": 7,
+    "A1": 8, "A2": 8, "B1": 10, "B2": 10, "C1": 7, "C2": 7,
 }
 
 # The 7 support languages we localise translations into (matches ConversationHelp).
@@ -418,6 +420,15 @@ HARD RULES:
   the model answer that unlocks the scene.
 - `translations` must provide the {lang_name} line rendered into EACH support language.
 - `title` and the story content are in {lang_name}; `title_en` and `description` are in English for the admin.
+- STUDENT BRIEFING — produce `student_briefing` LAST, AFTER the scenes. It is a NETFLIX-STYLE
+  'what awaits you in this episode' preview the learner reads BEFORE the conversation. Its ONLY
+  jobs are to set the scene and spark curiosity. Write `hook` and `mission` in {lang_name} (the
+  TARGET language) at CEFR {level} so the learner can read them (immersion + reading practice),
+  and provide ALL support-language translation keys for each. STRICT RULES: it MUST NOT reveal how
+  the episode resolves, MUST NOT contain any of the player's answer lines (`me`), and MUST NOT tell
+  the player what to SAY or coach exact phrasing. Context and goal in broad story terms only — the
+  puzzle is solved in the conversation, and the in-scene Help (not the briefing) is what rescues a
+  stuck player. Think "coming up on this show", never "here are the answers".
 - Keep it wholesome and safe (family-friendly, no graphic violence, romance is gentle) —
   but this does NOT mean it must be about teenagers or school. Characters can be ANY age
   (children, young adults, adults, the elderly) and ANY walk of life. Only the `school_life`
@@ -492,6 +503,15 @@ Return JSON with this EXACT shape:
   "style_bible": "the SERIES-wide visual identity for the cover artist (English): the lead character's exact appearance (age, hair, clothing, distinguishing features), the colour palette, and the art style — concrete enough that every episode cover shows the SAME character and look. No text.",
   "cover_prompt": "a rich, concrete visual description of THIS EPISODE's cover moment for an illustrator — feature the lead character in a scene that captures this episode's hook. Choose a BRIGHT, well-lit, daytime or luminous moment (the app has a dark UI, so dark/night/gloomy covers disappear); vivid and colourful, no text",
   "episode_synopsis": "a 1-2 sentence summary of THIS EPISODE specifically in {lang_name} (the TARGET language), written at CEFR {level} so the learner can read it — what happens in THIS episode and why it matters, WITHOUT spoiling its ending. (This is per-episode; the top-level `synopsis` summarises the whole story.)",
+  "student_briefing": {{
+    "hook": "a SHORT 'what awaits you in this episode' recap in {lang_name} (the TARGET language), written AT CEFR {level} so the learner can READ it — 1-2 simple sentences, like the blurb you read BEFORE watching a TV episode: it sets the scene and the stakes and makes you curious. It does NOT reveal the plot resolution, and it MUST NOT contain any of the player's answer lines or tell them what to say. Atmosphere + situation only.",
+    "hook_translations": {{ {", ".join(f'"{l}": "..."' for l in SUPPORT_LANGS)} }},
+    "mission": "ONE short sentence in {lang_name} (TARGET language) at CEFR {level} naming the learner's GOAL for this episode in broad story terms — what they are trying to achieve (e.g. 'Help the engineer find the fault.'), NOT how to say it and NOT the specific answers. No phrases the player will type, no solutions.",
+    "mission_translations": {{ {", ".join(f'"{l}": "..."' for l in SUPPORT_LANGS)} }}
+  }},
+  // student_briefing is a Netflix-style 'coming up' preview the learner reads before the
+  // conversation. It builds context + curiosity ONLY. It must NEVER leak the puzzle answers
+  // (the `me` lines) or coach exact phrasing — that's what the in-scene Help is for.
   "scenes": [
     {{
       "label": "Scene 1 of {scene_count} · short title",
@@ -506,7 +526,8 @@ Return JSON with this EXACT shape:
                  "translations": {{ {", ".join(f'"{l}": "..."' for l in SUPPORT_LANGS)} }},
                  "why": "1-line tip in English on the structure used" }},
       "vocab": ["3-5 target words the learner practised this scene"],
-      "narr": "a one-line cliffhanger bridging to the next scene (English, italic story text)"
+      "narr": {{ "line": "a one-line NARRATOR beat in {lang_name} (the TARGET language) at CEFR {level} — a short cinematic sentence describing what the character DOES or what happens next, bridging into the next scene (e.g. 'Sophie opens her laptop to look for clues.'). Story prose, present tense, readable at this level.",
+                 "translations": {{ {", ".join(f'"{l}": "..."' for l in SUPPORT_LANGS)} }} }}
     }}
     // ... {scene_count} scenes total, final one resolves the story
   ]
@@ -585,6 +606,46 @@ Continue the SAME characters and world. You MUST:
 - cover_prompt must show the SAME lead character (per style_bible) in THIS episode's new moment
 - {finale_rule}
 Add these top-level fields to the JSON: "recap" (string|null), "next_hook" (string|null)."""
+
+
+def _normalize_narr(narr: Any) -> Dict[str, Any]:
+    """Coerce a scene's `narr` to {line, translations}. Accepts the new object shape or a
+    legacy bare string (puts it in `line`, leaves translations empty for the app to fall back)."""
+    if isinstance(narr, dict):
+        line = (narr.get("line") or "").strip()
+        tr = narr.get("translations")
+        tr = tr if isinstance(tr, dict) else {}
+        return {"line": line, "translations": {l: (tr.get(l) or "").strip() for l in SUPPORT_LANGS}}
+    # legacy string (or None)
+    return {"line": (narr or "").strip() if isinstance(narr, str) else "",
+            "translations": {l: "" for l in SUPPORT_LANGS}}
+
+
+def _ensure_student_briefing(briefing: Any, scenes: List[Dict[str, Any]], ep_syn: str) -> Dict[str, Any]:
+    """Normalise the model's student_briefing into the Netflix-style {hook, mission} shape
+    (target-language text + per-language translations), or synthesise a minimal one from the
+    episode synopsis. CRITICAL: never derive content from scene `me` answers — the briefing
+    must NOT leak the puzzle solutions; it only sets context + curiosity."""
+    def _clean_tr(d):
+        d = d if isinstance(d, dict) else {}
+        return {l: (d.get(l) or "").strip() for l in SUPPORT_LANGS}
+
+    if isinstance(briefing, dict) and (briefing.get("hook") or "").strip():
+        return {
+            "hook": (briefing.get("hook") or "").strip(),
+            "hook_translations": _clean_tr(briefing.get("hook_translations")),
+            "mission": (briefing.get("mission") or "").strip(),
+            "mission_translations": _clean_tr(briefing.get("mission_translations")),
+        }
+
+    # ---- fallback: reuse the episode synopsis as the hook (already spoiler-safe, target lang) ----
+    hook = (ep_syn or "").strip()
+    return {
+        "hook": hook,
+        "hook_translations": _clean_tr(None),
+        "mission": "",
+        "mission_translations": _clean_tr(None),
+    }
 
 
 async def generate_world(
@@ -669,10 +730,11 @@ async def generate_world(
         {"role": "system", "content": _system_prompt(language, level, scene_count, episode_number, total_episodes)},
         {"role": "user", "content": user_prompt},
     ]
-    # B1/6-scene worlds with 7-language translations per scene are large; 4000
-    # tokens truncated the JSON mid-string ("Unterminated string"). Give ample
-    # headroom AND retry once on a parse failure (gpt-4o-mini occasionally emits
-    # malformed JSON) so a single bad generation doesn't kill the whole series.
+    # Worlds with 7-language translations per scene are large, and longer episodes
+    # (A1/A2=8, B1/B2=10 scenes) plus the per-episode student_briefing push the JSON
+    # bigger still; too small a cap truncates it mid-string ("Unterminated string").
+    # Give ample headroom (12000) AND retry once on a parse failure (the model
+    # occasionally emits malformed JSON) so one bad generation doesn't kill the series.
     world = None
     last_err = None
     for attempt in range(2):
@@ -681,7 +743,7 @@ async def generate_world(
             messages=messages,
             response_format={"type": "json_object"},
             temperature=0.8 if attempt == 0 else 0.4,  # cooler on retry → more reliable JSON
-            max_tokens=8000,
+            max_tokens=12000,
         )
         raw = resp.choices[0].message.content
         try:
@@ -799,15 +861,28 @@ async def generate_world(
         ep_syn = synopsis
     world["episode_synopsis"] = ep_syn
 
+    # ---- STUDENT BRIEFING guarantee (English study-aid modal shown pre-conversation) ----
+    # The model produces it last (from the real scenes). If it's missing or malformed, derive
+    # a minimal honest briefing from the scenes so the modal is NEVER empty.
+    world["student_briefing"] = _ensure_student_briefing(world.get("student_briefing"), scenes, ep_syn)
+
+    # NARR normalisation — `narr` is now an object {line, translations} (target language +
+    # 7 translations), but older content / model slips may emit a bare string. Coerce every
+    # scene's narr to the object shape so the mobile app can render target text + a UI-language
+    # translation consistently.
+    for sc in scenes:
+        sc["narr"] = _normalize_narr(sc.get("narr"))
+
     # episode metadata
     is_finale = episode_number >= total_episodes
     world["episode_number"] = episode_number
     world["recap"] = world.get("recap") if episode_number > 1 else None
-    # next_hook: model-provided for non-finale; else last scene narr; null on finale
+    # next_hook: model-provided for non-finale; else last scene narr line; null on finale
     if is_finale:
         world["next_hook"] = None
     else:
-        world["next_hook"] = world.get("next_hook") or (scenes[-1].get("narr") if scenes else None)
+        last_narr = (scenes[-1].get("narr") or {}).get("line") if scenes else None
+        world["next_hook"] = world.get("next_hook") or last_narr
     world["series_finale"] = is_finale
     # series-wide visual identity: episode 1 DEFINES it; episodes 2..N inherit the
     # passed-in style_bible verbatim (don't let the model re-translate/rewrite it,

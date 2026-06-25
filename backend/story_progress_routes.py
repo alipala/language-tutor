@@ -14,7 +14,8 @@ untouched. Unlock state is DERIVED server-side (never stored → never stale).
 """
 
 import logging
-from datetime import datetime, timezone
+import os
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -23,9 +24,46 @@ from pydantic import BaseModel
 from database import database
 from auth import get_current_user
 from services.stats_service import credit_games_xp
+from services.timezone_utils import get_local_datetime_now, get_user_timezone_obj
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["story-progress"])
+
+# ── DAILY DRIP — one episode per day ────────────────────────────────────────
+# When on (default), finishing an episode locks the NEXT one until midnight in the
+# user's local timezone ("come back tomorrow"). This paces a 5-episode series over
+# ~5 days, turning the feature into a daily-return habit (a serialized mini-series
+# instead of a one-sitting binge). Reversible: STORY_DAILY_DRIP=0 restores the old
+# instant-unlock behaviour (next episode playable immediately on completion).
+STORY_DAILY_DRIP = os.getenv("STORY_DAILY_DRIP", "1") != "0"
+
+# ── SINGLE ACTIVE SERIES — Netflix "one show at a time" ─────────────────────
+# When on (default), the lobby shows ONE series at a time. While a series is in
+# progress the rest of the catalog is HIDDEN (not listed at all) so the player
+# stays on the show they're watching — one episode a day. When no series is in
+# progress the FULL catalog is returned so they can browse/filter/pick the next
+# one. A new series opens only after the active one is finished. Combined with the
+# daily-episode drip this makes "one episode a day" a real per-USER cap (a 1000-story
+# library can't be binged). STORY_SINGLE_ACTIVE_SERIES=0 → old behaviour (the whole
+# catalog is always listed, every series independently playable).
+STORY_SINGLE_ACTIVE_SERIES = os.getenv("STORY_SINGLE_ACTIVE_SERIES", "1") != "0"
+
+
+def _next_day_unlock(user_timezone: str) -> datetime:
+    """UTC instant of the next local midnight in the user's timezone (the moment the
+    next episode becomes available). Computed in local time, returned as UTC."""
+    try:
+        local_now = get_local_datetime_now(user_timezone)
+        tz = get_user_timezone_obj(user_timezone)
+        local_midnight = (local_now + timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0)
+        # ensure tz-aware in the user's zone, then convert to UTC for storage
+        if local_midnight.tzinfo is None:
+            local_midnight = local_midnight.replace(tzinfo=tz)
+        return local_midnight.astimezone(timezone.utc)
+    except Exception as e:  # noqa: BLE001 — never block completion on a tz hiccup
+        logger.warning("[STORY-DRIP] unlock-time calc failed (%s) — 24h fallback", e)
+        return datetime.now(timezone.utc) + timedelta(hours=24)
 
 series_collection = database.story_series
 worlds_collection = database.story_worlds
@@ -33,10 +71,11 @@ progress_collection = database.story_progress
 
 # ── Story Worlds XP economy (server-authoritative) ──────────────────────────
 # One scene ≈ one game question, but the scene is a richer, typed exchange in the
-# flagship game, so it carries a small premium: a 5-scene episode (= 50 XP) plus
-# the episode-complete bonus (= 70 XP total) mirrors one perfect 10-question quick
-# game session. A full 5-episode series ≈ 5×70 + 50 finale = 400 XP (~1.5 levels
-# for a mid-level player). Flat values — NO CEFR / hint / combo scaling — so the
+# flagship game, so it carries a small premium of 10 XP/scene + a 20 XP episode-
+# complete bonus. Episodes now run 8 scenes (A1/A2) or 10 (B1/B2), so an episode is
+# ~100-120 XP and a 5-episode series ≈ 5×(100..120) + 50 finale ≈ 550-650 XP. The
+# math is fully dynamic (per-scene + flat bonuses), so changing scene counts needs
+# NO code change here. Flat values — NO CEFR / hint / combo scaling — so the
 # games-level currency stays consistent with quick games (A1 and C2 earn the same).
 # These feed `xp_by_source.challenges`, the exact bucket the Games-tab level reads.
 STORY_XP_PER_SCENE = 10        # first clear of a scene
@@ -83,11 +122,33 @@ async def _get_or_create_progress(user_id: str, series_id: str, language: str, l
     return doc
 
 
-def _episode_state(ep_number: int, completed: list, first_unfinished: Optional[int]) -> str:
-    """Derive lock state: completed | current | locked."""
+def _parse_dt(v) -> Optional[datetime]:
+    """Coerce a stored value (datetime or ISO string) to a tz-aware UTC datetime."""
+    if v is None:
+        return None
+    if isinstance(v, datetime):
+        return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
+    try:
+        d = datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+        return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+
+def _episode_state(ep_number: int, completed: list, first_unfinished: Optional[int],
+                   unlocked_at: Optional[datetime] = None) -> str:
+    """Derive lock state: completed | current | time_locked | locked.
+
+    `time_locked` = the next episode the user has earned, but it is daily-drip gated
+    until `unlocked_at` (their next local midnight). It becomes `current` once that
+    instant passes. With STORY_DAILY_DRIP off, unlocked_at is never set so this never
+    fires and behaviour is the old sequential unlock."""
     if ep_number in completed:
         return "completed"
     if ep_number == first_unfinished:
+        ua = _parse_dt(unlocked_at)
+        if ua and datetime.now(timezone.utc) < ua:
+            return "time_locked"
         return "current"
     return "locked"
 
@@ -145,11 +206,15 @@ async def list_series(
             if n not in completed and (n == 1 or (n - 1) in completed):
                 first_unfinished = n
                 break
+        # the daily-drip unlock instant lives on the cursor of the episode it gates
+        cur_unlock = (cur or {}).get("unlocked_at") if cur else None
         ep_preview = []
         for idx, eid in enumerate(ep_ids):
             ed = ep_docs.get(eid, {})
             n = idx + 1
-            state = _episode_state(n, completed, first_unfinished)
+            # unlocked_at only applies to the first-unfinished (the gated) episode
+            ua = cur_unlock if n == first_unfinished else None
+            state = _episode_state(n, completed, first_unfinished, ua)
             ep_preview.append({
                 "world_id": eid,
                 "episode_number": n,
@@ -157,7 +222,8 @@ async def list_series(
                 "cover_url": ed.get("cover_url"),
                 "scene_count": ed.get("scene_count", len(ed.get("scenes", [])) or 5),
                 "scenes_completed": ep_progress.get(str(n), {}).get("scenes_completed", 0),
-                "state": state,                       # completed | current | locked
+                "state": state,                       # completed | current | time_locked | locked
+                "unlocked_at": _parse_dt(ua).isoformat() if (state == "time_locked" and _parse_dt(ua)) else None,
                 "is_finale": ed.get("series_finale", n == len(ep_ids)),
             })
 
@@ -212,6 +278,25 @@ async def list_series(
         return (status_order.get(status, 1), -recency)
 
     out.sort(key=_sort_key)
+
+    # ── SINGLE ACTIVE SERIES — Netflix "one show at a time" (HIDE, don't list) ──
+    # The lobby never shows a stack of stories. Two states:
+    #   A) the user has a series IN PROGRESS → return ONLY that one. The rest of the
+    #      catalog is hidden (not locked, not listed) so the player stays focused on
+    #      the show they're watching, one episode a day.
+    #   B) NO series in progress (new player, or just finished one) → return the FULL
+    #      catalog so they can browse covers, filter by genre, and pick what to watch
+    #      next. Their choice — we never force a category.
+    # `series_lock` stays 'active' on everything returned (entry is always allowed for
+    # what we send). When the active series is finished, it flips to completed and the
+    # next request falls back to state B → catalog reopens. Reversible via the flag.
+    if STORY_SINGLE_ACTIVE_SERIES and out:
+        active = next((x for x in out if x["status"] == "in_progress"), None)
+        if active:
+            out = [active]                 # state A: ONLY the in-progress series
+    for x in out:
+        x["series_lock"] = "active"
+
     for x in out:
         x.pop("_last_played", None)
         x.pop("_created", None)
@@ -229,6 +314,7 @@ async def series_detail(series_id: str, current_user=Depends(get_current_user)):
     prog = await progress_collection.find_one({"user_id": user_id, "series_id": series_id})
     completed = (prog or {}).get("completed_episodes", [])
     ep_progress = (prog or {}).get("episodes", {})
+    cur_unlock = ((prog or {}).get("current") or {}).get("unlocked_at")
 
     # episodes in order
     ep_ids = s.get("episode_ids", [])
@@ -250,22 +336,31 @@ async def series_detail(series_id: str, current_user=Depends(get_current_user)):
         if not ep:
             continue
         n = idx + 1
-        state = _episode_state(n, completed, first_unfinished)
+        ua = cur_unlock if n == first_unfinished else None
+        state = _episode_state(n, completed, first_unfinished, ua)
         ep_done = ep_progress.get(str(n), {})
+        # the briefing/synopsis are visible for any episode the learner can see/enter
+        # (completed, current, or time_locked) — hidden only for the sequentially-locked
+        # ones we don't want to spoil. time_locked still shows them: the user knows
+        # what's coming tomorrow (a return hook), they just can't play it yet.
+        reveal = state in ("completed", "current", "time_locked")
         episodes.append({
             "world_id": eid,
             "episode_number": n,
             "episode_title": ep.get("episode_title") or ep.get("title"),
             "episode_title_en": ep.get("episode_title_en") or ep.get("title_en"),
             "scene_count": ep.get("scene_count", len(ep.get("scenes", []))),
-            "state": state,                     # completed | current | locked
+            "state": state,                     # completed | current | time_locked | locked
+            "unlocked_at": _parse_dt(ua).isoformat() if (state == "time_locked" and _parse_dt(ua)) else None,
             "stars": ep_done.get("scenes_completed", 0) if state == "completed" else 0,
             "scenes_completed": ep_done.get("scenes_completed", 0),
             "is_finale": (n == len(ep_ids)),
             "title_teaser": ep.get("episode_title_en") or ep.get("title_en") if state == "locked" else None,
             # per-episode "what happens here" summary (target language). Hidden for
             # locked episodes so we don't spoil what's coming.
-            "episode_synopsis": ep.get("episode_synopsis") if state != "locked" else None,
+            "episode_synopsis": ep.get("episode_synopsis") if reveal else None,
+            # English study-aid briefing shown in the pre-conversation modal.
+            "student_briefing": ep.get("student_briefing") if reveal else None,
         })
 
     return {
@@ -308,6 +403,71 @@ async def get_continue(current_user=Depends(get_current_user)):
     }
 
 
+@router.get("/api/story/lobby-promo")
+async def get_lobby_promo(current_user=Depends(get_current_user)):
+    """The PUBLISHED Games-lobby promo cover (the 'discover Story Worlds' hero shown
+    to new users). Returns {image_url} or null if the admin hasn't published one."""
+    doc = await database.lobby_promos.find_one(
+        {"_id": "lobby_promo", "status": "published"})
+    if not doc or not doc.get("image_url"):
+        return None
+    return {"image_url": doc.get("image_url")}
+
+
+# ---------------------------------------------------------------------------
+# PUBLIC — START a series (commit to it on "Begin Episode", before any scene)
+# ---------------------------------------------------------------------------
+class StartSeriesRequest(BaseModel):
+    series_id: str
+    episode_number: int = 1
+    scene_index: int = 0
+    world_id: Optional[str] = None
+
+
+@router.post("/api/story/progress/start")
+async def start_series(body: StartSeriesRequest, current_user=Depends(get_current_user)):
+    """Commit the user to a series the moment they tap 'Begin Episode' (before any
+    scene is cleared). Marks it in_progress with a cursor at the entered episode/scene.
+    Enforces single-active-series: you cannot start a NEW series while another is in
+    progress. Idempotent — re-starting an already-active series is a no-op resume."""
+    user_id = str(current_user.id)
+    series = await series_collection.find_one({"_id": body.series_id})
+    if not series:
+        raise HTTPException(404, "Series not found")
+
+    existing = await progress_collection.find_one({"user_id": user_id, "series_id": body.series_id})
+
+    # single-active guard: block starting a NEW series while another is in_progress.
+    if STORY_SINGLE_ACTIVE_SERIES and (existing is None or existing.get("status") == "not_started"):
+        other_active = await progress_collection.find_one(
+            {"user_id": user_id, "status": "in_progress", "series_id": {"$ne": body.series_id}})
+        if other_active:
+            raise HTTPException(409, "Finish your current story before starting a new one.")
+
+    prog = await _get_or_create_progress(
+        user_id, body.series_id, series.get("language", ""), series.get("level", ""))
+
+    # already completed → starting again is a replay; don't flip it back to in_progress.
+    if prog.get("status") == "completed":
+        return {"started": True, "status": "completed"}
+
+    # set the cursor to where they're entering (only if not already further along).
+    ep_ids = series.get("episode_ids", [])
+    world_id = body.world_id or (ep_ids[body.episode_number - 1] if 0 < body.episode_number <= len(ep_ids) else None)
+    new_current = prog.get("current") or {
+        "episode_number": body.episode_number, "scene_index": body.scene_index, "world_id": world_id}
+
+    await progress_collection.update_one(
+        {"_id": prog["_id"]},
+        {"$set": {
+            "status": "in_progress",
+            "current": new_current,
+            "last_played_at": datetime.now(timezone.utc),
+        }},
+    )
+    return {"started": True, "status": "in_progress"}
+
+
 # ---------------------------------------------------------------------------
 # PUBLIC — persist a cleared scene (advances progress, server-authoritative)
 # ---------------------------------------------------------------------------
@@ -336,6 +496,46 @@ async def scene_complete(body: SceneCompleteRequest, current_user=Depends(get_cu
     if not ep:
         raise HTTPException(404, "Episode not found")
     total_scenes = ep.get("scene_count", len(ep.get("scenes", [])))
+
+    # ── SERVER-SIDE GUARDS (defence in depth) ───────────────────────────────
+    # The single-active-series and daily-drip rules are shaped read-side (the lobby
+    # hides other series / locked episodes), but the write path must ALSO enforce
+    # them so a direct API call can't start a 2nd series or play a locked episode.
+    existing = await progress_collection.find_one({"user_id": user_id, "series_id": body.series_id})
+
+    # GUARD 1 — single active series: while another series is in_progress, you cannot
+    # start a NEW one. (Continuing the already-active series is fine; a series the
+    # user has previously touched, completed, or this very series are all allowed.)
+    if STORY_SINGLE_ACTIVE_SERIES and existing is None:
+        other_active = await progress_collection.find_one(
+            {"user_id": user_id, "status": "in_progress", "series_id": {"$ne": body.series_id}})
+        if other_active:
+            raise HTTPException(409, "Finish your current story before starting a new one.")
+
+    # GUARD 2 — daily drip + sequential unlock: you may only post scenes for the
+    # episode that is currently CURRENT (i.e. unlocked). Re-recording a scene already
+    # cleared is idempotent and always allowed (no double credit downstream anyway).
+    if existing is not None:
+        completed_eps = existing.get("completed_episodes", []) or []
+        already_cleared = body.scene_index in (
+            (existing.get("episodes", {}).get(str(body.episode_number), {}).get("scenes", {})) or {}
+        )
+        if not already_cleared and body.episode_number not in completed_eps:
+            cur = existing.get("current") or {}
+            cur_ep = cur.get("episode_number")
+            # A brand-new (never-started) doc has current=None → starting at episode 1
+            # is always allowed; otherwise the posted episode must match the cursor.
+            if cur_ep is None:
+                if body.episode_number != 1:
+                    raise HTTPException(423, "This episode is locked.")
+            elif cur_ep != body.episode_number:
+                # trying to play an episode that isn't the current cursor (sequential lock)
+                raise HTTPException(423, "This episode is locked.")
+            else:
+                # on the current episode → it may be daily-drip locked until tomorrow.
+                ua = _parse_dt(cur.get("unlocked_at"))
+                if STORY_DAILY_DRIP and ua and datetime.now(timezone.utc) < ua:
+                    raise HTTPException(423, "This episode unlocks tomorrow.")
 
     prog = await _get_or_create_progress(user_id, body.series_id, series.get("language", ""), series.get("level", ""))
 
@@ -368,6 +568,10 @@ async def scene_complete(body: SceneCompleteRequest, current_user=Depends(get_cu
         if body.episode_number < len(ep_ids):
             nxt_id = ep_ids[body.episode_number]  # 0-based → next episode
             new_current = {"episode_number": body.episode_number + 1, "scene_index": 0, "world_id": nxt_id}
+            # DAILY DRIP: lock the next episode until the user's next local midnight.
+            if STORY_DAILY_DRIP:
+                tz = getattr(current_user, "timezone", None) or "UTC"
+                new_current["unlocked_at"] = _next_day_unlock(tz)
         else:
             new_current = None  # series finished
 
@@ -450,12 +654,20 @@ async def scene_complete(body: SceneCompleteRequest, current_user=Depends(get_cu
             source_type="story_worlds",
         )
 
+    # next episode's daily-drip unlock instant (ISO) so the client can show
+    # "come back tomorrow" immediately on episode completion, before any refetch.
+    locked_until = None
+    if isinstance(new_current, dict) and new_current.get("unlocked_at"):
+        ua = _parse_dt(new_current["unlocked_at"])
+        locked_until = ua.isoformat() if ua else None
+
     return {
         "saved": True,
         "episode_completed": episode_just_completed,
         "series_completed": series_just_completed,
         "xp_awarded": games_xp_delta if credit_now else 0,  # server-authoritative
         "next": new_current,           # where to go next (episode/scene) | null
+        "next_episode_locked_until": locked_until,  # ISO | null (daily-drip gate)
         "next_hook": ep.get("next_hook") if episode_just_completed and not series_just_completed else None,
     }
 

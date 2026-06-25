@@ -36,7 +36,18 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
             "/favicon.ico",
             "/robots.txt"
         }
-        
+
+        # Endpoints that are LEGITIMATELY slow (image / story generation call out to
+        # OpenAI image models that take 30-60s). They are still monitored for ERRORS,
+        # but excluded from the "slow response" performance alert so they don't spam
+        # Slack with false CRITICAL alarms. Matched by substring (paths have dynamic ids).
+        self.slow_by_design = (
+            "/generate-cover",
+            "/lobby-promo/generate",
+            "/generate-portrait",
+            "/story-worlds/generate",
+        )
+
         # Critical endpoints that need special attention
         self.critical_endpoints = {
             "/api/realtime/token",
@@ -129,8 +140,11 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
             # Calculate response time
             response_time = time.time() - start_time
             
-            # Monitor performance for critical endpoints
-            if self._should_monitor_endpoint(request.url.path) and response_time > self.performance_threshold:
+            # Monitor performance for critical endpoints — but skip endpoints that are
+            # slow BY DESIGN (image/story generation) so they don't fire false alarms.
+            slow_ok = any(s in request.url.path for s in self.slow_by_design)
+            if (self._should_monitor_endpoint(request.url.path) and not slow_ok
+                    and response_time > self.performance_threshold):
                 await send_performance_alert(
                     endpoint=request.url.path,
                     response_time=response_time,
