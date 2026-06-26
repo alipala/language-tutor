@@ -421,14 +421,17 @@ HARD RULES:
 - `translations` must provide the {lang_name} line rendered into EACH support language.
 - `title` and the story content are in {lang_name}; `title_en` and `description` are in English for the admin.
 - STUDENT BRIEFING — produce `student_briefing` LAST, AFTER the scenes. It is a NETFLIX-STYLE
-  'what awaits you in this episode' preview the learner reads BEFORE the conversation. Its ONLY
-  jobs are to set the scene and spark curiosity. Write `hook` and `mission` in {lang_name} (the
-  TARGET language) at CEFR {level} so the learner can read them (immersion + reading practice),
-  and provide ALL support-language translation keys for each. STRICT RULES: it MUST NOT reveal how
-  the episode resolves, MUST NOT contain any of the player's answer lines (`me`), and MUST NOT tell
-  the player what to SAY or coach exact phrasing. Context and goal in broad story terms only — the
-  puzzle is solved in the conversation, and the in-scene Help (not the briefing) is what rescues a
-  stuck player. Think "coming up on this show", never "here are the answers".
+  'what awaits you in this episode' preview the learner reads BEFORE the conversation. Its jobs are
+  to give the player REAL CONTEXT (who, where, what's happening, what's at stake) and spark
+  curiosity, so they begin feeling oriented and ready — not dropped in cold. Be genuinely helpful
+  and descriptive: `hook` is a full 3-4 sentence setup and `mission` is 2 sentences (see the field
+  specs below for exactly what each must cover). Write both in {lang_name} (the TARGET language) at
+  CEFR {level} so the learner can read them (immersion + reading practice), and provide ALL
+  support-language translation keys for each. STRICT RULES: it MUST NOT reveal how the episode
+  resolves, MUST NOT contain any of the player's answer lines (`me`), and MUST NOT tell the player
+  what to SAY or coach exact phrasing. Rich context and goal in broad story terms only — the puzzle
+  is still solved in the conversation, and the in-scene Help (not the briefing) is what rescues a
+  stuck player. Think "the episode description on a streaming app", never "here are the answers".
 - Keep it wholesome and safe (family-friendly, no graphic violence, romance is gentle) —
   but this does NOT mean it must be about teenagers or school. Characters can be ANY age
   (children, young adults, adults, the elderly) and ANY walk of life. Only the `school_life`
@@ -504,9 +507,9 @@ Return JSON with this EXACT shape:
   "cover_prompt": "a rich, concrete visual description of THIS EPISODE's cover moment for an illustrator — feature the lead character in a scene that captures this episode's hook. Choose a BRIGHT, well-lit, daytime or luminous moment (the app has a dark UI, so dark/night/gloomy covers disappear); vivid and colourful, no text",
   "episode_synopsis": "a 1-2 sentence summary of THIS EPISODE specifically in {lang_name} (the TARGET language), written at CEFR {level} so the learner can read it — what happens in THIS episode and why it matters, WITHOUT spoiling its ending. (This is per-episode; the top-level `synopsis` summarises the whole story.)",
   "student_briefing": {{
-    "hook": "a SHORT 'what awaits you in this episode' recap in {lang_name} (the TARGET language), written AT CEFR {level} so the learner can READ it — 1-2 simple sentences, like the blurb you read BEFORE watching a TV episode: it sets the scene and the stakes and makes you curious. It does NOT reveal the plot resolution, and it MUST NOT contain any of the player's answer lines or tell them what to say. Atmosphere + situation only.",
+    "hook": "a RICH 'what awaits you in this episode' setup in {lang_name} (the TARGET language), written AT CEFR {level} so the learner can READ it — 3 to 4 sentences (aim ~40-70 words), like a proper streaming-app episode description. Cover, in order: (1) WHO the player meets and WHERE they are, (2) the SITUATION / what just happened, (3) the TENSION or question that makes it intriguing, (4) what kind of moment is COMING UP for the player. Give enough concrete context that someone who never saw the story understands the setup and feels ready to begin. Keep sentences simple and level-appropriate (short clauses for A1/A2). It MUST NOT reveal the plot resolution, MUST NOT contain any of the player's answer lines, and MUST NOT tell them what to say. Atmosphere, characters, and situation only.",
     "hook_translations": {{ {", ".join(f'"{l}": "..."' for l in SUPPORT_LANGS)} }},
-    "mission": "ONE short sentence in {lang_name} (TARGET language) at CEFR {level} naming the learner's GOAL for this episode in broad story terms — what they are trying to achieve (e.g. 'Help the engineer find the fault.'), NOT how to say it and NOT the specific answers. No phrases the player will type, no solutions.",
+    "mission": "TWO sentences in {lang_name} (TARGET language) at CEFR {level} describing the learner's GOAL for this episode in broad story terms. Sentence 1: WHAT they are trying to achieve in the story (e.g. 'Help the engineer find the fault.'). Sentence 2: a little more on WHY it matters or what success looks like, so the goal feels concrete and motivating. Describe the goal, NOT how to say it — no phrases the player will type, no specific answers, no solutions.",
     "mission_translations": {{ {", ".join(f'"{l}": "..."' for l in SUPPORT_LANGS)} }}
   }},
   // student_briefing is a Netflix-style 'coming up' preview the learner reads before the
