@@ -39,7 +39,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
         onMouseEnter={interactive ? () => setHovered(true) : undefined}
         onMouseLeave={interactive ? () => setHovered(false) : undefined}
         className={cn(
-          'relative rounded-card border p-6 transition-all duration-300 overflow-hidden',
+          'relative rounded-card border p-5 sm:p-6 transition-all duration-300 overflow-hidden',
           ELEVATION[elevation],
           interactive && 'hover:-translate-y-0.5',
           className

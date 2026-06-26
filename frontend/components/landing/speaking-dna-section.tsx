@@ -116,7 +116,7 @@ export default function SpeakingDNASection() {
   const shown = DIMENSIONS.find((d) => d.key === (activeKey ?? defaultKey))!;
 
   return (
-    <section id="speaking-dna" className="relative py-24 px-4" style={{ background: '#0B1A1F' }}>
+    <section id="speaking-dna" className="relative py-16 sm:py-24 px-4" style={{ background: '#0B1A1F' }}>
       {/* teal ambient glow */}
       <div
         className="pointer-events-none absolute inset-0"
@@ -154,13 +154,11 @@ export default function SpeakingDNASection() {
           <Card elevation="hero" category="dna" className="overflow-hidden">
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
               {/* ── Helix ── */}
-              <div className="shrink-0 mx-auto sm:mx-0 self-stretch flex">
+              <div className="shrink-0 mx-auto sm:mx-0 sm:self-stretch flex">
                 <svg
-                  width={VB_W}
-                  height="100%"
                   viewBox={`0 0 ${VB_W} ${VB_H}`}
                   preserveAspectRatio="xMidYMid meet"
-                  className="max-h-[560px]"
+                  className="h-[240px] w-auto sm:h-full sm:max-h-[560px]"
                   role="img"
                   aria-label="DNA double helix representing six speaking dimensions"
                 >
@@ -213,7 +211,7 @@ export default function SpeakingDNASection() {
               </div>
 
               {/* ── Metric cards ── */}
-              <div className="flex-1 space-y-2.5">
+              <div className="flex-1 min-w-0 space-y-2.5">
                 {DIMENSIONS.map((d, i) => {
                   const on = activeKey === d.key;
                   return (
@@ -247,7 +245,7 @@ export default function SpeakingDNASection() {
                       </span>
                       {/* body */}
                       <div className="flex-1 min-w-0">
-                        <div className="w-1/2">
+                        <div className="w-full sm:w-1/2">
                           <div className="flex items-baseline justify-between gap-2 mb-1.5">
                             <span className="text-sm font-semibold text-white truncate">{d.label}</span>
                             <span className="text-lg font-extrabold tabular-nums" style={{ color: d.color }}>{d.score}</span>

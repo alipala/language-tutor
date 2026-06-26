@@ -204,7 +204,7 @@ export default function SubscriptionPlans() {
 
         {/* Billing toggle */}
         <motion.div
-          className="flex items-center justify-center gap-4 mb-12"
+          className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 mb-12"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
@@ -399,7 +399,7 @@ export default function SubscriptionPlans() {
           <div className="hidden sm:block w-px h-8 bg-white/[0.08]" />
           <button
             onClick={() => { window.location.href = 'mailto:hello@mytacoai.com?subject=Enterprise Plan Inquiry'; }}
-            className="text-sm font-semibold text-brand hover:text-white transition-colors duration-200 underline underline-offset-4 decoration-brand/40"
+            className="py-2 text-sm font-semibold text-brand hover:text-white transition-colors duration-200 underline underline-offset-4 decoration-brand/40"
           >
             Need enterprise? Contact us →
           </button>

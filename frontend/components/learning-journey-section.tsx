@@ -256,7 +256,7 @@ function SessionFlow() {
 
 function AssessmentBranch() {
   return (
-    <div className="grid grid-cols-2 gap-3 mt-4">
+    <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3 mt-4">
       <motion.div
         className="rounded-xl border border-cat-news/30 p-4"
         style={{ backgroundColor: '#0E1A14' }}

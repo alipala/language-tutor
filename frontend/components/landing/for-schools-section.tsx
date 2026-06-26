@@ -70,7 +70,7 @@ const DEMO_MAILTO =
 
 export default function ForSchoolsSection() {
   return (
-    <section id="for-schools" className="relative py-24 px-4" style={{ background: '#0A0A0F' }}>
+    <section id="for-schools" className="relative py-16 sm:py-24 px-4" style={{ background: '#0A0A0F' }}>
       <div className="max-w-6xl mx-auto">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* ── Left: pitch ── */}

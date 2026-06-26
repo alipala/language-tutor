@@ -395,9 +395,9 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Floating DNA badge */}
+              {/* Floating DNA badge (decorative — hidden on mobile to avoid overlap) */}
               <motion.div
-                className="absolute -top-4 right-2 sm:-right-6 rounded-2xl bg-bg border border-cat-challenge/40 px-3 py-2 shadow-lg backdrop-blur-xl"
+                className="hidden sm:block absolute -top-4 sm:-right-6 rounded-2xl bg-bg border border-cat-challenge/40 px-3 py-2 shadow-lg backdrop-blur-xl"
                 animate={{ y: [0, -6, 0] }}
                 transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
               >
@@ -407,9 +407,9 @@ export default function Home() {
                 <div className="text-sm font-bold text-white">Identified ✓</div>
               </motion.div>
 
-              {/* Floating streak badge */}
+              {/* Floating streak badge (decorative — hidden on mobile to avoid overlap) */}
               <motion.div
-                className="absolute -bottom-4 left-2 sm:-left-6 rounded-2xl bg-bg border border-cat-missions/40 px-3 py-2 shadow-lg"
+                className="hidden sm:block absolute -bottom-4 sm:-left-6 rounded-2xl bg-bg border border-cat-missions/40 px-3 py-2 shadow-lg"
                 animate={{ y: [0, 6, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
               >
@@ -418,9 +418,9 @@ export default function Home() {
               </motion.div>
             </motion.div>
 
-            {/* Scroll indicator */}
+            {/* Scroll indicator (hidden on mobile — overlaps the tall hero card) */}
             <motion.div
-              className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 cursor-pointer"
+              className="hidden sm:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center gap-2 cursor-pointer"
               onClick={() => scrollTo('bento-features')}
               animate={{ y: [0, 6, 0] }}
               transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
@@ -440,7 +440,7 @@ export default function Home() {
           {/* ─── BENTO FEATURES ───────────────────────────────── */}
           <section
             id="bento-features"
-            className="relative py-24 px-4"
+            className="relative py-16 sm:py-24 px-4"
             style={{ background: '#0D0D18' }}
           >
             <div className="max-w-6xl mx-auto">
@@ -663,7 +663,7 @@ export default function Home() {
           {/* ─── FAQ ──────────────────────────────────────────── */}
           <section
             id="faq"
-            className="relative py-24 px-4"
+            className="relative py-16 sm:py-24 px-4"
             style={{ background: '#0D0D18' }}
           >
             <div className="max-w-3xl mx-auto">

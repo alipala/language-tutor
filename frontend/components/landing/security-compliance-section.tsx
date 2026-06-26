@@ -51,7 +51,7 @@ const ITEMS = [
 
 export default function SecurityComplianceSection() {
   return (
-    <section id="security" className="relative py-20 px-4" style={{ background: '#0D0D18' }}>
+    <section id="security" className="relative py-14 sm:py-20 px-4" style={{ background: '#0D0D18' }}>
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-12">
           <div className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-4 py-1.5 mb-4">

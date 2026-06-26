@@ -307,9 +307,10 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Scroll-to-top button */}
+      {/* Scroll-to-top button — sits ABOVE the chat FAB on mobile (bottom-20)
+          so the two fixed bottom-right widgets don't collide; 44px touch target */}
       <motion.button
-        className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 w-10 h-10 rounded-full border border-brand/30 bg-brand/10 backdrop-blur-md flex items-center justify-center text-brand hover:bg-brand hover:text-[#080810] hover:scale-110 active:scale-95 transition-all duration-200 z-50"
+        className="fixed bottom-20 right-4 sm:bottom-8 sm:right-8 w-11 h-11 rounded-full border border-brand/30 bg-brand/10 backdrop-blur-md flex items-center justify-center text-brand hover:bg-brand hover:text-[#080810] hover:scale-110 active:scale-95 transition-all duration-200 z-50"
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}

@@ -43,7 +43,7 @@ const GENRES = [
 
 export default function StoryWorldsSection() {
   return (
-    <section id="story-worlds" className="relative py-24 px-4" style={{ background: '#0D0D18' }}>
+    <section id="story-worlds" className="relative py-16 sm:py-24 px-4" style={{ background: '#0D0D18' }}>
       {/* magenta ambient glow */}
       <div
         className="pointer-events-none absolute inset-0"
@@ -80,7 +80,7 @@ export default function StoryWorldsSection() {
 
         <Reveal delay={0.1}>
           <Card elevation="hero" category="story" className="overflow-hidden">
-            <div className="grid lg:grid-cols-2 gap-8 items-center">
+            <div className="grid lg:grid-cols-2 gap-6 lg:gap-8 items-center">
               {/* ── Left: cover-art mock ── */}
               <div className="relative">
                 <div
@@ -99,12 +99,12 @@ export default function StoryWorldsSection() {
                         'radial-gradient(circle at 30% 30%, rgba(247,90,90,0.35) 0%, transparent 45%), radial-gradient(circle at 75% 60%, rgba(232,76,136,0.40) 0%, transparent 50%)',
                     }}
                   />
-                  <div className="absolute bottom-0 left-0 right-0 flex items-end justify-center gap-1 px-6 opacity-60">
+                  <div className="absolute bottom-0 left-0 right-0 h-1/2 flex items-end justify-center gap-1 px-6 opacity-60">
                     {[40, 70, 55, 90, 50, 80, 60, 100, 45, 75].map((h, i) => (
                       <div
                         key={i}
                         className="flex-1 rounded-t-sm"
-                        style={{ height: h, background: 'rgba(0,0,0,0.55)' }}
+                        style={{ height: `${h}%`, background: 'rgba(0,0,0,0.55)' }}
                       />
                     ))}
                   </div>
@@ -117,7 +117,7 @@ export default function StoryWorldsSection() {
                   </div>
                   {/* title */}
                   <div className="absolute bottom-4 left-4 right-4">
-                    <div className="text-white font-extrabold text-2xl leading-tight drop-shadow-lg">
+                    <div className="text-white font-extrabold text-xl sm:text-2xl leading-tight drop-shadow-lg">
                       Whispers in Lisbon
                     </div>
                     <div className="text-white/70 text-xs mt-1">A mystery series · B1 · 🇵🇹 Portuguese</div>
@@ -158,7 +158,7 @@ export default function StoryWorldsSection() {
                           >
                             {isDone ? '✓' : isFinale ? '★' : ep.n}
                           </div>
-                          <span className="text-[9px] text-ink-faint">
+                          <span className="text-[10px] text-ink-faint">
                             {isActive ? 'Today' : isFinale ? 'Finale' : isDone ? 'Done' : 'Soon'}
                           </span>
                         </div>
