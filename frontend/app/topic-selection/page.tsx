@@ -671,7 +671,7 @@ export default function TopicSelection() {
   };
 
   return (
-    <div className="min-h-screen text-[#4ECFBF] topic-selection-container">
+    <div className="min-h-screen text-brand topic-selection-container">
       <NavBar activeSection="section1" />
       <main className="flex-grow flex flex-col p-4 md:p-8 main-content-with-navbar" style={{paddingTop: '220px'}}>
         <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
@@ -703,11 +703,11 @@ export default function TopicSelection() {
               key={topic.id}
               onClick={() => handleTopicSelect(topic.id)}
               disabled={isLoading || isExtendingKnowledge}
-              className="group relative overflow-hidden rounded-xl transition-all duration-300 bg-white border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 flex flex-col p-4 sm:p-6 text-left min-h-40 sm:min-h-44 transform hover:translate-y-[-2px] shadow-lg hover:shadow-[#4ECFBF]/20 animate-slide-up touch-target cursor-pointer hover:scale-105"
+              className="group relative overflow-hidden rounded-xl transition-all duration-300 bg-white border-2 border-brand/40 hover:border-brand/60 flex flex-col p-4 sm:p-6 text-left min-h-40 sm:min-h-44 transform hover:translate-y-[-2px] shadow-lg hover:shadow-brand/20 animate-slide-up touch-target cursor-pointer hover:scale-105"
               style={{ animationDelay: `${index * 50}ms` }}
             >
               {/* Hover Effect Background */}
-              <div className="absolute inset-0 bg-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-brand/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               
               {/* Icon */}
               <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">
@@ -715,7 +715,7 @@ export default function TopicSelection() {
               </div>
               
               {/* Title */}
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-800 group-hover:text-[#4ECFBF] mb-2 transition-colors duration-300">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-800 group-hover:text-brand mb-2 transition-colors duration-300">
                 {topic.name}
               </h3>
               
@@ -725,7 +725,7 @@ export default function TopicSelection() {
               </p>
               
               {/* Bottom Accent Line */}
-              <div className="absolute bottom-0 left-0 h-1 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
+              <div className="absolute bottom-0 left-0 h-1 bg-brand w-0 group-hover:w-full transition-all duration-500"></div>
             </button>
           ))}
         </div>
@@ -742,22 +742,22 @@ export default function TopicSelection() {
                 disabled={isLoading || isExtendingKnowledge}
                 className={`
                   group relative overflow-hidden rounded-xl transition-all duration-300 
-                  bg-gradient-to-br from-[#4ECFBF]/10 via-white to-[#4ECFBF]/5 
-                  border-2 border-[#4ECFBF] shadow-[#4ECFBF]/10
+                  bg-gradient-to-br from-brand/10 via-white to-brand/5 
+                  border-2 border-brand shadow-brand/10
                   flex flex-col p-6 md:p-8 text-center
                   w-full max-w-md h-48 md:h-56
-                  transform hover:translate-y-[-4px] shadow-lg hover:shadow-[#4ECFBF]/30
+                  transform hover:translate-y-[-4px] shadow-lg hover:shadow-brand/30
                   animate-slide-up touch-target cursor-pointer hover:scale-105
-                  ${isCustomTopicActive ? 'ring-2 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/20' : ''}
+                  ${isCustomTopicActive ? 'ring-2 ring-brand/50 shadow-brand/20' : ''}
                   ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : ''}
                 `}
                 style={{ animationDelay: '1200ms' }}
               >
                 {/* Enhanced Hover Effect Background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/15 to-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-brand/15 to-brand/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 
                 {/* Special Badge */}
-                <div className="absolute top-3 right-3 bg-[#4ECFBF] text-white text-xs px-3 py-1 rounded-full font-medium shadow-md">
+                <div className="absolute top-3 right-3 bg-brand text-white text-xs px-3 py-1 rounded-full font-medium shadow-md">
                   Popular
                 </div>
                 
@@ -767,7 +767,7 @@ export default function TopicSelection() {
                 </div>
                 
                 {/* Title */}
-                <h3 className="text-xl md:text-2xl font-bold text-[#4ECFBF] group-hover:text-[#4ECFBF]/80 mb-3 transition-colors duration-300">
+                <h3 className="text-xl md:text-2xl font-bold text-brand group-hover:text-brand/80 mb-3 transition-colors duration-300">
                   {customTopic.name}
                 </h3>
                 
@@ -777,10 +777,10 @@ export default function TopicSelection() {
                 </p>
                 
                 {/* Enhanced Bottom Accent Line */}
-                <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/60 w-full"></div>
+                <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-brand to-brand/60 w-full"></div>
                 
                 {/* Sparkle Effect */}
-                <div className="absolute top-4 left-4 text-[#4ECFBF] opacity-60 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="absolute top-4 left-4 text-brand opacity-60 group-hover:opacity-100 transition-opacity duration-300">
                   ✨
                 </div>
               </button>
@@ -798,9 +798,9 @@ export default function TopicSelection() {
         {/* Custom Topic Input Modal - Only show when active */}
         {isCustomTopicActive && (
           <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50">
-            <div className="bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 rounded-xl shadow-lg w-full max-w-lg mx-4 p-6 md:p-8 relative overflow-hidden">
+            <div className="bg-white/95 backdrop-blur-sm border-2 border-brand/40 rounded-xl shadow-lg w-full max-w-lg mx-4 p-6 md:p-8 relative overflow-hidden">
               {/* Background glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-50"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-brand/5 via-brand/10 to-transparent opacity-50"></div>
               
               {/* Header */}
               <div className="relative z-10 text-center mb-6">
@@ -839,7 +839,7 @@ export default function TopicSelection() {
                     }
                   }}
                   placeholder="Describe your topic here..."
-                  className="w-full p-4 rounded-xl border-2 border-[#4ECFBF]/30 focus:border-[#4ECFBF]/60 bg-white/80 backdrop-blur-sm text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]/20 transition-all duration-300 min-h-[120px] resize-none shadow-sm"
+                  className="w-full p-4 rounded-xl border-2 border-brand/30 focus:border-brand/60 bg-white/80 backdrop-blur-sm text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand/20 transition-all duration-300 min-h-[120px] resize-none shadow-sm"
                   disabled={isExtendingKnowledge}
                 />
                 <p className="text-xs text-gray-500 mt-2 text-center">
@@ -862,20 +862,20 @@ export default function TopicSelection() {
                   onClick={handleCustomTopicSubmit}
                   className={`group relative overflow-hidden border-2 w-full sm:flex-1 h-12 rounded-xl flex items-center justify-center transition-all duration-300 transform hover:translate-y-[-1px] touch-target ${
                     customTopicText.trim() && !isExtendingKnowledge
-                      ? 'bg-[#4ECFBF] hover:bg-[#4ECFBF]/90 border-[#4ECFBF] hover:shadow-lg hover:shadow-[#4ECFBF]/30'
-                      : 'bg-white/95 backdrop-blur-sm border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 hover:shadow-md'
+                      ? 'bg-brand hover:bg-brand/90 border-brand hover:shadow-lg hover:shadow-brand/30'
+                      : 'bg-white/95 backdrop-blur-sm border-brand/40 hover:border-brand/60 hover:shadow-md'
                   }`}
                   disabled={!customTopicText.trim() || isExtendingKnowledge}
                 >
                   <span className={`relative z-10 font-medium transition-colors duration-300 ${
                     customTopicText.trim() && !isExtendingKnowledge
                       ? 'text-white'
-                      : 'text-[#4ECFBF] group-hover:text-[#4ECFBF]'
+                      : 'text-brand group-hover:text-brand'
                   }`}>Submit</span>
                   <div className={`absolute bottom-0 left-0 h-0.5 w-0 group-hover:w-full transition-all duration-500 ${
                     customTopicText.trim() && !isExtendingKnowledge
                       ? 'bg-white/50'
-                      : 'bg-[#4ECFBF]'
+                      : 'bg-brand'
                   }`}></div>
                 </button>
               </div>

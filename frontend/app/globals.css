@@ -64,6 +64,17 @@
   .scroll-smooth {
     scroll-behavior: smooth;
   }
+
+  /* Landing-page anchor targets clear the fixed navbar (no clipped headings) */
+  #bento-features,
+  #how-it-works,
+  #for-schools,
+  #security,
+  #story-worlds,
+  #pricing,
+  #faq {
+    scroll-margin-top: 88px;
+  }
   
   /* Snap scrolling for mobile carousel */
   .snap-x {
@@ -123,71 +134,101 @@
 
 @layer base {
   :root {
+    /* ───────────────────────────────────────────────────────────────
+       DESIGN TOKENS — single source of truth (dark is the only theme).
+       RGB triplets (space-separated) so Tailwind `rgb(var(--x)/<alpha>)`
+       opacity utilities work. Inline gradients read var(--token) directly.
+       ─────────────────────────────────────────────────────────────── */
+
+    /* Surfaces — the elevation ramp */
+    --bg-base: 10 10 15;          /* #0A0A0F page background */
+    --surface-0: 13 13 24;        /* #0D0D18 section bands */
+    --surface-1: 19 19 31;        /* #13131F resting card */
+    --surface-2: 24 24 38;        /* #181826 raised / hover */
+    --surface-3: 30 30 46;        /* #1E1E2E popovers */
+    --surface-sunken: 14 14 26;   /* #0E0E1A inset wells */
+    --hairline: 255 255 255;          /* used at /8  → rgba(255,255,255,.08) */
+    --hairline-strong: 255 255 255;   /* used at /14 */
+
+    /* Brand */
+    --brand: 78 207 191;          /* #4ECFBF teal */
+    --brand-bright: 126 238 227;  /* #7EEEE3 */
+    --brand-deep: 58 158 146;     /* #3A9E92 */
+    --brand-ink: 10 10 15;        /* #0A0A0F text on brand fill */
+
+    /* Text (AA floors) */
+    --ink-strong: 255 255 255;    /* use at /95 — headings */
+    --ink: 255 255 255;           /* use at /78 — body */
+    --ink-muted: 255 255 255;     /* use at /60 — min for normal text */
+    --ink-faint: 255 255 255;     /* use at /40 — decorative / large only */
+
+    /* Semantic / status */
+    --success: 16 185 129;        /* #10B981 */
+    --warning: 245 158 11;        /* #F59E0B */
+    --danger: 239 68 68;          /* #EF4444 */
+    --info: 59 130 246;           /* #3B82F6 */
+
+    /* Category colors (bounded set — one per feature) */
+    --cat-dna: 78 207 191;        /* #4ECFBF teal */
+    --cat-missions: 245 158 11;   /* #F59E0B amber */
+    --cat-challenge: 124 58 237;  /* #7C3AED violet */
+    --cat-hearts: 239 68 68;      /* #EF4444 red */
+    --cat-news: 16 185 129;       /* #10B981 green */
+    --cat-story: 232 76 136;      /* #E84C88 magenta (Story Worlds) */
+
+    /* Radii (Duolingo = rounded) */
+    --r-sm: 0.75rem;   /* 12 */
+    --r-md: 1rem;      /* 16 */
+    --r-lg: 1.5rem;    /* 24 — cards */
+    --r-xl: 2rem;      /* 32 */
+    --r-pill: 9999px;
+
+    /* Shadows — REAL elevation (replaces colored inset hacks) */
+    --shadow-1: 0 1px 2px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.04);
+    --shadow-2: 0 8px 24px rgba(0,0,0,.45);
+    --shadow-3: 0 24px 60px rgba(0,0,0,.6);
+    --glow-brand: 0 0 32px rgba(78,207,191,.35);
+
     /* Modern gradient background colors */
     --background: 180 60% 85%;
     --background-end: 180 50% 75%;
     --foreground: 210 40% 98%;
-    
+
     /* Font settings */
-    --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-sans: var(--font-nunito), ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 20% 16%;
+    /* Radix ui/* primitives — dark values (dark is the only theme) */
+    --card: 240 24% 10%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 16%;
+    --popover: 240 22% 12%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 250 30% 20%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 173 56% 56%;          /* brand teal */
+    --primary-foreground: 240 24% 6%;
 
-    --secondary: 250 20% 96%;
-    --secondary-foreground: 250 30% 20%;
+    --secondary: 240 18% 18%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 250 20% 96%;
-    --muted-foreground: 250 20% 46%;
+    --muted: 240 18% 16%;
+    --muted-foreground: 240 8% 64%;
 
-    --accent: 260 80% 50%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 173 56% 56%;           /* brand teal */
+    --accent-foreground: 240 24% 6%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 220 13% 85%;
-    --input: 220 13% 85%;
-    --ring: 220 70% 46%;
+    --border: 240 12% 22%;
+    --input: 240 12% 22%;
+    --ring: 173 56% 56%;             /* brand teal focus ring (was low-contrast blue) */
 
     --radius: 0.5rem;
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 220 70% 46%;
-    --accent-foreground: 0 0% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 220 70% 46%;
-  }
+  /* Dark is the only theme — the :root tokens above ARE the dark theme.
+     The legacy `.dark` class is intentionally removed (it was never applied;
+     `dark:` variants in components are inert and slated for cleanup). */
 }
 
 /* Tailwind layer directives */
@@ -201,11 +242,18 @@
     /* Improved touch interaction */
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none; /* Prevent callout to copy image, etc when tap to hold */
-    -webkit-user-select: none; /* Prevent text selection when tapping quickly */
-    user-select: none;
-    background: #ffffff;
+    background: #0A0A0F;
     min-height: 100vh;
+  }
+  /* Keep text selectable across the marketing site (a11y + B2B credibility).
+     Disable selection only on interactive controls / quick-tap targets. */
+  button,
+  [role="button"],
+  .touch-target,
+  .mic-btn {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
 }
 
@@ -501,7 +549,7 @@
 
 /* Consistent app background */
 .app-background {
-  background-color: #ffffff;
+  background-color: #0A0A0F;
   min-height: 100vh;
   width: 100%;
 }
@@ -950,9 +998,16 @@
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-  .animate-blob,
-  .animate-shimmer {
-    animation: none;
+  /* Safety net: stop all decorative looping animation + long transitions for
+     users who ask for reduced motion (WCAG 2.3.3 / 2.2.2). Keeps a tiny
+     duration so JS that waits on transitionend/animationend still fires. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

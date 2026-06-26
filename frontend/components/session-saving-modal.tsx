@@ -54,7 +54,7 @@ export default function SessionSavingModal({
           title: 'Analyzing Your Speech...',
           subtitle: `Processing ${sentenceCount} sentences`,
           progress: 66,
-          color: 'from-[#4ECFBF] to-[#FFD63A]', // Turquoise to Yellow
+          color: 'from-brand to-[#FFD63A]', // Turquoise to Yellow
           bgColor: 'from-teal-50 to-yellow-50',
           borderColor: 'border-teal-200'
         };
@@ -64,7 +64,7 @@ export default function SessionSavingModal({
           title: 'Finalizing Your Session...',
           subtitle: 'Almost done',
           progress: 90,
-          color: 'from-[#FFD63A] to-[#4ECFBF]', // Yellow to Turquoise
+          color: 'from-[#FFD63A] to-brand', // Yellow to Turquoise
           bgColor: 'from-yellow-50 to-teal-50',
           borderColor: 'border-yellow-200'
         };
@@ -74,7 +74,7 @@ export default function SessionSavingModal({
           title: 'Session Saved Successfully!',
           subtitle: 'Your progress has been saved and analyzed',
           progress: 100,
-          color: 'from-[#4ECFBF] to-[#4ECFBF]', // Turquoise (brand success color)
+          color: 'from-brand to-brand', // Turquoise (brand success color)
           bgColor: 'from-teal-50 to-teal-100',
           borderColor: 'border-teal-300'
         };
@@ -208,7 +208,7 @@ export default function SessionSavingModal({
                         }
                       }, 300);
                     }}
-                    className="w-full bg-gradient-to-r from-[#4ECFBF] to-[#3DBFAF] text-white py-3 rounded-lg font-semibold hover:from-[#3DBFAF] hover:to-[#2DAFA0] transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                    className="w-full bg-gradient-to-r from-brand to-[#3DBFAF] text-white py-3 rounded-lg font-semibold hover:from-[#3DBFAF] hover:to-[#2DAFA0] transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />

@@ -80,7 +80,7 @@ export default function LeaveConfirmationModal({
             {/* Primary Action - Stay */}
             <button
               onClick={onStay}
-              className="group relative overflow-hidden bg-[#4ECFBF] hover:bg-[#4ECFBF]/90 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 transform hover:translate-y-[-2px] hover:shadow-lg hover:shadow-[#4ECFBF]/30 flex items-center justify-center gap-3"
+              className="group relative overflow-hidden bg-brand hover:bg-brand/90 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 transform hover:translate-y-[-2px] hover:shadow-lg hover:shadow-brand/30 flex items-center justify-center gap-3"
             >
               <ArrowLeft className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-[-2px]" />
               <span>{content.stayButtonText}</span>
@@ -101,7 +101,7 @@ export default function LeaveConfirmationModal({
         </div>
 
         {/* Bottom accent line */}
-        <div className="h-1 bg-gradient-to-r from-[#4ECFBF] via-[#FFD63A] to-[#FFA955]"></div>
+        <div className="h-1 bg-gradient-to-r from-brand via-[#FFD63A] to-[#FFA955]"></div>
       </div>
     </div>
   );

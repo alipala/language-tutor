@@ -73,7 +73,7 @@ export const AuthSuccessTransition: React.FC<AuthSuccessTransitionProps> = ({
 
   return (
     <motion.div
-      className="fixed inset-0 bg-gradient-to-br from-[#4ECFBF] to-[#3db3a7] flex items-center justify-center z-50"
+      className="fixed inset-0 bg-gradient-to-br from-brand to-[#3db3a7] flex items-center justify-center z-50"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
@@ -94,7 +94,7 @@ export const AuthSuccessTransition: React.FC<AuthSuccessTransitionProps> = ({
           >
             <div className="w-20 h-20 mx-auto bg-white rounded-full flex items-center justify-center">
               <motion.svg
-                className="w-10 h-10 text-[#4ECFBF]"
+                className="w-10 h-10 text-brand"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

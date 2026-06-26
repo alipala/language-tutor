@@ -74,7 +74,7 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col app-background">
+    <div className="min-h-screen flex flex-col bg-white">
       {/* Header with logo */}
       <header className="w-full p-4 md:p-6">
         <div className="container mx-auto">

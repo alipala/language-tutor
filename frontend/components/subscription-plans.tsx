@@ -47,7 +47,7 @@ const monthlyPlans: PricingCard[] = [
     description: 'For consistent learners ready to level up',
     features: [
       { text: '3-day free trial included', included: true },
-      { text: 'Speaking minutes monthly', included: true },
+      { text: 'Generous monthly speaking minutes', included: true },
       { text: 'Personalised learning plan', included: true },
       { text: 'Voice DNA analysis', included: true },
       { text: '10 hearts for challenges', included: true },
@@ -102,7 +102,7 @@ const annualPlans: PricingCard[] = [
     description: 'For consistent learners ready to level up',
     features: [
       { text: '3-day free trial included', included: true },
-      { text: 'Speaking minutes annually', included: true },
+      { text: 'Generous speaking minutes, billed annually', included: true },
       { text: 'Personalised learning plan', included: true },
       { text: 'Voice DNA analysis', included: true },
       { text: '10 hearts for challenges', included: true },
@@ -155,8 +155,8 @@ const PLAN_ACCENT: Record<string, { border: string; glow: string; badge: string;
   'Fluency Builder': {
     border: 'border-white/[0.12]',
     glow: '',
-    badge: 'bg-[#4ECFBF]',
-    cta: 'bg-[#4ECFBF] hover:bg-[#3dc4b5] text-[#0A0A0F]',
+    badge: 'bg-brand',
+    cta: 'bg-brand hover:bg-[#3dc4b5] text-bg',
     ctaText: '',
   },
   'Language Mastery': {
@@ -191,7 +191,7 @@ export default function SubscriptionPlans() {
           viewport={{ once: true, margin: '-60px' }}
           transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#4ECFBF] mb-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-brand mb-4">
             Simple &amp; transparent
           </p>
           <h2 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight mb-4">
@@ -235,7 +235,7 @@ export default function SubscriptionPlans() {
                 animate={{ opacity: 1, scale: 1, x: 0 }}
                 exit={{ opacity: 0, scale: 0.8, x: -6 }}
                 transition={{ duration: 0.2 }}
-                className="text-[11px] font-bold bg-[#10B981]/15 border border-[#10B981]/30 text-[#10B981] rounded-full px-3 py-1"
+                className="text-[11px] font-bold bg-cat-news/15 border border-cat-news/30 text-cat-news rounded-full px-3 py-1"
               >
                 Save 50%
               </motion.span>
@@ -301,7 +301,7 @@ export default function SubscriptionPlans() {
                         )}
                       </div>
                       {plan.savings && (
-                        <div className="mt-1.5 text-[11px] font-semibold text-[#10B981]">{plan.savings}</div>
+                        <div className="mt-1.5 text-[11px] font-semibold text-cat-news">{plan.savings}</div>
                       )}
                       {/* Payment methods for paid plans */}
                       {plan.price !== 'Free' && (
@@ -321,7 +321,7 @@ export default function SubscriptionPlans() {
                       {plan.features.map((feature, fi) => (
                         <li key={fi} className="flex items-start gap-3">
                           {feature.included ? (
-                            <svg className="w-4 h-4 mt-0.5 shrink-0 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <svg className="w-4 h-4 mt-0.5 shrink-0 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                             </svg>
                           ) : (
@@ -378,7 +378,7 @@ export default function SubscriptionPlans() {
           transition={{ duration: 0.5, delay: 0.3 }}
         >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#10B981]/10 border border-[#10B981]/20 flex items-center justify-center text-lg">
+            <div className="w-9 h-9 rounded-xl bg-cat-news/10 border border-cat-news/20 flex items-center justify-center text-lg">
               🛡️
             </div>
             <div>
@@ -388,7 +388,7 @@ export default function SubscriptionPlans() {
           </div>
           <div className="hidden sm:block w-px h-8 bg-white/[0.08]" />
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/20 flex items-center justify-center text-lg">
+            <div className="w-9 h-9 rounded-xl bg-cat-missions/10 border border-cat-missions/20 flex items-center justify-center text-lg">
               ⚡
             </div>
             <div>
@@ -399,7 +399,7 @@ export default function SubscriptionPlans() {
           <div className="hidden sm:block w-px h-8 bg-white/[0.08]" />
           <button
             onClick={() => { window.location.href = 'mailto:hello@mytacoai.com?subject=Enterprise Plan Inquiry'; }}
-            className="text-sm font-semibold text-[#4ECFBF] hover:text-white transition-colors duration-200 underline underline-offset-4 decoration-[#4ECFBF]/40"
+            className="text-sm font-semibold text-brand hover:text-white transition-colors duration-200 underline underline-offset-4 decoration-brand/40"
           >
             Need enterprise? Contact us →
           </button>

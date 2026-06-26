@@ -9,7 +9,7 @@ function PageSpinner() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="flex flex-col items-center gap-4">
         <div className="relative">
-          <div className="w-14 h-14 rounded-full border-4 border-[#4ECFBF]/20" />
+          <div className="w-14 h-14 rounded-full border-4 border-brand/20" />
           <div className="w-14 h-14 rounded-full border-4 border-transparent border-t-[#4ECFBF] border-r-[#4ECFBF]/60 animate-spin absolute inset-0" style={{ animationDuration: '0.75s' }} />
         </div>
         <p className="text-sm text-gray-400 font-medium animate-pulse">Loading dashboard...</p>
@@ -22,7 +22,7 @@ function ModalSpinner({ label = 'Loading details...' }: { label?: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-14 gap-4">
       <div className="relative">
-        <div className="w-14 h-14 rounded-full border-4 border-[#4ECFBF]/15" />
+        <div className="w-14 h-14 rounded-full border-4 border-brand/15" />
         <div className="w-14 h-14 rounded-full border-4 border-transparent border-t-[#4ECFBF] border-r-[#4ECFBF]/50 animate-spin absolute inset-0" style={{ animationDuration: '0.7s' }} />
         <div className="w-8 h-8 rounded-full border-[3px] border-transparent border-b-[#3a9e92]/60 animate-spin absolute inset-3" style={{ animationDuration: '1.1s', animationDirection: 'reverse' }} />
       </div>
@@ -161,8 +161,8 @@ const ImportModal: React.FC<ImportModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#4ECFBF]/10 flex items-center justify-center">
-              <Upload className="w-5 h-5 text-[#4ECFBF]" />
+            <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center">
+              <Upload className="w-5 h-5 text-brand" />
             </div>
             <h2 className="text-lg font-bold text-gray-900">{title}</h2>
           </div>
@@ -187,9 +187,9 @@ const ImportModal: React.FC<ImportModalProps> = ({
             <div className="space-y-1.5">
               {requiredCols.map(col => (
                 <div key={col} className="flex items-start gap-2">
-                  <span className="inline-block mt-0.5 w-1.5 h-1.5 rounded-full bg-[#4ECFBF] flex-shrink-0" />
+                  <span className="inline-block mt-0.5 w-1.5 h-1.5 rounded-full bg-brand flex-shrink-0" />
                   <span className="text-xs font-semibold text-gray-700 w-28 flex-shrink-0">{col}</span>
-                  <span className="text-xs text-[#4ECFBF] font-medium">required</span>
+                  <span className="text-xs text-brand font-medium">required</span>
                   {hintMap[col] && <span className="text-xs text-gray-400 ml-1">— {hintMap[col]}</span>}
                 </div>
               ))}
@@ -208,9 +208,9 @@ const ImportModal: React.FC<ImportModalProps> = ({
           {/* Drop zone */}
           <div
             className={`relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-              dragging ? 'border-[#4ECFBF] bg-[#4ECFBF]/5' :
-              pickedFile ? 'border-[#4ECFBF] bg-[#4ECFBF]/5' :
-              'border-gray-200 hover:border-[#4ECFBF]/50 hover:bg-gray-50'
+              dragging ? 'border-brand bg-brand/5' :
+              pickedFile ? 'border-brand bg-brand/5' :
+              'border-gray-200 hover:border-brand/50 hover:bg-gray-50'
             }`}
             onDragOver={e => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
@@ -226,8 +226,8 @@ const ImportModal: React.FC<ImportModalProps> = ({
             />
             {pickedFile ? (
               <div className="flex flex-col items-center gap-1">
-                <div className="w-10 h-10 rounded-full bg-[#4ECFBF]/15 flex items-center justify-center mb-1">
-                  <CheckCircle className="w-5 h-5 text-[#4ECFBF]" />
+                <div className="w-10 h-10 rounded-full bg-brand/15 flex items-center justify-center mb-1">
+                  <CheckCircle className="w-5 h-5 text-brand" />
                 </div>
                 <p className="text-sm font-semibold text-gray-800">{pickedFile.name}</p>
                 <p className="text-xs text-gray-400">{(pickedFile.size / 1024).toFixed(1)} KB · click to change</p>
@@ -255,7 +255,7 @@ const ImportModal: React.FC<ImportModalProps> = ({
           <button
             onClick={handleSubmit}
             disabled={!pickedFile || isUploading}
-            className="flex-1 py-2.5 bg-[#4ECFBF] text-white rounded-xl hover:bg-[#3a9e92] font-medium text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 bg-brand text-white rounded-xl hover:bg-[#3a9e92] font-medium text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isUploading
               ? <><svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>Importing...</>
@@ -299,13 +299,13 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   };
 
   const previewCls = round
-    ? 'w-20 h-20 rounded-full object-cover border-2 border-[#4ECFBF]/40'
+    ? 'w-20 h-20 rounded-full object-cover border-2 border-brand/40'
     : 'h-16 max-w-[160px] object-contain rounded-lg';
 
   return (
     <div
       className={`relative border-2 border-dashed rounded-xl transition-colors cursor-pointer ${
-        dragging ? 'border-[#4ECFBF] bg-[#4ECFBF]/5' : 'border-gray-200 hover:border-[#4ECFBF]/50 hover:bg-gray-50'
+        dragging ? 'border-brand bg-brand/5' : 'border-gray-200 hover:border-brand/50 hover:bg-gray-50'
       }`}
       onDragOver={e => { e.preventDefault(); setDragging(true); }}
       onDragLeave={() => setDragging(false)}
@@ -469,14 +469,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
     } finally { setPwSaving(false); }
   };
 
-  const btnCls = "flex items-center gap-2 px-5 py-2.5 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-40";
-  const inputCls = "w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent";
+  const btnCls = "flex items-center gap-2 px-5 py-2.5 bg-brand hover:bg-[#3a9e92] text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-40";
+  const inputCls = "w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent";
   const labelCls = "block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5";
   const cardCls  = "bg-white rounded-2xl shadow-sm border border-gray-100 p-6";
 
   if (loading) return (
     <div className="flex items-center justify-center py-24">
-      <div className="w-10 h-10 border-4 border-[#4ECFBF]/30 border-t-[#4ECFBF] rounded-full animate-spin" />
+      <div className="w-10 h-10 border-4 border-brand/30 border-t-[#4ECFBF] rounded-full animate-spin" />
     </div>
   );
 
@@ -493,7 +493,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
             onClick={() => setSection(key)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               section === key
-                ? 'bg-white text-[#4ECFBF] shadow-sm'
+                ? 'bg-white text-brand shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -508,7 +508,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
           {/* Basic info */}
           <div className={cardCls}>
             <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-[#4ECFBF]" /> Basic Information
+              <Building2 className="w-5 h-5 text-brand" /> Basic Information
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="sm:col-span-2">
@@ -538,7 +538,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
           {/* Contact */}
           <div className={cardCls}>
             <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-[#4ECFBF]" /> Contact Details
+              <MapPin className="w-5 h-5 text-brand" /> Contact Details
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
@@ -563,7 +563,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
           {/* Localisation */}
           <div className={cardCls}>
             <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
-              <Globe className="w-5 h-5 text-[#4ECFBF]" /> Localisation
+              <Globe className="w-5 h-5 text-brand" /> Localisation
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
@@ -586,7 +586,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
           {/* Academic calendar */}
           <div className={cardCls}>
             <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-[#4ECFBF]" /> Academic Calendar
+              <Calendar className="w-5 h-5 text-brand" /> Academic Calendar
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
@@ -616,7 +616,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
           {/* Identity */}
           <div className={cardCls}>
             <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
-              <User className="w-5 h-5 text-[#4ECFBF]" /> Admin Identity
+              <User className="w-5 h-5 text-brand" /> Admin Identity
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
@@ -645,7 +645,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
           {/* Notifications */}
           <div className={cardCls}>
             <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
-              <Bell className="w-5 h-5 text-[#4ECFBF]" /> Email Notifications
+              <Bell className="w-5 h-5 text-brand" /> Email Notifications
             </h3>
             <div className="space-y-4">
               {([
@@ -660,7 +660,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
                   </div>
                   <div
                     onClick={() => setAdmin(a => ({ ...a, [key]: !a[key] }))}
-                    className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${admin[key] ? 'bg-[#4ECFBF]' : 'bg-gray-200'}`}
+                    className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${admin[key] ? 'bg-brand' : 'bg-gray-200'}`}
                   >
                     <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${admin[key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
                   </div>
@@ -672,7 +672,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
           {/* Security */}
           <div className={cardCls}>
             <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
-              <Shield className="w-5 h-5 text-[#4ECFBF]" /> Security
+              <Shield className="w-5 h-5 text-brand" /> Security
             </h3>
             <p className="text-xs text-gray-400 mb-5">Two-factor authentication adds a second verification step at login.</p>
             <label className="flex items-center justify-between cursor-pointer">
@@ -682,7 +682,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
               </div>
               <div
                 onClick={() => setAdmin(a => ({ ...a, two_factor_enabled: !a.two_factor_enabled }))}
-                className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${admin.two_factor_enabled ? 'bg-[#4ECFBF]' : 'bg-gray-200'}`}
+                className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${admin.two_factor_enabled ? 'bg-brand' : 'bg-gray-200'}`}
               >
                 <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${admin.two_factor_enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
               </div>
@@ -698,7 +698,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
           {/* Change password */}
           <div className={cardCls}>
             <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
-              <KeyRound className="w-5 h-5 text-[#4ECFBF]" /> Change Password
+              <KeyRound className="w-5 h-5 text-brand" /> Change Password
             </h3>
             <div className="space-y-4 max-w-sm">
               {([
@@ -726,13 +726,13 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
           {activityLog.length > 0 && (
             <div className={cardCls}>
               <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-[#4ECFBF]" /> Recent Activity
+                <Clock className="w-5 h-5 text-brand" /> Recent Activity
               </h3>
               <div className="space-y-2">
                 {activityLog.map((entry, i) => (
                   <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-[#4ECFBF]" />
+                      <div className="w-2 h-2 rounded-full bg-brand" />
                       <span className="text-sm text-gray-700 capitalize">{(entry.action || '').replace(/_/g, ' ')}</span>
                       {entry.detail && <span className="text-xs text-gray-400">— {entry.detail}</span>}
                     </div>
@@ -1586,7 +1586,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
             className={`px-3 py-2 rounded-lg font-medium transition-all ${
               currentPage === 1
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-white text-gray-700 hover:bg-[#4ECFBF] hover:text-white border'
+                : 'bg-white text-gray-700 hover:bg-brand hover:text-white border'
             }`}
           >
             Previous
@@ -1602,7 +1602,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   onClick={() => onPageChange(page as number)}
                   className={`px-4 py-2 rounded-lg font-medium transition-all ${
                     currentPage === page
-                      ? 'bg-[#4ECFBF] text-white shadow-md'
+                      ? 'bg-brand text-white shadow-md'
                       : 'bg-white text-gray-700 hover:bg-gray-100 border'
                   }`}
                 >
@@ -1618,7 +1618,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
             className={`px-3 py-2 rounded-lg font-medium transition-all ${
               currentPage === totalPages
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-white text-gray-700 hover:bg-[#4ECFBF] hover:text-white border'
+                : 'bg-white text-gray-700 hover:bg-brand hover:text-white border'
             }`}
           >
             Next
@@ -1644,19 +1644,19 @@ export const InstitutionDashboardComplete: React.FC = () => {
           <nav className="flex space-x-8 overflow-x-auto">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`py-4 border-b-2 flex items-center ${activeTab === 'overview' ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500'}`}
+              className={`py-4 border-b-2 flex items-center ${activeTab === 'overview' ? 'border-brand text-brand' : 'border-transparent text-gray-500'}`}
             >
               <BarChart2 className="w-4 h-4 mr-1.5 inline-block" /> Overview
             </button>
             <button
               onClick={() => setActiveTab('tutors')}
-              className={`py-4 border-b-2 flex items-center ${activeTab === 'tutors' ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500'}`}
+              className={`py-4 border-b-2 flex items-center ${activeTab === 'tutors' ? 'border-brand text-brand' : 'border-transparent text-gray-500'}`}
             >
               <Users className="w-4 h-4 mr-1.5 inline-block" /> Tutors ({tutors.length})
             </button>
             <button
               onClick={() => setActiveTab('learners')}
-              className={`py-4 border-b-2 flex items-center whitespace-nowrap ${activeTab === 'learners' ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500'}`}
+              className={`py-4 border-b-2 flex items-center whitespace-nowrap ${activeTab === 'learners' ? 'border-brand text-brand' : 'border-transparent text-gray-500'}`}
             >
               <GraduationCap className="w-4 h-4 mr-1.5 inline-block" /> Learners ({learners.length})
             </button>
@@ -1699,24 +1699,24 @@ export const InstitutionDashboardComplete: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
               <div className="bg-white p-6 rounded-xl shadow">
                 <div className="flex items-center gap-2 mb-1">
-                  <GraduationCap className="w-5 h-5 text-[#4ECFBF]" />
+                  <GraduationCap className="w-5 h-5 text-brand" />
                   <p className="text-gray-600">Total Learners</p>
                 </div>
-                <p className="text-2xl sm:text-3xl font-bold text-[#4ECFBF]">{learners.length}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-brand">{learners.length}</p>
               </div>
               <div className="bg-white p-6 rounded-xl shadow">
                 <div className="flex items-center gap-2 mb-1">
                   <Users className="w-5 h-5 text-blue-500" />
                   <p className="text-gray-600">Total Tutors</p>
                 </div>
-                <p className="text-2xl sm:text-3xl font-bold text-[#4ECFBF]">{tutors.length}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-brand">{tutors.length}</p>
               </div>
               <div className="bg-white p-6 rounded-xl shadow">
                 <div className="flex items-center gap-2 mb-1">
                   <Globe className="w-5 h-5 text-purple-500" />
                   <p className="text-gray-600">Languages</p>
                 </div>
-                <p className="text-2xl sm:text-3xl font-bold text-[#4ECFBF]">{languageDistribution.length}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-brand">{languageDistribution.length}</p>
               </div>
             </div>
           </div>
@@ -1729,14 +1729,14 @@ export const InstitutionDashboardComplete: React.FC = () => {
               <div className="flex gap-3 flex-wrap">
                 <button
                   onClick={() => setShowImportTutorCSVModal(true)}
-                  className="px-5 py-2.5 border-2 border-[#4ECFBF] text-[#4ECFBF] rounded-lg hover:bg-[#4ECFBF] hover:text-white transition-colors flex items-center text-sm font-medium"
+                  className="px-5 py-2.5 border-2 border-brand text-brand rounded-lg hover:bg-brand hover:text-white transition-colors flex items-center text-sm font-medium"
                 >
                   <Upload className="w-4 h-4 mr-1.5" /> Import CSV
                 </button>
                 <button
                   onClick={handleExportTutors}
                   disabled={isExportingTutors}
-                  className={`px-5 py-2.5 border-2 border-[#4ECFBF] rounded-lg transition-all flex items-center text-sm font-medium ${isExportingTutors ? 'bg-[#4ECFBF] text-white cursor-wait' : 'text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white'}`}
+                  className={`px-5 py-2.5 border-2 border-brand rounded-lg transition-all flex items-center text-sm font-medium ${isExportingTutors ? 'bg-brand text-white cursor-wait' : 'text-brand hover:bg-brand hover:text-white'}`}
                 >
                   {isExportingTutors ? (
                     <><svg className="animate-spin h-4 w-4 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Exporting...</>
@@ -1746,7 +1746,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setShowAddTutorModal(true)}
-                  className="px-5 py-2.5 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] flex items-center text-sm font-medium"
+                  className="px-5 py-2.5 bg-brand text-white rounded-lg hover:bg-[#3a9e92] flex items-center text-sm font-medium"
                 >
                   <UserPlus className="w-4 h-4 mr-1.5" /> Add Tutor
                 </button>
@@ -1760,12 +1760,12 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 placeholder="Search tutors by name or email..."
                 value={tutorSearchQuery}
                 onChange={(e) => setTutorSearchQuery(e.target.value)}
-                className="flex-1 min-w-[250px] px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF]"
+                className="flex-1 min-w-[250px] px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-brand focus:border-brand"
               />
               <select
                 value={filterTutorStatus}
                 onChange={(e) => setFilterTutorStatus(e.target.value)}
-                className="px-4 py-2 border rounded-lg text-gray-900 font-medium focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF]"
+                className="px-4 py-2 border rounded-lg text-gray-900 font-medium focus:ring-2 focus:ring-brand focus:border-brand"
               >
                 <option value="active">Active Only</option>
                 <option value="inactive">Inactive Only</option>
@@ -1774,7 +1774,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
               <select
                 value={filterTutorSpecialization}
                 onChange={(e) => setFilterTutorSpecialization(e.target.value)}
-                className="px-4 py-2 border rounded-lg text-gray-900 focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF]"
+                className="px-4 py-2 border rounded-lg text-gray-900 focus:ring-2 focus:ring-brand focus:border-brand"
               >
                 <option value="all">All Specializations</option>
                 {Array.from(new Set(tutors.flatMap(t => t.specializations || []))).sort().map(spec => (
@@ -1784,7 +1784,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
               <select
                 value={filterTutorLearnerCount}
                 onChange={(e) => setFilterTutorLearnerCount(e.target.value)}
-                className="px-4 py-2 border rounded-lg text-gray-900 focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF]"
+                className="px-4 py-2 border rounded-lg text-gray-900 focus:ring-2 focus:ring-brand focus:border-brand"
               >
                 <option value="all">All Workloads</option>
                 <option value="none">— No Learners (0)</option>
@@ -1812,7 +1812,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 Showing <span className="font-semibold text-gray-900">{filteredTutors.length}</span> of <span className="font-semibold text-gray-900">{tutors.length}</span> tutors
               </span>
               {(tutorSearchQuery || filterTutorSpecialization !== 'all' || filterTutorLearnerCount !== 'all') && (
-                <span className="text-[#4ECFBF] font-medium flex items-center">
+                <span className="text-brand font-medium flex items-center">
                   <Search className="w-4 h-4 mr-1 inline-block" /> Filters Active
                 </span>
               )}
@@ -1870,7 +1870,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                               setSelectedTutor(tutor);
                               setShowTutorLearnersModal(true);
                             }}
-                            className="inline-block px-4 py-2 bg-[#4ECFBF] text-white rounded-lg text-sm font-medium hover:bg-[#3a9e92] transition-all whitespace-nowrap"
+                            className="inline-block px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-[#3a9e92] transition-all whitespace-nowrap"
                           >
                             View {tutor.learner_count} {tutor.learner_count === 1 ? 'Learner' : 'Learners'}
                           </button>
@@ -1919,14 +1919,14 @@ export const InstitutionDashboardComplete: React.FC = () => {
               <div className="flex gap-3 flex-wrap">
                 <button
                   onClick={() => setShowImportCSVModal(true)}
-                  className="px-5 py-2.5 border-2 border-[#4ECFBF] text-[#4ECFBF] rounded-lg hover:bg-[#4ECFBF] hover:text-white transition-colors flex items-center text-sm font-medium"
+                  className="px-5 py-2.5 border-2 border-brand text-brand rounded-lg hover:bg-brand hover:text-white transition-colors flex items-center text-sm font-medium"
                 >
                   <Upload className="w-4 h-4 mr-1.5" /> Import
                 </button>
                 <button
                   onClick={handleExportLearners}
                   disabled={isExporting}
-                  className={`px-5 py-2.5 border-2 border-[#4ECFBF] rounded-lg transition-all flex items-center text-sm font-medium ${isExporting ? 'bg-[#4ECFBF] text-white cursor-wait' : 'text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white'}`}
+                  className={`px-5 py-2.5 border-2 border-brand rounded-lg transition-all flex items-center text-sm font-medium ${isExporting ? 'bg-brand text-white cursor-wait' : 'text-brand hover:bg-brand hover:text-white'}`}
                 >
                   {isExporting
                     ? <><svg className="animate-spin h-4 w-4 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>Exporting...</>
@@ -1935,7 +1935,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setShowAddLearnerModal(true)}
-                  className="px-5 py-2.5 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] flex items-center text-sm font-medium"
+                  className="px-5 py-2.5 bg-brand text-white rounded-lg hover:bg-[#3a9e92] flex items-center text-sm font-medium"
                 >
                   <UserPlus className="w-4 h-4 mr-1.5" /> Add Learner
                 </button>
@@ -1954,7 +1954,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-4 py-2 border rounded-lg text-gray-900 font-medium focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF]"
+                className="px-4 py-2 border rounded-lg text-gray-900 font-medium focus:ring-2 focus:ring-brand focus:border-brand"
               >
                 <option value="active">Active Only</option>
                 <option value="inactive">Inactive Only</option>
@@ -2097,7 +2097,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                             // Reset dropdown to current value (will update after confirmation)
                             e.target.value = learner.tutor?.id || '';
                           }}
-                          className="px-3 py-1 border rounded text-sm text-gray-900 bg-white cursor-pointer hover:border-[#4ECFBF] focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF] transition-all"
+                          className="px-3 py-1 border rounded text-sm text-gray-900 bg-white cursor-pointer hover:border-brand focus:ring-2 focus:ring-brand focus:border-brand transition-all"
                         >
                           <option value="">Unassigned</option>
                           {tutors.map(tutor => (
@@ -2113,7 +2113,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                               disabled={!learner.is_active}
                               className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm ${
                                 learner.is_active
-                                  ? 'bg-[#4ECFBF] text-white hover:bg-[#3a9e92] hover:shadow-md'
+                                  ? 'bg-brand text-white hover:bg-[#3a9e92] hover:shadow-md'
                                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                               }`}
                               title={learner.is_active ? "Full access - consent given" : "Learner is inactive"}
@@ -2220,8 +2220,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
                       }}
                       className={`flex items-center space-x-2 px-4 py-3 border-2 rounded-lg transition-all ${
                         tutorForm.languages.includes(lang.code)
-                          ? 'border-[#4ECFBF] bg-[#4ECFBF]/10 text-[#4ECFBF]'
-                          : 'border-gray-200 hover:border-[#4ECFBF]/50'
+                          ? 'border-brand bg-brand/10 text-brand'
+                          : 'border-gray-200 hover:border-brand/50'
                       }`}
                     >
                       <FlagIcon language={lang.code} size={24} />
@@ -2246,7 +2246,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
               <div className="flex gap-3">
                 <button
                   onClick={handleAddTutor}
-                  className="flex-1 px-4 py-2 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92]"
+                  className="flex-1 px-4 py-2 bg-brand text-white rounded-lg hover:bg-[#3a9e92]"
                 >
                   Add Tutor
                 </button>
@@ -2340,7 +2340,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
             <div className="p-4 bg-white rounded-b-2xl">
               <button
                 onClick={() => setNotification({...notification, show: false})}
-                className="w-full px-6 py-3 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white rounded-lg font-medium hover:shadow-lg transform hover:scale-105 transition-all"
+                className="w-full px-6 py-3 bg-gradient-to-r from-brand to-[#3a9e92] text-white rounded-lg font-medium hover:shadow-lg transform hover:scale-105 transition-all"
               >
                 Got it
               </button>
@@ -2392,7 +2392,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 sm:mx-auto my-8 transform transition-all animate-slideUp">
             {/* Header */}
-            <div className="p-6 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] rounded-t-2xl">
+            <div className="p-6 bg-gradient-to-r from-brand to-[#3a9e92] rounded-t-2xl">
               <div className="flex justify-between items-center">
                 <div>
                   <h2 className="text-2xl font-bold text-white flex items-center">
@@ -2422,11 +2422,11 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 {selectedTutor.learners.map((learner, index) => (
                   <div 
                     key={learner.user_id}
-                    className="flex items-center space-x-4 p-4 rounded-xl bg-gradient-to-r from-gray-50 to-white hover:from-[#4ECFBF]/5 hover:to-[#3a9e92]/5 transition-all border border-gray-200 hover:border-[#4ECFBF] group"
+                    className="flex items-center space-x-4 p-4 rounded-xl bg-gradient-to-r from-gray-50 to-white hover:from-brand/5 hover:to-[#3a9e92]/5 transition-all border border-gray-200 hover:border-brand group"
                   >
                     {/* Avatar */}
                     <div className="flex-shrink-0">
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-110 transition-transform">
+                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-brand to-[#3a9e92] flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-110 transition-transform">
                         {learner.name.charAt(0).toUpperCase()}
                       </div>
                     </div>
@@ -2473,7 +2473,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   setShowTutorLearnersModal(false);
                   setSelectedTutor(null);
                 }}
-                className="w-full px-6 py-3 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white rounded-lg font-medium hover:shadow-lg transform hover:scale-105 transition-all"
+                className="w-full px-6 py-3 bg-gradient-to-r from-brand to-[#3a9e92] text-white rounded-lg font-medium hover:shadow-lg transform hover:scale-105 transition-all"
               >
                 Close
               </button>
@@ -2487,7 +2487,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-2 sm:mx-4 my-8">
             {/* Header */}
-            <div className="p-6 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] rounded-t-2xl">
+            <div className="p-6 bg-gradient-to-r from-brand to-[#3a9e92] rounded-t-2xl">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-white flex items-center">
                   <BarChart2 className="w-6 h-6 mr-2 inline-block" /> Learner Progress Deep Dive
@@ -2527,7 +2527,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 <div className="space-y-6">
                   {/* Profile Section */}
                   <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 rounded-xl">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><UserCheck className="w-4 h-4 text-[#4ECFBF] inline-block mr-1.5" /> Learner Profile</h3>
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><UserCheck className="w-4 h-4 text-brand inline-block mr-1.5" /> Learner Profile</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-600">Name</p>
@@ -2557,7 +2557,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   {/* All Learning Plans */}
                   {selectedLearnerDetails.all_learning_plans && selectedLearnerDetails.all_learning_plans.length > 0 && (
                     <div className="space-y-4">
-                      <h3 className="text-lg font-bold text-gray-900 flex items-center"><BookOpen className="w-4 h-4 text-[#4ECFBF] inline-block mr-1.5" /> Learning Plans</h3>
+                      <h3 className="text-lg font-bold text-gray-900 flex items-center"><BookOpen className="w-4 h-4 text-brand inline-block mr-1.5" /> Learning Plans</h3>
                       {selectedLearnerDetails.all_learning_plans.map((plan: any, index: number) => (
                         <div key={plan.id || index} className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl">
                           <h4 className="text-md font-bold text-gray-900 mb-3">
@@ -2566,7 +2566,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                           <div className="space-y-3">
                             <div className="flex justify-between">
                               <span className="text-gray-700">Progress:</span>
-                              <span className="font-bold text-[#4ECFBF]">
+                              <span className="font-bold text-brand">
                                 {plan.progress_percentage?.toFixed(1) || 0}%
                               </span>
                             </div>
@@ -2586,7 +2586,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                             {/* Progress Bar */}
                             <div className="w-full bg-gray-200 rounded-full h-3 mt-4">
                               <div 
-                                className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-3 rounded-full transition-all"
+                                className="bg-gradient-to-r from-brand to-[#3a9e92] h-3 rounded-full transition-all"
                                 style={{ width: `${plan.progress_percentage || 0}%` }}
                               ></div>
                             </div>
@@ -2599,7 +2599,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   {/* AI Insights */}
                   {selectedLearnerDetails.ai_insights && (
                     <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl">
-                      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><Bot className="w-4 h-4 text-[#4ECFBF] inline-block mr-1.5" /> AI-Generated Insights</h3>
+                      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><Bot className="w-4 h-4 text-brand inline-block mr-1.5" /> AI-Generated Insights</h3>
                       <div className="space-y-4">
                         <p className="text-gray-700 leading-relaxed">
                           {selectedLearnerDetails.ai_insights.overall_summary}
@@ -2652,7 +2652,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   {/* Recent Sessions */}
                   {selectedLearnerDetails.practice_sessions && selectedLearnerDetails.practice_sessions.length > 0 && (
                     <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl">
-                      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><BookOpen className="w-4 h-4 text-[#4ECFBF] inline-block mr-1.5" /> Recent Sessions</h3>
+                      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><BookOpen className="w-4 h-4 text-brand inline-block mr-1.5" /> Recent Sessions</h3>
                       <div className="space-y-3">
                         {selectedLearnerDetails.practice_sessions.slice(0, 5).map((session: any, idx: number) => (
                           <div key={session.id} className="flex justify-between items-center p-3 bg-white rounded-lg">
@@ -2662,7 +2662,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                                 {new Date(session.created_at).toLocaleDateString()} • {session.duration_minutes} min • {session.message_count} messages
                               </p>
                             </div>
-                            <span className="text-sm font-medium text-[#4ECFBF]">
+                            <span className="text-sm font-medium text-brand">
                               {session.language} {session.level}
                             </span>
                           </div>
@@ -2674,7 +2674,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   {/* Subscription Info */}
                   {selectedLearnerDetails.subscription && (
                     <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-xl">
-                      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><Award className="w-4 h-4 text-[#4ECFBF] inline-block mr-1.5" /> Subscription</h3>
+                      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><Award className="w-4 h-4 text-brand inline-block mr-1.5" /> Subscription</h3>
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <span className="text-gray-700">Status:</span>

@@ -270,7 +270,7 @@ function AiInsightsTab({ learner, tutorId, details }: { learner: Learner; tutorI
           <div className="bg-white border border-gray-100 rounded-2xl p-4">
             <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">CEFR Alignment</h5>
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-2xl font-black text-[#4ECFBF]">{report.cefr_alignment.current_estimated_level}</span>
+              <span className="text-2xl font-black text-brand">{report.cefr_alignment.current_estimated_level}</span>
               <div className="flex-1">
                 <p className="text-xs text-gray-600 leading-snug">{report.cefr_alignment.trajectory}</p>
               </div>
@@ -283,7 +283,7 @@ function AiInsightsTab({ learner, tutorId, details }: { learner: Learner; tutorI
             <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Learner Archetype</h5>
             <p className="text-sm font-bold text-gray-900 mb-1">{report.learner_archetype.type}</p>
             <p className="text-xs text-gray-500 leading-snug mb-2">{report.learner_archetype.description}</p>
-            <div className="bg-[#4ECFBF]/10 rounded-lg px-2.5 py-1.5">
+            <div className="bg-brand/10 rounded-lg px-2.5 py-1.5">
               <p className="text-xs text-[#2a9e92] font-medium">{report.learner_archetype.coaching_strategy}</p>
             </div>
           </div>
@@ -294,7 +294,7 @@ function AiInsightsTab({ learner, tutorId, details }: { learner: Learner; tutorI
       {report.skill_diagnosis?.skill_breakdown?.length > 0 && (
         <div className="bg-white border border-gray-100 rounded-2xl p-4">
           <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-            <Target className="w-3.5 h-3.5 text-[#4ECFBF]" strokeWidth={1.8} /> Skill Diagnosis
+            <Target className="w-3.5 h-3.5 text-brand" strokeWidth={1.8} /> Skill Diagnosis
           </h5>
           <div className="space-y-2">
             {report.skill_diagnosis.skill_breakdown.map((skill: any, i: number) => {
@@ -318,7 +318,7 @@ function AiInsightsTab({ learner, tutorId, details }: { learner: Learner; tutorI
 
       {/* Next Session Plan */}
       {report.next_session_plan && (
-        <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-teal-50 border border-[#4ECFBF]/30 rounded-2xl p-4">
+        <div className="bg-gradient-to-r from-brand/10 to-teal-50 border border-brand/30 rounded-2xl p-4">
           <h5 className="text-xs font-bold text-[#2a9e92] uppercase tracking-wide mb-3 flex items-center gap-1.5">
             <Lightbulb className="w-3.5 h-3.5" strokeWidth={1.8} /> Next Session Plan
           </h5>
@@ -501,7 +501,7 @@ function AiInsightsTab({ learner, tutorId, details }: { learner: Learner; tutorI
               </div>
               <div className="bg-white rounded-xl p-2.5 shadow-sm">
                 <div className="flex items-start gap-2">
-                  <div className="w-6 h-6 bg-gradient-to-br from-[#4ECFBF] to-teal-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-6 h-6 bg-gradient-to-br from-brand to-teal-500 rounded-lg flex items-center justify-center flex-shrink-0">
                     <span className="text-white text-xs font-black">T</span>
                   </div>
                   <div className="flex-1 min-w-0">
@@ -557,7 +557,7 @@ function LearnerHoverCard({ learner, position }: { learner: Learner; position: {
       <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-64 overflow-hidden"
         style={{ animation: 'hoverCardIn 0.15s ease-out' }}>
         {/* Header strip */}
-        <div className="bg-gradient-to-r from-[#4ECFBF]/15 to-transparent px-4 pt-4 pb-3 flex items-center gap-3">
+        <div className="bg-gradient-to-r from-brand/15 to-transparent px-4 pt-4 pb-3 flex items-center gap-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${
             plan.progress_status === 'on_track' ? 'bg-emerald-400' :
             plan.progress_status === 'at_risk' ? 'bg-amber-400' : 'bg-gray-300'
@@ -635,7 +635,7 @@ function LearnerHoverCard({ learner, position }: { learner: Learner; position: {
 
         {/* Bottom hint */}
         <div className="border-t border-gray-100 px-4 py-2 bg-gray-50/50">
-          <p className="text-xs text-gray-400 text-center">Click <span className="font-semibold text-[#4ECFBF]">View</span> for full history</p>
+          <p className="text-xs text-gray-400 text-center">Click <span className="font-semibold text-brand">View</span> for full history</p>
         </div>
       </div>
     </div>
@@ -666,7 +666,7 @@ function LearnerDetailModal({
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-sm p-4 pt-8">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl my-4 sm:my-8 mx-2 sm:mx-4">
         {/* Modal Header */}
-        <div className="relative bg-gradient-to-br from-[#4ECFBF] via-[#3bbdad] to-[#2a9e92] rounded-t-3xl p-7">
+        <div className="relative bg-gradient-to-br from-brand via-[#3bbdad] to-[#2a9e92] rounded-t-3xl p-7">
           <button onClick={onClose} className="absolute top-5 right-5 text-white/80 hover:text-white hover:bg-white/20 rounded-xl p-2 transition-all">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
@@ -728,7 +728,7 @@ function LearnerDetailModal({
               key={t.key}
               onClick={() => setTab(t.key as any)}
               className={`py-3.5 px-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                tab === t.key ? 'border-[#4ECFBF] text-[#4ECFBF]' : 'border-transparent text-gray-500 hover:text-gray-700'
+                tab === t.key ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               {t.icon} {t.label}
@@ -825,15 +825,15 @@ function LearnerDetailModal({
                     <div className={`rounded-2xl border p-4 flex items-start gap-3 ${
                       action.urgency === 'high' ? 'bg-rose-50 border-rose-200' :
                       action.urgency === 'medium' ? 'bg-amber-50 border-amber-200' :
-                      'bg-[#4ECFBF]/8 border-[#4ECFBF]/30'
+                      'bg-brand/8 border-brand/30'
                     }`}>
                       <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
                         action.urgency === 'high' ? 'bg-rose-100' :
-                        action.urgency === 'medium' ? 'bg-amber-100' : 'bg-[#4ECFBF]/20'
+                        action.urgency === 'medium' ? 'bg-amber-100' : 'bg-brand/20'
                       }`}>
                         <Lightbulb className={`w-4 h-4 ${
                           action.urgency === 'high' ? 'text-rose-600' :
-                          action.urgency === 'medium' ? 'text-amber-600' : 'text-[#4ECFBF]'
+                          action.urgency === 'medium' ? 'text-amber-600' : 'text-brand'
                         }`} strokeWidth={1.8} />
                       </div>
                       <div>
@@ -905,7 +905,7 @@ function LearnerDetailModal({
                       <div className="bg-white border border-gray-100 rounded-2xl p-3.5">
                         <div className="flex items-center gap-2 mb-2">
                           <div className="w-6 h-6 bg-teal-100 rounded-lg flex items-center justify-center">
-                            <TrendingUp className="w-3.5 h-3.5 text-[#4ECFBF]" strokeWidth={1.8} />
+                            <TrendingUp className="w-3.5 h-3.5 text-brand" strokeWidth={1.8} />
                           </div>
                           <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Confidence</span>
                         </div>
@@ -973,7 +973,7 @@ function LearnerDetailModal({
                     {recentDays.length > 0 && (
                       <div className="bg-white border border-gray-100 rounded-2xl p-4">
                         <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-[#4ECFBF]" strokeWidth={1.8} />
+                          <Calendar className="w-3.5 h-3.5 text-brand" strokeWidth={1.8} />
                           Activity Heatmap — Last 14 Days
                         </h4>
                         <div className="flex gap-1.5 flex-wrap">
@@ -983,7 +983,7 @@ function LearnerDetailModal({
                             const intensity = day.minutes === 0 && day.sessions === 0 ? 0
                               : day.minutes === 0 ? 1
                               : day.minutes < 5 ? 1 : day.minutes < 15 ? 2 : day.minutes < 30 ? 3 : 4;
-                            const bgColors = ['bg-gray-100', 'bg-[#4ECFBF]/20', 'bg-[#4ECFBF]/40', 'bg-[#4ECFBF]/70', 'bg-[#4ECFBF]'];
+                            const bgColors = ['bg-gray-100', 'bg-brand/20', 'bg-brand/40', 'bg-brand/70', 'bg-brand'];
                             return (
                               <div key={i} className="flex flex-col items-center gap-1 group relative">
                                 <div className={`w-8 h-8 rounded-lg ${bgColors[intensity]} transition-all group-hover:scale-110`} />
@@ -1000,7 +1000,7 @@ function LearnerDetailModal({
                         </div>
                         <div className="flex items-center gap-2 mt-2">
                           <span className="text-[10px] text-gray-400">Less</span>
-                          {['bg-gray-100', 'bg-[#4ECFBF]/20', 'bg-[#4ECFBF]/40', 'bg-[#4ECFBF]/70', 'bg-[#4ECFBF]'].map((bg, i) => (
+                          {['bg-gray-100', 'bg-brand/20', 'bg-brand/40', 'bg-brand/70', 'bg-brand'].map((bg, i) => (
                             <div key={i} className={`w-3 h-3 rounded-sm ${bg}`} />
                           ))}
                           <span className="text-[10px] text-gray-400">More</span>
@@ -1012,7 +1012,7 @@ function LearnerDetailModal({
                     {details.all_learning_plans?.length > 0 && (
                       <div className="bg-white border border-gray-100 rounded-2xl p-4">
                         <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                          <BookOpen className="w-3.5 h-3.5 text-[#4ECFBF]" strokeWidth={1.8} />
+                          <BookOpen className="w-3.5 h-3.5 text-brand" strokeWidth={1.8} />
                           Learning Plans
                         </h4>
                         <div className="space-y-3">
@@ -1032,7 +1032,7 @@ function LearnerDetailModal({
                                   <span className="text-xs font-bold text-gray-700">{p.progress_percentage?.toFixed(0)}%</span>
                                 </div>
                                 <div className="w-full bg-gray-100 rounded-full h-2">
-                                  <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-2 rounded-full" style={{ width: `${Math.min(100, p.progress_percentage || 0)}%` }} />
+                                  <div className="bg-gradient-to-r from-brand to-[#3a9e92] h-2 rounded-full" style={{ width: `${Math.min(100, p.progress_percentage || 0)}%` }} />
                                 </div>
                                 <div className="flex justify-between text-xs text-gray-400 mt-0.5">
                                   <span>{p.completed_sessions}/{p.total_sessions} sessions</span>
@@ -1062,10 +1062,10 @@ function LearnerDetailModal({
                               {p.proficiency_level}
                             </span>
                           </div>
-                          <span className="text-2xl font-bold text-[#4ECFBF]">{p.progress_percentage?.toFixed(0)}%</span>
+                          <span className="text-2xl font-bold text-brand">{p.progress_percentage?.toFixed(0)}%</span>
                         </div>
                         <div className="w-full bg-white/70 rounded-full h-3">
-                          <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-3 rounded-full" style={{ width: `${p.progress_percentage || 0}%` }} />
+                          <div className="bg-gradient-to-r from-brand to-[#3a9e92] h-3 rounded-full" style={{ width: `${p.progress_percentage || 0}%` }} />
                         </div>
                         <div className="grid grid-cols-3 gap-3 mt-3 text-sm">
                           <div><span className="text-gray-500">Sessions:</span> <span className="font-semibold">{p.completed_sessions}/{p.total_sessions}</span></div>
@@ -1135,7 +1135,7 @@ function LearnerDetailModal({
                       <div className="text-center py-12 text-gray-400">
                         <Calendar className="w-10 h-10 text-gray-200 mx-auto mb-2" strokeWidth={1.5} />
                         <p className="font-medium text-sm">No sessions in this period</p>
-                        <button onClick={() => setSessionDateRange({ start: null, end: null, label: 'All time' })} className="text-xs text-[#4ECFBF] mt-1 underline">Clear filter</button>
+                        <button onClick={() => setSessionDateRange({ start: null, end: null, label: 'All time' })} className="text-xs text-brand mt-1 underline">Clear filter</button>
                       </div>
                     );
                     return (
@@ -1197,7 +1197,7 @@ function LearnerDetailModal({
                         {/* Summary stats — computed on filtered set */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                           <div className="bg-gray-50 rounded-xl p-3 text-center">
-                            <div className="text-xl font-bold text-[#4ECFBF]">{totalSessions}</div>
+                            <div className="text-xl font-bold text-brand">{totalSessions}</div>
                             <div className="text-xs text-gray-500 mt-0.5">Sessions Played</div>
                           </div>
                           <div className="bg-gray-50 rounded-xl p-3 text-center">
@@ -1220,7 +1220,7 @@ function LearnerDetailModal({
                           <div className="text-center py-10 text-gray-400">
                             <Calendar className="w-10 h-10 text-gray-200 mx-auto mb-2" strokeWidth={1.5} />
                             <p className="font-medium text-sm">No challenges in this period</p>
-                            <button onClick={() => setChallengeDateRange({ start: null, end: null, label: 'All time' })} className="text-xs text-[#4ECFBF] mt-1 underline">Clear filter</button>
+                            <button onClick={() => setChallengeDateRange({ start: null, end: null, label: 'All time' })} className="text-xs text-brand mt-1 underline">Clear filter</button>
                           </div>
                         ) : (
                           <div className="overflow-x-auto">
@@ -1288,7 +1288,7 @@ function LearnerDetailModal({
                     // Strand config: color, icon, description for tutors
                     const strandConfig: Record<string, { color: string; bg: string; bar: string; tutorHint: string }> = {
                       rhythm:     { color: 'text-blue-600',   bg: 'bg-blue-50',   bar: 'bg-blue-400',   tutorHint: 'Speaking pace & flow consistency' },
-                      confidence: { color: 'text-[#4ECFBF]', bg: 'bg-teal-50',   bar: 'bg-[#4ECFBF]',  tutorHint: 'Self-assurance during speech' },
+                      confidence: { color: 'text-brand', bg: 'bg-teal-50',   bar: 'bg-brand',  tutorHint: 'Self-assurance during speech' },
                       vocabulary: { color: 'text-purple-600', bg: 'bg-purple-50', bar: 'bg-purple-400', tutorHint: 'Word variety & complexity usage' },
                       accuracy:   { color: 'text-emerald-600',bg: 'bg-emerald-50',bar: 'bg-emerald-400',tutorHint: 'Grammar & sentence correctness' },
                       learning:   { color: 'text-amber-600',  bg: 'bg-amber-50',  bar: 'bg-amber-400',  tutorHint: 'How they tackle new challenges' },
@@ -1303,14 +1303,14 @@ function LearnerDetailModal({
                     return (
                       <>
                         {/* Archetype Banner */}
-                        <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-purple-50 border border-[#4ECFBF]/20 rounded-2xl p-4 flex items-start gap-4">
-                          <div className="w-12 h-12 bg-gradient-to-br from-[#4ECFBF] to-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <div className="bg-gradient-to-r from-brand/10 to-purple-50 border border-brand/20 rounded-2xl p-4 flex items-start gap-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-brand to-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
                             <Dna className="w-6 h-6 text-white" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-bold text-gray-900 text-sm">{dna.archetype || 'Learner Profile'}</span>
-                              <span className="text-xs bg-[#4ECFBF]/20 text-[#4ECFBF] px-2 py-0.5 rounded-full font-semibold capitalize">
+                              <span className="text-xs bg-brand/20 text-brand px-2 py-0.5 rounded-full font-semibold capitalize">
                                 {dna.coach_approach?.replace(/_/g, ' ')}
                               </span>
                             </div>
@@ -1325,7 +1325,7 @@ function LearnerDetailModal({
                         {/* 6 Strand Bars with CSS animation */}
                         <div className="bg-white rounded-2xl border border-gray-100 p-5">
                           <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
-                            <Dna className="w-4 h-4 text-[#4ECFBF]" /> Speaking DNA Strands
+                            <Dna className="w-4 h-4 text-brand" /> Speaking DNA Strands
                           </h4>
                           <div className="space-y-3">
                             {Object.entries(strands).map(([key, strand]: [string, any]) => {
@@ -1413,7 +1413,7 @@ function LearnerDetailModal({
                         {dna.weekly_trend?.length > 0 && (
                           <div className="bg-white rounded-2xl border border-gray-100 p-5">
                             <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
-                              <TrendingUp className="w-4 h-4 text-[#4ECFBF]" /> Weekly Progress Trend
+                              <TrendingUp className="w-4 h-4 text-brand" /> Weekly Progress Trend
                             </h4>
                             <div className="space-y-2">
                               {dna.weekly_trend.slice(-6).map((week: any, i: number) => (
@@ -1423,14 +1423,14 @@ function LearnerDetailModal({
                                   </span>
                                   <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
                                     <div
-                                      className="bg-gradient-to-r from-[#4ECFBF] to-purple-400 h-2 rounded-full transition-all duration-700"
+                                      className="bg-gradient-to-r from-brand to-purple-400 h-2 rounded-full transition-all duration-700"
                                       style={{
                                         width: `${week.confidence}%`,
                                         animationDelay: `${i * 150}ms`
                                       }}
                                     />
                                   </div>
-                                  <span className="text-xs font-semibold text-[#4ECFBF] w-9 text-right">{week.confidence}%</span>
+                                  <span className="text-xs font-semibold text-brand w-9 text-right">{week.confidence}%</span>
                                   <span className="text-xs text-gray-400 w-20 text-right hidden sm:block">{week.sessions} sess · {week.minutes}m</span>
                                 </div>
                               ))}
@@ -1442,7 +1442,7 @@ function LearnerDetailModal({
                         {dna.assessments?.length > 0 && (
                           <div className="bg-white rounded-2xl border border-gray-100 p-5">
                             <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
-                              <Award className="w-4 h-4 text-[#4ECFBF]" /> Assessment History
+                              <Award className="w-4 h-4 text-brand" /> Assessment History
                             </h4>
                             <div className="space-y-2">
                               {dna.assessments.map((a: any, i: number) => (
@@ -1466,7 +1466,7 @@ function LearnerDetailModal({
                         {dna.sentence_scores?.length > 0 && (
                           <div className="bg-white rounded-2xl border border-gray-100 p-5">
                             <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
-                              <Mic className="w-4 h-4 text-[#4ECFBF]" /> Recent Sentence Quality
+                              <Mic className="w-4 h-4 text-brand" /> Recent Sentence Quality
                             </h4>
                             <div className="space-y-2">
                               {dna.sentence_scores.slice(0, 5).map((s: any, i: number) => (
@@ -1477,7 +1477,7 @@ function LearnerDetailModal({
                                       { label: 'Grammar', val: s.grammatical, color: 'text-emerald-600' },
                                       { label: 'Vocab', val: s.vocabulary, color: 'text-purple-600' },
                                       { label: 'Complexity', val: s.complexity, color: 'text-blue-600' },
-                                      { label: 'Overall', val: s.overall, color: 'text-[#4ECFBF] font-bold' },
+                                      { label: 'Overall', val: s.overall, color: 'text-brand font-bold' },
                                     ].map(m => (
                                       <div key={m.label} className="text-center">
                                         <div className={`text-sm font-bold ${m.color}`}>{m.val}</div>
@@ -1649,7 +1649,7 @@ export default function TutorDashboardPage() {
                 onClick={() => setTab(t.key as any)}
                 className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex items-center ${
                   tab === t.key
-                    ? 'border-[#4ECFBF] text-[#4ECFBF]'
+                    ? 'border-brand text-brand'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
                 }`}
               >
@@ -1684,7 +1684,7 @@ export default function TutorDashboardPage() {
                 { label: 'Total Learners', value: analytics?.total_assigned_learners ?? 0, color: 'text-gray-900', icon: <Users className="w-5 h-5 text-blue-400" />, bg: 'bg-white' },
                 { label: 'On Track', value: analytics?.active_learners ?? 0, color: 'text-emerald-600', icon: <CheckCircle className="w-5 h-5 text-emerald-500" />, bg: 'bg-emerald-50' },
                 { label: 'Need Attention', value: (analytics?.at_risk_learners ?? 0) + (analytics?.inactive_learners ?? 0), color: 'text-amber-600', icon: <AlertTriangle className="w-5 h-5 text-amber-500" />, bg: 'bg-amber-50' },
-                { label: 'Avg Progress', value: `${analytics?.average_progress?.toFixed(1) ?? 0}%`, color: 'text-[#4ECFBF]', icon: <TrendingUp className="w-5 h-5 text-[#4ECFBF]" />, bg: 'bg-teal-50' },
+                { label: 'Avg Progress', value: `${analytics?.average_progress?.toFixed(1) ?? 0}%`, color: 'text-brand', icon: <TrendingUp className="w-5 h-5 text-brand" />, bg: 'bg-teal-50' },
               ].map(card => (
                 <div key={card.label} className={`${card.bg} rounded-2xl border border-gray-100 p-5 shadow-sm`}>
                   <div className="flex items-center justify-between mb-2">
@@ -1701,7 +1701,7 @@ export default function TutorDashboardPage() {
               {/* Language Distribution */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-[#4ECFBF]" /> <span>Languages</span>
+                  <Globe className="w-4 h-4 text-brand" /> <span>Languages</span>
                   <span className="text-xs text-gray-400 font-normal ml-auto">{Object.keys(langDistribution).length} language{Object.keys(langDistribution).length !== 1 ? 's' : ''}</span>
                 </h3>
                 {Object.keys(langDistribution).length > 0 ? (
@@ -1720,7 +1720,7 @@ export default function TutorDashboardPage() {
                               <span className="text-sm text-gray-500">{count} learner{count !== 1 ? 's' : ''} · {pct}%</span>
                             </div>
                             <div className="w-full bg-gray-100 rounded-full h-2">
-                              <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] h-2 rounded-full" style={{ width: `${pct}%` }} />
+                              <div className="bg-gradient-to-r from-brand to-[#3a9e92] h-2 rounded-full" style={{ width: `${pct}%` }} />
                             </div>
                           </div>
                         );
@@ -1734,7 +1734,7 @@ export default function TutorDashboardPage() {
               {/* Proficiency Level Distribution */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <BarChart2 className="w-4 h-4 text-[#4ECFBF]" /> <span>Proficiency Levels</span>
+                  <BarChart2 className="w-4 h-4 text-brand" /> <span>Proficiency Levels</span>
                   <span className="text-xs text-gray-400 font-normal ml-auto">{analytics?.total_assigned_learners ?? 0} total</span>
                 </h3>
                 {analytics?.level_distribution && Object.keys(analytics.level_distribution).length > 0 ? (
@@ -1760,7 +1760,7 @@ export default function TutorDashboardPage() {
             {/* Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><Activity className="w-4 h-4 text-[#4ECFBF]" /> Class Stats</h3>
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><Activity className="w-4 h-4 text-brand" /> Class Stats</h3>
                 <div className="space-y-3">
                   {[
                     { label: 'Total Sessions Completed', value: analytics?.total_sessions_completed ?? 0 },
@@ -1777,7 +1777,7 @@ export default function TutorDashboardPage() {
 
               {/* Quick Learner Summary */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><GraduationCap className="w-4 h-4 text-[#4ECFBF]" /> Learner Snapshot</h3>
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><GraduationCap className="w-4 h-4 text-brand" /> Learner Snapshot</h3>
                 <div className="space-y-2">
                   {learners.slice(0, 5).map(l => {
                     const plan = l.learning_plans[0];
@@ -1793,9 +1793,9 @@ export default function TutorDashboardPage() {
                         </div>
                         {plan && (
                           <div className="text-right">
-                            <div className="text-sm font-bold text-[#4ECFBF]">{plan.progress_percentage.toFixed(0)}%</div>
+                            <div className="text-sm font-bold text-brand">{plan.progress_percentage.toFixed(0)}%</div>
                             <div className="w-14 bg-gray-100 rounded-full h-1.5 mt-1">
-                              <div className="bg-[#4ECFBF] h-1.5 rounded-full" style={{ width: `${plan.progress_percentage}%` }} />
+                              <div className="bg-brand h-1.5 rounded-full" style={{ width: `${plan.progress_percentage}%` }} />
                             </div>
                           </div>
                         )}
@@ -1803,7 +1803,7 @@ export default function TutorDashboardPage() {
                     );
                   })}
                   {learners.length > 5 && (
-                    <button onClick={() => setTab('learners')} className="text-xs text-[#4ECFBF] hover:underline w-full text-center pt-1">
+                    <button onClick={() => setTab('learners')} className="text-xs text-brand hover:underline w-full text-center pt-1">
                       View all {learners.length} learners →
                     </button>
                   )}
@@ -1824,26 +1824,26 @@ export default function TutorDashboardPage() {
                   <input
                     value={search} onChange={e => setSearch(e.target.value)}
                     placeholder="Name or email..."
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] bg-white"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand bg-white"
                   />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Language</label>
-                  <select value={langFilter} onChange={e => setLangFilter(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]">
+                  <select value={langFilter} onChange={e => setLangFilter(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-brand">
                     <option value="">All Languages</option>
                     {uniqueLanguages.map(l => <option key={l} value={l}>{l ? l.charAt(0).toUpperCase() + l.slice(1) : l}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Level</label>
-                  <select value={levelFilter} onChange={e => setLevelFilter(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]">
+                  <select value={levelFilter} onChange={e => setLevelFilter(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-brand">
                     <option value="">All Levels</option>
                     {['A1','A2','B1','B2','C1','C2'].map(l => <option key={l}>{l}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Status</label>
-                  <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]">
+                  <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-brand">
                     <option value="">All Status</option>
                     <option value="on_track">On Track</option>
                     <option value="at_risk">At Risk</option>
@@ -1955,7 +1955,7 @@ export default function TutorDashboardPage() {
                           <td className="px-2 py-3 text-center">
                             {plan ? (
                               <div>
-                                <div className="text-xl font-bold text-[#4ECFBF]">{plan.completed_sessions}</div>
+                                <div className="text-xl font-bold text-brand">{plan.completed_sessions}</div>
                                 <div className="text-xs text-gray-400">of {plan.total_sessions}</div>
                               </div>
                             ) : '—'}
@@ -1996,7 +1996,7 @@ export default function TutorDashboardPage() {
                           <td className="px-3 py-3">
                             <button
                               onClick={() => openLearnerDetails(learner)}
-                              className="px-3 py-1.5 bg-[#4ECFBF] hover:bg-[#3a9e92] active:bg-[#2d8a80] text-white text-xs font-semibold rounded-xl transition-all shadow-sm hover:shadow"
+                              className="px-3 py-1.5 bg-brand hover:bg-[#3a9e92] active:bg-[#2d8a80] text-white text-xs font-semibold rounded-xl transition-all shadow-sm hover:shadow"
                             >
                               View
                             </button>

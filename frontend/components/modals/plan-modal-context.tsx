@@ -162,14 +162,14 @@ function PlanModal() {
             <div className="space-y-3">
               <button
                 onClick={handleSignUp}
-                className="w-full py-3 px-4 bg-[#4ECFBF] text-white font-semibold rounded-lg hover:bg-[#3a9e92] transition-colors duration-300"
+                className="w-full py-3 px-4 bg-brand text-white font-semibold rounded-lg hover:bg-[#3a9e92] transition-colors duration-300"
               >
                 Create Account & Start Free Trial
               </button>
               
               <button
                 onClick={handleSignIn}
-                className="w-full py-3 px-4 bg-white text-[#4ECFBF] border-2 border-[#4ECFBF] font-semibold rounded-lg hover:bg-[#4ECFBF] hover:text-white transition-colors duration-300"
+                className="w-full py-3 px-4 bg-white text-brand border-2 border-brand font-semibold rounded-lg hover:bg-brand hover:text-white transition-colors duration-300"
               >
                 Sign In
               </button>
@@ -224,7 +224,7 @@ function PlanModal() {
             </span>
             <button
               onClick={() => setIsAnnual(!isAnnual)}
-              className="mx-4 relative inline-flex h-8 w-14 items-center rounded-full bg-gray-200 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:ring-offset-2"
+              className="mx-4 relative inline-flex h-8 w-14 items-center rounded-full bg-gray-200 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
               style={{ backgroundColor: isAnnual ? '#4ECFBF' : '#e5e7eb' }}
             >
               <span
@@ -246,9 +246,9 @@ function PlanModal() {
           {/* Pricing Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             {/* Fluency Builder */}
-            <div className="border-2 border-[#4ECFBF] rounded-xl md:rounded-2xl p-4 md:p-6 relative bg-gradient-to-br from-[#4ECFBF]/5 to-[#4ECFBF]/10 flex flex-col h-full">
+            <div className="border-2 border-brand rounded-xl md:rounded-2xl p-4 md:p-6 relative bg-gradient-to-br from-brand/5 to-brand/10 flex flex-col h-full">
               <div className="absolute -top-2 md:-top-3 left-1/2 transform -translate-x-1/2">
-                <div className="bg-[#4ECFBF] text-white px-3 md:px-4 py-1 rounded-full text-xs md:text-sm font-bold">
+                <div className="bg-brand text-white px-3 md:px-4 py-1 rounded-full text-xs md:text-sm font-bold">
                   MOST POPULAR
                 </div>
               </div>
@@ -284,7 +284,7 @@ function PlanModal() {
                   'All conversation topics'
                 ].map((feature, index) => (
                   <li key={index} className="flex items-start">
-                    <Check className="w-4 h-4 md:w-5 md:h-5 text-[#4ECFBF] mt-0.5 mr-2 md:mr-3 flex-shrink-0" />
+                    <Check className="w-4 h-4 md:w-5 md:h-5 text-brand mt-0.5 mr-2 md:mr-3 flex-shrink-0" />
                     <span className="text-gray-700 text-sm md:text-base">{feature}</span>
                   </li>
                 ))}
@@ -293,7 +293,7 @@ function PlanModal() {
               <div className="mt-auto">
                 <button
                   onClick={() => handlePlanSelect('fluency_builder')}
-                  className="w-full py-3 px-6 bg-[#4ECFBF] text-white font-semibold rounded-xl hover:bg-[#3a9e92] transition-colors duration-300"
+                  className="w-full py-3 px-6 bg-brand text-white font-semibold rounded-xl hover:bg-[#3a9e92] transition-colors duration-300"
                 >
                   Start Free Trial
                 </button>
@@ -333,7 +333,7 @@ function PlanModal() {
                   'Advanced analytics'
                 ].map((feature, index) => (
                   <li key={index} className="flex items-start">
-                    <Check className="w-4 h-4 md:w-5 md:h-5 text-[#4ECFBF] mt-0.5 mr-2 md:mr-3 flex-shrink-0" />
+                    <Check className="w-4 h-4 md:w-5 md:h-5 text-brand mt-0.5 mr-2 md:mr-3 flex-shrink-0" />
                     <span className="text-gray-700 text-sm md:text-base">{feature}</span>
                   </li>
                 ))}
@@ -342,7 +342,7 @@ function PlanModal() {
               <div className="mt-auto">
                 <button
                   onClick={() => handlePlanSelect('team_mastery')}
-                  className="w-full py-3 px-6 bg-white text-[#4ECFBF] border-2 border-[#4ECFBF] font-semibold rounded-xl hover:bg-[#4ECFBF] hover:text-white transition-colors duration-300"
+                  className="w-full py-3 px-6 bg-white text-brand border-2 border-brand font-semibold rounded-xl hover:bg-brand hover:text-white transition-colors duration-300"
                 >
                   Start Free Trial
                 </button>

@@ -476,9 +476,9 @@ export default function SentenceConstructionAssessment({
           
           {/* Improvement Metrics */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-[#F0FAFA] p-2 rounded border border-[#4ECFBF]/30">
+            <div className="bg-[#F0FAFA] p-2 rounded border border-brand/30">
               <p className="text-xs text-slate-600">Error Reduction</p>
-              <p className="text-lg font-semibold text-[#4ECFBF]">{progress.errorReduction > 0 ? `+${progress.errorReduction}` : "0"}</p>
+              <p className="text-lg font-semibold text-brand">{progress.errorReduction > 0 ? `+${progress.errorReduction}` : "0"}</p>
             </div>
             <div className="bg-[#FFF0F0] p-2 rounded border border-[#F75A5A]/30">
               <p className="text-xs text-slate-600">Complexity Growth</p>
@@ -491,9 +491,9 @@ export default function SentenceConstructionAssessment({
       {/* Assessment Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 animate-fadeIn">
-          <div className="bg-white border border-[#4ECFBF]/30 shadow-lg rounded-xl max-w-3xl w-full max-h-[90vh] sm:max-h-[80vh] overflow-hidden flex flex-col">
+          <div className="bg-white border border-brand/30 shadow-lg rounded-xl max-w-3xl w-full max-h-[90vh] sm:max-h-[80vh] overflow-hidden flex flex-col">
             {/* Header Section with Sticky Positioning */}
-            <div className="sticky top-0 bg-white pt-2 sm:pt-3 px-3 sm:px-5 pb-2 sm:pb-3 z-10 border-b border-[#4ECFBF]/30">
+            <div className="sticky top-0 bg-white pt-2 sm:pt-3 px-3 sm:px-5 pb-2 sm:pb-3 z-10 border-b border-brand/30">
               <div className="flex justify-between items-center">
                 <h2 className="text-base sm:text-lg font-bold text-[#F75A5A]">Sentence Assessment</h2>
                 <Button
@@ -509,7 +509,7 @@ export default function SentenceConstructionAssessment({
                 <div className="w-full mt-3">
                   <Button
                     onClick={handleContinue}
-                    className="w-full py-1.5 sm:py-2 bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white text-sm sm:text-base font-medium rounded-md flex items-center justify-center shadow-sm transition-colors"
+                    className="w-full py-1.5 sm:py-2 bg-brand hover:bg-[#5CCFC0] text-white text-sm sm:text-base font-medium rounded-md flex items-center justify-center shadow-sm transition-colors"
                   >
                     Continue Learning
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -524,8 +524,8 @@ export default function SentenceConstructionAssessment({
             <div className="p-3 sm:p-5 pt-2 sm:pt-3 overflow-y-auto">
               {isLoading ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <div className="h-12 w-12 border-4 border-[#4ECFBF] border-t-transparent rounded-full animate-spin mb-4"></div>
-                <p className="text-[#4ECFBF] font-medium">Analyzing your sentence...</p>
+                <div className="h-12 w-12 border-4 border-brand border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-brand font-medium">Analyzing your sentence...</p>
               </div>
             ) : error ? (
               <div className="text-center py-8">
@@ -535,7 +535,7 @@ export default function SentenceConstructionAssessment({
                   </svg>
                 </div>
                 <p className="text-slate-600 mb-2">{error}</p>
-                <Button onClick={handleCloseModal} className="mt-4 bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white transition-colors">
+                <Button onClick={handleCloseModal} className="mt-4 bg-brand hover:bg-[#5CCFC0] text-white transition-colors">
                   Close
                 </Button>
               </div>
@@ -581,7 +581,7 @@ export default function SentenceConstructionAssessment({
                             </span>
                           </div>
                           <p className="text-sm text-slate-600 mt-1">{issue.description}</p>
-                          <p className="text-sm text-[#4ECFBF] font-medium mt-1">Suggestion: {issue.suggestion}</p>
+                          <p className="text-sm text-brand font-medium mt-1">Suggestion: {issue.suggestion}</p>
                         </div>
                       ))}
                     </div>

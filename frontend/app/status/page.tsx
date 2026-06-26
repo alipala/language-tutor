@@ -95,7 +95,7 @@ const SystemStatus: React.FC = () => {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
-      <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white py-20">
+      <div className="bg-gradient-to-r from-brand to-[#3a9e92] text-white py-20">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -131,12 +131,12 @@ const SystemStatus: React.FC = () => {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.6, delay: 0.1 * (index + 3) }}
-                  className="bg-[#13131F] rounded-2xl p-6 border border-white/[0.10]"
+                  className="bg-surface-1 rounded-2xl p-6 border border-white/[0.10]"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <div className="w-12 h-12 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mr-4">
-                        <service.icon className="w-6 h-6 text-[#4ECFBF]" />
+                      <div className="w-12 h-12 bg-brand/10 rounded-xl flex items-center justify-center mr-4">
+                        <service.icon className="w-6 h-6 text-brand" />
                       </div>
                       <div>
                         <h3 className="text-xl font-bold text-white">{service.name}</h3>
@@ -168,7 +168,7 @@ const SystemStatus: React.FC = () => {
             <h2 className="text-4xl font-bold text-white mb-8 text-center">Recent Incidents</h2>
             <div className="space-y-6">
               {incidents.map((incident, index) => (
-                <div key={index} className="bg-[#13131F] rounded-2xl p-6 border border-white/[0.10]">
+                <div key={index} className="bg-surface-1 rounded-2xl p-6 border border-white/[0.10]">
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <h3 className="text-xl font-bold text-white mb-2">{incident.title}</h3>
@@ -205,9 +205,9 @@ const SystemStatus: React.FC = () => {
               <input
                 type="email"
                 placeholder="Enter your email"
-                className="flex-1 px-4 py-3 bg-[#13131F] border border-white/[0.10] rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent"
+                className="flex-1 px-4 py-3 bg-surface-1 border border-white/[0.10] rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
               />
-              <button className="px-6 py-3 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300">
+              <button className="px-6 py-3 bg-brand hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300">
                 Subscribe
               </button>
             </div>

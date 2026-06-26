@@ -24,7 +24,7 @@ export default function InstitutionSettingsPage() {
 
   if (!ready) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-[#4ECFBF]/30 border-t-[#4ECFBF] rounded-full animate-spin" />
+      <div className="w-10 h-10 border-4 border-brand/30 border-t-[#4ECFBF] rounded-full animate-spin" />
     </div>
   );
 
@@ -35,7 +35,7 @@ export default function InstitutionSettingsPage() {
         <div className="mb-8">
           <button
             onClick={() => router.push('/institution/dashboard')}
-            className="text-sm text-[#4ECFBF] hover:text-[#3a9e92] font-medium mb-4 inline-flex items-center gap-1"
+            className="text-sm text-brand hover:text-[#3a9e92] font-medium mb-4 inline-flex items-center gap-1"
           >
             ← Back to Dashboard
           </button>
@@ -89,7 +89,7 @@ export default function InstitutionSettingsPage() {
             <div className="p-4">
               <button
                 onClick={() => setNotification(n => ({ ...n, show: false }))}
-                className="w-full py-3 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white rounded-xl font-medium hover:shadow-lg transition-all"
+                className="w-full py-3 bg-gradient-to-r from-brand to-[#3a9e92] text-white rounded-xl font-medium hover:shadow-lg transition-all"
               >
                 Got it
               </button>

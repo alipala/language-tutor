@@ -990,9 +990,9 @@ export default function VerticalCarouselFlow() {
               <div className="flex items-center space-x-2">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
                   completedSteps.has(FlowStep.LANGUAGE) 
-                    ? 'bg-[#4ECFBF] text-white shadow-md' 
+                    ? 'bg-brand text-white shadow-md' 
                     : currentStep === FlowStep.LANGUAGE 
-                      ? 'bg-[#4ECFBF]/20 border-2 border-[#4ECFBF] text-[#4ECFBF]' 
+                      ? 'bg-brand/20 border-2 border-brand text-brand' 
                       : 'bg-gray-200 text-gray-400'
                 }`}>
                   {completedSteps.has(FlowStep.LANGUAGE) ? (
@@ -1014,7 +1014,7 @@ export default function VerticalCarouselFlow() {
 
               {/* Connector */}
               <div className={`h-0.5 w-8 transition-colors duration-300 ${
-                completedSteps.has(FlowStep.LANGUAGE) ? 'bg-[#4ECFBF]' : 'bg-gray-200'
+                completedSteps.has(FlowStep.LANGUAGE) ? 'bg-brand' : 'bg-gray-200'
               }`} />
 
               {/* Choice Step (only show if not skipping) */}
@@ -1023,9 +1023,9 @@ export default function VerticalCarouselFlow() {
                   <div className="flex items-center space-x-2">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
                       completedSteps.has(FlowStep.CHOICE) 
-                        ? 'bg-[#4ECFBF] text-white shadow-md' 
+                        ? 'bg-brand text-white shadow-md' 
                         : currentStep === FlowStep.CHOICE && isStepAvailable(FlowStep.CHOICE)
-                          ? 'bg-[#4ECFBF]/20 border-2 border-[#4ECFBF] text-[#4ECFBF]' 
+                          ? 'bg-brand/20 border-2 border-brand text-brand' 
                           : 'bg-gray-200 text-gray-400'
                     }`}>
                       {completedSteps.has(FlowStep.CHOICE) ? (
@@ -1047,7 +1047,7 @@ export default function VerticalCarouselFlow() {
                   
                   {/* Connector */}
                   <div className={`h-0.5 w-8 transition-colors duration-300 ${
-                    completedSteps.has(FlowStep.CHOICE) ? 'bg-[#4ECFBF]' : 'bg-gray-200'
+                    completedSteps.has(FlowStep.CHOICE) ? 'bg-brand' : 'bg-gray-200'
                   }`} />
                 </>
               )}
@@ -1056,9 +1056,9 @@ export default function VerticalCarouselFlow() {
               <div className="flex items-center space-x-2">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
                   completedSteps.has(FlowStep.TOPIC) 
-                    ? 'bg-[#4ECFBF] text-white shadow-md' 
+                    ? 'bg-brand text-white shadow-md' 
                     : currentStep === FlowStep.TOPIC && isStepAvailable(FlowStep.TOPIC)
-                      ? 'bg-[#4ECFBF]/20 border-2 border-[#4ECFBF] text-[#4ECFBF]' 
+                      ? 'bg-brand/20 border-2 border-brand text-brand' 
                       : 'bg-gray-200 text-gray-400'
                 }`}>
                   {completedSteps.has(FlowStep.TOPIC) ? (
@@ -1080,16 +1080,16 @@ export default function VerticalCarouselFlow() {
 
               {/* Connector */}
               <div className={`h-0.5 w-8 transition-colors duration-300 ${
-                completedSteps.has(FlowStep.TOPIC) ? 'bg-[#4ECFBF]' : 'bg-gray-200'
+                completedSteps.has(FlowStep.TOPIC) ? 'bg-brand' : 'bg-gray-200'
               }`} />
 
               {/* Level Step */}
               <div className="flex items-center space-x-2">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
                   completedSteps.has(FlowStep.LEVEL) 
-                    ? 'bg-[#4ECFBF] text-white shadow-md' 
+                    ? 'bg-brand text-white shadow-md' 
                     : currentStep === FlowStep.LEVEL && isStepAvailable(FlowStep.LEVEL)
-                      ? 'bg-[#4ECFBF]/20 border-2 border-[#4ECFBF] text-[#4ECFBF]' 
+                      ? 'bg-brand/20 border-2 border-brand text-brand' 
                       : 'bg-gray-200 text-gray-400'
                 }`}>
                   {completedSteps.has(FlowStep.LEVEL) ? (
@@ -1123,7 +1123,7 @@ export default function VerticalCarouselFlow() {
         <div className="min-h-screen snap-start flex flex-col justify-center items-center p-3 pt-8 md:p-4 md:pt-12">
           <div className="w-full max-w-4xl mx-auto space-y-4 md:space-y-6 mt-[3vh] md:mt-[5vh]">
             {/* Language Legend Section - Mobile Optimized */}
-            <div className="relative z-10 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border-2 border-[#4ECFBF] p-3 md:p-5 animate-fade-in">
+            <div className="relative z-10 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border-2 border-brand p-3 md:p-5 animate-fade-in">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-2">
                 {Object.entries(languageConfig).map(([langCode, config]) => (
                   <button
@@ -1142,8 +1142,8 @@ export default function VerticalCarouselFlow() {
                       animate-slide-up touch-manipulation
                       ${
                         selectedLanguage === langCode
-                          ? 'ring-2 ring-[#4ECFBF]/50 shadow-lg border-[#4ECFBF]/60'
-                          : 'border-gray-200/50 hover:border-[#4ECFBF]/40'
+                          ? 'ring-2 ring-brand/50 shadow-lg border-brand/60'
+                          : 'border-gray-200/50 hover:border-brand/40'
                       }
                       
                       /* Mobile: Ultra-compact sizing */
@@ -1171,7 +1171,7 @@ export default function VerticalCarouselFlow() {
                     </div>
                     
                     {/* Language Name - Mobile optimized */}
-                    <h3 className="text-xs md:text-sm font-bold text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 text-center leading-tight">
+                    <h3 className="text-xs md:text-sm font-bold text-gray-800 group-hover:text-brand transition-colors duration-300 text-center leading-tight">
                       {config.name}
                     </h3>
                     
@@ -1185,7 +1185,7 @@ export default function VerticalCarouselFlow() {
                     {/* Selection Checkmark - Mobile optimized */}
                     {selectedLanguage === langCode && (
                       <div className="absolute top-1 right-1 z-10">
-                        <div className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-[#4ECFBF] flex items-center justify-center shadow-md animate-pulse">
+                        <div className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-brand flex items-center justify-center shadow-md animate-pulse">
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-2 h-2 md:w-3 md:h-3">
                             <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
                           </svg>
@@ -1279,7 +1279,7 @@ export default function VerticalCarouselFlow() {
             <div className="text-center mb-12 animate-fade-in">
               <h1 className="text-5xl font-bold tracking-tight text-gray-800 mb-4">
                 {selectedLanguage && (
-                  <span className="text-[#4ECFBF] capitalize">{selectedLanguage}</span>
+                  <span className="text-brand capitalize">{selectedLanguage}</span>
                 )} Selected
               </h1>
               <p className="text-lg text-gray-600">Choose how you want to start your language journey</p>
@@ -1294,7 +1294,7 @@ export default function VerticalCarouselFlow() {
                     setIsLoading(true);
                     window.location.href = '/assessment/speaking';
                   }}
-                  className="group relative overflow-hidden rounded-lg transition-all duration-300 ease-out bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:shadow-md hover:shadow-[#4ECFBF]/20 hover:scale-102 hover:-translate-y-1 animate-slide-up w-full p-4 text-left h-[120px]"
+                  className="group relative overflow-hidden rounded-lg transition-all duration-300 ease-out bg-white/95 backdrop-blur-sm border-2 border-brand/40 hover:shadow-md hover:shadow-brand/20 hover:scale-102 hover:-translate-y-1 animate-slide-up w-full p-4 text-left h-[120px]"
                   style={{ animationDelay: '100ms' }}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -1307,7 +1307,7 @@ export default function VerticalCarouselFlow() {
                     </div>
                     
                     <div className="flex-1">
-                      <h3 className="text-lg font-bold text-gray-800 mb-1 group-hover:text-[#4ECFBF] transition-colors duration-300">
+                      <h3 className="text-lg font-bold text-gray-800 mb-1 group-hover:text-brand transition-colors duration-300">
                         Assess my speaking level
                       </h3>
                       <p className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 line-clamp-2">
@@ -1327,20 +1327,20 @@ export default function VerticalCarouselFlow() {
                       transitionToNextStep();
                     }, 300);
                   }}
-                  className="group relative overflow-hidden rounded-lg transition-all duration-300 ease-out bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:shadow-md hover:shadow-[#4ECFBF]/20 hover:scale-102 hover:-translate-y-1 animate-slide-up w-full p-4 text-left h-[120px]"
+                  className="group relative overflow-hidden rounded-lg transition-all duration-300 ease-out bg-white/95 backdrop-blur-sm border-2 border-brand/40 hover:shadow-md hover:shadow-brand/20 hover:scale-102 hover:-translate-y-1 animate-slide-up w-full p-4 text-left h-[120px]"
                   style={{ animationDelay: '200ms' }}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-transparent to-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-brand/5 via-transparent to-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                   
                   <div className="relative z-10 flex items-center gap-4 h-full">
-                    <div className="w-12 h-12 bg-gradient-to-br from-[#4ECFBF] to-green-500 rounded-full flex items-center justify-center shadow-md flex-shrink-0">
+                    <div className="w-12 h-12 bg-gradient-to-br from-brand to-green-500 rounded-full flex items-center justify-center shadow-md flex-shrink-0">
                       <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
                     </div>
                     
                     <div className="flex-1">
-                      <h3 className="text-lg font-bold text-gray-800 mb-1 group-hover:text-[#4ECFBF] transition-colors duration-300">
+                      <h3 className="text-lg font-bold text-gray-800 mb-1 group-hover:text-brand transition-colors duration-300">
                         Do a Practice
                       </h3>
                       <p className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300 line-clamp-2">
@@ -1349,7 +1349,7 @@ export default function VerticalCarouselFlow() {
                     </div>
                   </div>
                   
-                  <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-[#4ECFBF] to-green-500 w-0 group-hover:w-full transition-all duration-500"></div>
+                  <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-brand to-green-500 w-0 group-hover:w-full transition-all duration-500"></div>
                 </button>
               </div>
             </div>
@@ -1362,7 +1362,7 @@ export default function VerticalCarouselFlow() {
                   setIsLoading(true);
                   window.location.href = '/assessment/speaking';
                 }}
-                className="group relative overflow-hidden rounded-xl transition-all duration-500 ease-out bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:shadow-lg hover:shadow-[#4ECFBF]/20 hover:scale-105 hover:-translate-y-2 animate-slide-up p-8 text-left min-h-[280px]"
+                className="group relative overflow-hidden rounded-xl transition-all duration-500 ease-out bg-white/95 backdrop-blur-sm border-2 border-brand/40 hover:shadow-lg hover:shadow-brand/20 hover:scale-105 hover:-translate-y-2 animate-slide-up p-8 text-left min-h-[280px]"
                 style={{ animationDelay: '100ms' }}
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -1374,7 +1374,7 @@ export default function VerticalCarouselFlow() {
                     </svg>
                   </div>
                   
-                  <h3 className="text-2xl font-bold text-gray-800 mb-4 group-hover:text-[#4ECFBF] transition-colors duration-300">
+                  <h3 className="text-2xl font-bold text-gray-800 mb-4 group-hover:text-brand transition-colors duration-300">
                     Assess my speaking level
                   </h3>
                   
@@ -1382,7 +1382,7 @@ export default function VerticalCarouselFlow() {
                     Take a quick assessment to determine your current language proficiency level.
                   </p>
                   
-                  <div className="flex items-center text-sm text-[#4ECFBF] font-medium">
+                  <div className="flex items-center text-sm text-brand font-medium">
                     <span>10M+ learners</span>
                     <div className="ml-2 flex">
                       {[...Array(5)].map((_, i) => (
@@ -1405,19 +1405,19 @@ export default function VerticalCarouselFlow() {
                     transitionToNextStep();
                   }, 300);
                 }}
-                className="group relative overflow-hidden rounded-xl transition-all duration-500 ease-out bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 hover:shadow-lg hover:shadow-[#4ECFBF]/20 hover:scale-105 hover:-translate-y-2 animate-slide-up p-8 text-left min-h-[280px]"
+                className="group relative overflow-hidden rounded-xl transition-all duration-500 ease-out bg-white/95 backdrop-blur-sm border-2 border-brand/40 hover:shadow-lg hover:shadow-brand/20 hover:scale-105 hover:-translate-y-2 animate-slide-up p-8 text-left min-h-[280px]"
                 style={{ animationDelay: '200ms' }}
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-transparent to-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-brand/5 via-transparent to-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 
                 <div className="relative z-10">
-                  <div className="w-16 h-16 bg-gradient-to-br from-[#4ECFBF] to-green-500 rounded-full flex items-center justify-center mb-6 shadow-lg">
+                  <div className="w-16 h-16 bg-gradient-to-br from-brand to-green-500 rounded-full flex items-center justify-center mb-6 shadow-lg">
                     <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
                   </div>
                   
-                  <h3 className="text-2xl font-bold text-gray-800 mb-4 group-hover:text-[#4ECFBF] transition-colors duration-300">
+                  <h3 className="text-2xl font-bold text-gray-800 mb-4 group-hover:text-brand transition-colors duration-300">
                     Do a Practice
                   </h3>
                   
@@ -1425,7 +1425,7 @@ export default function VerticalCarouselFlow() {
                     Start a conversation practice session on topics of your choice.
                   </p>
                   
-                  <div className="flex items-center text-sm text-[#4ECFBF] font-medium">
+                  <div className="flex items-center text-sm text-brand font-medium">
                     <span>2M+ learners</span>
                     <div className="ml-2 flex">
                       {[...Array(5)].map((_, i) => (
@@ -1437,7 +1437,7 @@ export default function VerticalCarouselFlow() {
                   </div>
                 </div>
                 
-                <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-[#4ECFBF] to-green-500 w-0 group-hover:w-full transition-all duration-700"></div>
+                <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-brand to-green-500 w-0 group-hover:w-full transition-all duration-700"></div>
               </button>
             </div>
           </div>
@@ -1473,18 +1473,18 @@ export default function VerticalCarouselFlow() {
                           group relative overflow-hidden rounded-lg transition-all duration-300 
                           flex items-center gap-4 p-4 text-left
                           w-full max-w-sm mx-auto h-[100px]
-                          transform hover:translate-y-[-2px] shadow-md hover:shadow-lg hover:shadow-[#4ECFBF]/20
+                          transform hover:translate-y-[-2px] shadow-md hover:shadow-lg hover:shadow-brand/20
                           animate-slide-up touch-target
                           ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-102'}
-                          ${isCustomTopicActive ? 'ring-2 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/30' : ''}
-                          bg-gradient-to-r from-[#4ECFBF]/10 via-white to-[#4ECFBF]/5 border-2 border-[#4ECFBF]/60 shadow-[#4ECFBF]/10
+                          ${isCustomTopicActive ? 'ring-2 ring-brand/50 shadow-brand/30' : ''}
+                          bg-gradient-to-r from-brand/10 via-white to-brand/5 border-2 border-brand/60 shadow-brand/10
                         `}
                       >
                         {/* Animated Background */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#4ECFBF]/15 to-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-brand/15 to-brand/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                         
                         {/* Popular Badge */}
-                        <div className="absolute top-1 right-1 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/80 text-white text-xs px-2 py-0.5 rounded-full font-bold shadow-sm">
+                        <div className="absolute top-1 right-1 bg-gradient-to-r from-brand to-brand/80 text-white text-xs px-2 py-0.5 rounded-full font-bold shadow-sm">
                           Popular
                         </div>
                         
@@ -1495,7 +1495,7 @@ export default function VerticalCarouselFlow() {
                         
                         <div className="flex-1">
                           {/* Title */}
-                          <h3 className="text-base md:text-lg font-bold text-[#4ECFBF] group-hover:text-[#4ECFBF]/90 transition-colors duration-300 mb-1 leading-tight">
+                          <h3 className="text-base md:text-lg font-bold text-brand group-hover:text-brand/90 transition-colors duration-300 mb-1 leading-tight">
                             Create Custom Topic
                           </h3>
                           
@@ -1506,7 +1506,7 @@ export default function VerticalCarouselFlow() {
                         </div>
                         
                         {/* Bottom Accent Line */}
-                        <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/60 w-0 group-hover:w-full transition-all duration-500"></div>
+                        <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-brand to-brand/60 w-0 group-hover:w-full transition-all duration-500"></div>
                       </button>
                     </div>
 
@@ -1519,23 +1519,23 @@ export default function VerticalCarouselFlow() {
                           group relative overflow-hidden rounded-2xl transition-all duration-300 
                           flex flex-col items-center justify-center p-8 text-center
                           w-full max-w-md mx-auto min-h-[200px]
-                          transform hover:translate-y-[-4px] shadow-xl hover:shadow-2xl hover:shadow-[#4ECFBF]/30
+                          transform hover:translate-y-[-4px] shadow-xl hover:shadow-2xl hover:shadow-brand/30
                           animate-slide-up touch-target
                           ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}
-                          ${isCustomTopicActive ? 'ring-4 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/30' : ''}
-                          bg-gradient-to-br from-[#4ECFBF]/15 via-white to-[#4ECFBF]/10 border-3 border-[#4ECFBF] shadow-[#4ECFBF]/20
+                          ${isCustomTopicActive ? 'ring-4 ring-brand/50 shadow-brand/30' : ''}
+                          bg-gradient-to-br from-brand/15 via-white to-brand/10 border-3 border-brand shadow-brand/20
                         `}
                       >
                         {/* Animated Background */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/20 to-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        <div className="absolute inset-0 bg-gradient-to-br from-brand/20 to-brand/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                         
                         {/* Sparkle Effects */}
-                        <div className="absolute top-4 right-4 text-[#4ECFBF] animate-pulse">✨</div>
-                        <div className="absolute top-6 left-6 text-[#4ECFBF] animate-pulse" style={{ animationDelay: '0.5s' }}>⭐</div>
-                        <div className="absolute bottom-6 right-8 text-[#4ECFBF] animate-pulse" style={{ animationDelay: '1s' }}>💫</div>
+                        <div className="absolute top-4 right-4 text-brand animate-pulse">✨</div>
+                        <div className="absolute top-6 left-6 text-brand animate-pulse" style={{ animationDelay: '0.5s' }}>⭐</div>
+                        <div className="absolute bottom-6 right-8 text-brand animate-pulse" style={{ animationDelay: '1s' }}>💫</div>
                         
                         {/* Popular Badge */}
-                        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/80 text-white text-sm px-4 py-1 rounded-full font-bold shadow-lg">
+                        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-brand to-brand/80 text-white text-sm px-4 py-1 rounded-full font-bold shadow-lg">
                           Most Popular
                         </div>
                         
@@ -1545,7 +1545,7 @@ export default function VerticalCarouselFlow() {
                         </div>
                         
                         {/* Title */}
-                        <h3 className="text-2xl font-bold text-[#4ECFBF] group-hover:text-[#4ECFBF]/90 transition-colors duration-300 mb-3">
+                        <h3 className="text-2xl font-bold text-brand group-hover:text-brand/90 transition-colors duration-300 mb-3">
                           {customTopic.name}
                         </h3>
                         
@@ -1555,7 +1555,7 @@ export default function VerticalCarouselFlow() {
                         </p>
                         
                         {/* Bottom Accent Line */}
-                        <div className="absolute bottom-0 left-0 h-2 bg-gradient-to-r from-[#4ECFBF] to-[#4ECFBF]/60 w-full rounded-b-2xl"></div>
+                        <div className="absolute bottom-0 left-0 h-2 bg-gradient-to-r from-brand to-brand/60 w-full rounded-b-2xl"></div>
                       </button>
                     </div>
                   </div>
@@ -1586,10 +1586,10 @@ export default function VerticalCarouselFlow() {
                       className={`
                         group relative overflow-hidden rounded-lg transition-all duration-300 
                         flex flex-col text-left touch-target
-                        transform hover:translate-y-[-1px] shadow-md hover:shadow-[#4ECFBF]/20
+                        transform hover:translate-y-[-1px] shadow-md hover:shadow-brand/20
                         animate-slide-up
                         ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-102'}
-                        bg-white border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60
+                        bg-white border-2 border-brand/40 hover:border-brand/60
                         
                         /* Mobile: Ultra-compact cards */
                         p-3 h-[100px] md:p-4 md:h-[110px]
@@ -1597,7 +1597,7 @@ export default function VerticalCarouselFlow() {
                       style={{ animationDelay: `${index * 50}ms` }}
                     >
                       {/* Hover Effect Background */}
-                      <div className="absolute inset-0 bg-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <div className="absolute inset-0 bg-brand/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       
                       {/* Icon - Compact Sizing */}
                       <div className="text-2xl md:text-3xl mb-2">
@@ -1605,12 +1605,12 @@ export default function VerticalCarouselFlow() {
                       </div>
                       
                       {/* Title - Compact Typography */}
-                      <h3 className="text-sm md:text-base font-semibold text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 leading-tight line-clamp-2">
+                      <h3 className="text-sm md:text-base font-semibold text-gray-800 group-hover:text-brand transition-colors duration-300 leading-tight line-clamp-2">
                         {topic.name}
                       </h3>
                       
                       {/* Bottom Accent Line */}
-                      <div className="absolute bottom-0 left-0 h-1 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
+                      <div className="absolute bottom-0 left-0 h-1 bg-brand w-0 group-hover:w-full transition-all duration-500"></div>
                     </button>
                   ))}
                 </div>
@@ -1631,7 +1631,7 @@ export default function VerticalCarouselFlow() {
                       }
                     }}
                     data-show-more
-                    className="px-6 py-2 bg-[#4ECFBF]/10 hover:bg-[#4ECFBF]/20 border-2 border-[#4ECFBF]/30 hover:border-[#4ECFBF]/50 rounded-full text-[#4ECFBF] font-medium transition-all duration-300 hover:scale-105"
+                    className="px-6 py-2 bg-brand/10 hover:bg-brand/20 border-2 border-brand/30 hover:border-brand/50 rounded-full text-brand font-medium transition-all duration-300 hover:scale-105"
                   >
                     Show More Topics
                   </button>
@@ -1650,10 +1650,10 @@ export default function VerticalCarouselFlow() {
                       className={`
                         group relative overflow-hidden rounded-lg transition-all duration-300 
                         flex flex-col text-left touch-target
-                        transform hover:translate-y-[-1px] shadow-md hover:shadow-[#4ECFBF]/20
+                        transform hover:translate-y-[-1px] shadow-md hover:shadow-brand/20
                         animate-slide-up
                         ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-102'}
-                        bg-white border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60
+                        bg-white border-2 border-brand/40 hover:border-brand/60
                         
                         /* Mobile: Ultra-compact cards */
                         p-3 h-[100px] md:p-4 md:h-[110px]
@@ -1661,7 +1661,7 @@ export default function VerticalCarouselFlow() {
                       style={{ animationDelay: `${(index + 6) * 50}ms` }}
                     >
                       {/* Hover Effect Background */}
-                      <div className="absolute inset-0 bg-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <div className="absolute inset-0 bg-brand/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       
                       {/* Icon - Compact Sizing */}
                       <div className="text-2xl md:text-3xl mb-2">
@@ -1669,12 +1669,12 @@ export default function VerticalCarouselFlow() {
                       </div>
                       
                       {/* Title - Compact Typography */}
-                      <h3 className="text-sm md:text-base font-semibold text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 leading-tight line-clamp-2">
+                      <h3 className="text-sm md:text-base font-semibold text-gray-800 group-hover:text-brand transition-colors duration-300 leading-tight line-clamp-2">
                         {topic.name}
                       </h3>
                       
                       {/* Bottom Accent Line */}
-                      <div className="absolute bottom-0 left-0 h-1 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
+                      <div className="absolute bottom-0 left-0 h-1 bg-brand w-0 group-hover:w-full transition-all duration-500"></div>
                     </button>
                   ))}
                 </div>
@@ -1691,16 +1691,16 @@ export default function VerticalCarouselFlow() {
                   className={`
                     group relative overflow-hidden rounded-xl transition-all duration-300 
                     flex flex-col text-left touch-target
-                    transform hover:translate-y-[-2px] shadow-lg hover:shadow-[#4ECFBF]/20
+                    transform hover:translate-y-[-2px] shadow-lg hover:shadow-brand/20
                     animate-slide-up
                     ${(isLoading || isExtendingKnowledge) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}
-                    bg-white border-2 border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60
+                    bg-white border-2 border-brand/40 hover:border-brand/60
                     p-4 min-h-[120px]
                   `}
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   {/* Hover Effect Background */}
-                  <div className="absolute inset-0 bg-[#4ECFBF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="absolute inset-0 bg-brand/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   
                   {/* Icon */}
                   <div className="text-4xl mb-3">
@@ -1708,7 +1708,7 @@ export default function VerticalCarouselFlow() {
                   </div>
                   
                   {/* Title */}
-                  <h3 className="text-xl font-semibold mb-2 text-gray-800 group-hover:text-[#4ECFBF] transition-colors duration-300 leading-tight">
+                  <h3 className="text-xl font-semibold mb-2 text-gray-800 group-hover:text-brand transition-colors duration-300 leading-tight">
                     {topic.name}
                   </h3>
                   
@@ -1718,7 +1718,7 @@ export default function VerticalCarouselFlow() {
                   </p>
                   
                   {/* Bottom Accent Line */}
-                  <div className="absolute bottom-0 left-0 h-1 bg-[#4ECFBF] w-0 group-hover:w-full transition-all duration-500"></div>
+                  <div className="absolute bottom-0 left-0 h-1 bg-brand w-0 group-hover:w-full transition-all duration-500"></div>
                 </button>
               ))}
             </div>
@@ -1775,9 +1775,9 @@ export default function VerticalCarouselFlow() {
                       className={`
                         relative overflow-hidden flex flex-col items-start rounded-lg text-left
                         transition-all duration-300 transform hover:scale-102 hover:shadow-lg hover:-translate-y-1
-                        bg-white border-2 border-[#4ECFBF] hover:border-[#4ECFBF]/80 
-                        shadow-md hover:shadow-[#4ECFBF]/20 animate-slide-up
-                        ${selectedLevel === level.code ? 'border-[#4ECFBF] shadow-lg shadow-[#4ECFBF]/20 ring-2 ring-[#4ECFBF]/50' : ''}
+                        bg-white border-2 border-brand hover:border-brand/80 
+                        shadow-md hover:shadow-brand/20 animate-slide-up
+                        ${selectedLevel === level.code ? 'border-brand shadow-lg shadow-brand/20 ring-2 ring-brand/50' : ''}
                         
                         /* Mobile: Ultra-compact cards */
                         p-3 h-[120px] md:p-4 md:h-[130px]
@@ -1874,7 +1874,7 @@ export default function VerticalCarouselFlow() {
                       
                       {selectedLevel === level.code && (
                         <div className="absolute top-2 left-2">
-                          <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-[#4ECFBF] flex items-center justify-center shadow-lg animate-pulse">
+                          <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-brand flex items-center justify-center shadow-lg animate-pulse">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-3 h-3 md:w-4 md:h-4">
                               <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
                             </svg>
@@ -1919,9 +1919,9 @@ export default function VerticalCarouselFlow() {
                     className={`
                       relative overflow-hidden flex flex-col items-start p-5 rounded-xl text-left
                       transition-all duration-300 transform hover:scale-105 hover:shadow-xl hover:-translate-y-2
-                      bg-white h-[220px] border-2 border-[#4ECFBF] hover:border-[#4ECFBF]/80 
-                      shadow-lg hover:shadow-[#4ECFBF]/20 animate-slide-up
-                      ${selectedLevel === level.code ? 'border-[#4ECFBF] shadow-xl shadow-[#4ECFBF]/20 ring-2 ring-[#4ECFBF]/50' : ''}
+                      bg-white h-[220px] border-2 border-brand hover:border-brand/80 
+                      shadow-lg hover:shadow-brand/20 animate-slide-up
+                      ${selectedLevel === level.code ? 'border-brand shadow-xl shadow-brand/20 ring-2 ring-brand/50' : ''}
                     `}
                     style={{ animationDelay: `${index * 100}ms` }}
                   >
@@ -2037,7 +2037,7 @@ export default function VerticalCarouselFlow() {
                     
                     {selectedLevel === level.code && (
                       <div className="absolute top-4 left-4">
-                        <div className="w-8 h-8 rounded-full bg-[#4ECFBF] flex items-center justify-center shadow-lg animate-pulse">
+                        <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center shadow-lg animate-pulse">
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-5 h-5">
                             <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
                           </svg>
@@ -2057,8 +2057,8 @@ export default function VerticalCarouselFlow() {
       {/* Custom Topic Input Modal */}
       {isCustomTopicActive && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50">
-          <div className="bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40 rounded-xl shadow-lg w-full max-w-lg mx-4 p-6 md:p-8 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/5 via-[#4ECFBF]/10 to-transparent opacity-50"></div>
+          <div className="bg-white/95 backdrop-blur-sm border-2 border-brand/40 rounded-xl shadow-lg w-full max-w-lg mx-4 p-6 md:p-8 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-brand/5 via-brand/10 to-transparent opacity-50"></div>
             
             <div className="relative z-10 text-center mb-6">
               <h3 className="text-2xl md:text-3xl font-bold text-gray-800 mb-3">
@@ -2084,7 +2084,7 @@ export default function VerticalCarouselFlow() {
                   }
                 }}
                 placeholder="Describe your topic here..."
-                className="w-full p-4 rounded-xl border-2 border-[#4ECFBF]/30 focus:border-[#4ECFBF]/60 bg-white/80 backdrop-blur-sm text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]/20 transition-all duration-300 min-h-[120px] resize-none shadow-sm"
+                className="w-full p-4 rounded-xl border-2 border-brand/30 focus:border-brand/60 bg-white/80 backdrop-blur-sm text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand/20 transition-all duration-300 min-h-[120px] resize-none shadow-sm"
                 disabled={isExtendingKnowledge}
               />
               <p className="text-xs text-gray-500 mt-2 text-center">
@@ -2106,20 +2106,20 @@ export default function VerticalCarouselFlow() {
                 onClick={handleCustomTopicSubmit}
                 className={`group relative overflow-hidden border-2 w-full sm:flex-1 h-12 rounded-xl flex items-center justify-center transition-all duration-300 transform hover:translate-y-[-1px] ${
                   customTopicText.trim() && !isExtendingKnowledge
-                    ? 'bg-[#4ECFBF] hover:bg-[#4ECFBF]/90 border-[#4ECFBF] hover:shadow-lg hover:shadow-[#4ECFBF]/30'
-                    : 'bg-white/95 backdrop-blur-sm border-[#4ECFBF]/40 hover:border-[#4ECFBF]/60 hover:shadow-md'
+                    ? 'bg-brand hover:bg-brand/90 border-brand hover:shadow-lg hover:shadow-brand/30'
+                    : 'bg-white/95 backdrop-blur-sm border-brand/40 hover:border-brand/60 hover:shadow-md'
                 }`}
                 disabled={!customTopicText.trim() || isExtendingKnowledge}
               >
                 <span className={`relative z-10 font-medium transition-colors duration-300 ${
                   customTopicText.trim() && !isExtendingKnowledge
                     ? 'text-white'
-                    : 'text-[#4ECFBF] group-hover:text-[#4ECFBF]'
+                    : 'text-brand group-hover:text-brand'
                 }`}>Submit</span>
                 <div className={`absolute bottom-0 left-0 h-0.5 w-0 group-hover:w-full transition-all duration-500 ${
                   customTopicText.trim() && !isExtendingKnowledge
                     ? 'bg-white/50'
-                    : 'bg-[#4ECFBF]'
+                    : 'bg-brand'
                 }`}></div>
               </button>
             </div>
@@ -2143,7 +2143,7 @@ export default function VerticalCarouselFlow() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="bg-white/95 backdrop-blur-sm rounded-xl p-8 shadow-lg">
             <div className="relative w-20 h-20 mb-6 mx-auto">
-              <div className="absolute top-0 left-0 w-full h-full rounded-full border-8 border-[#4ECFBF]/20 animate-pulse"></div>
+              <div className="absolute top-0 left-0 w-full h-full rounded-full border-8 border-brand/20 animate-pulse"></div>
               <div className="absolute top-0 left-0 w-full h-full rounded-full border-8 border-transparent border-t-[#4ECFBF] animate-spin"></div>
             </div>
             <p className="text-gray-800 text-center animate-pulse">Starting your conversation...</p>

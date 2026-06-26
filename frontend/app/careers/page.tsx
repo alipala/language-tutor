@@ -115,7 +115,7 @@ const Careers: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white py-20">
+      <div className="bg-gradient-to-r from-brand to-[#3a9e92] text-white py-20">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -160,8 +160,8 @@ const Careers: React.FC = () => {
                 transition={{ duration: 0.6, delay: 0.1 * (index + 3) }}
                 className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200 text-center"
               >
-                <div className="w-16 h-16 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mx-auto mb-6">
-                  <value.icon className="w-8 h-8 text-[#4ECFBF]" />
+                <div className="w-16 h-16 bg-brand/10 rounded-xl flex items-center justify-center mx-auto mb-6">
+                  <value.icon className="w-8 h-8 text-brand" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-800 mb-4">{value.title}</h3>
                 <p className="text-gray-600 leading-relaxed">{value.description}</p>
@@ -195,8 +195,8 @@ const Careers: React.FC = () => {
                 transition={{ duration: 0.6, delay: 0.1 * (index + 3) }}
                 className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200"
               >
-                <div className="w-12 h-12 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mb-6">
-                  <benefit.icon className="w-6 h-6 text-[#4ECFBF]" />
+                <div className="w-12 h-12 bg-brand/10 rounded-xl flex items-center justify-center mb-6">
+                  <benefit.icon className="w-6 h-6 text-brand" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-800 mb-4">{benefit.title}</h3>
                 <p className="text-gray-600 leading-relaxed">{benefit.description}</p>
@@ -234,7 +234,7 @@ const Careers: React.FC = () => {
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-4 mb-4">
                       <h3 className="text-2xl font-bold text-gray-800">{position.title}</h3>
-                      <span className="px-3 py-1 bg-[#4ECFBF]/10 text-[#4ECFBF] rounded-full text-sm font-medium">
+                      <span className="px-3 py-1 bg-brand/10 text-brand rounded-full text-sm font-medium">
                         {position.department}
                       </span>
                     </div>
@@ -268,7 +268,7 @@ const Careers: React.FC = () => {
                   </div>
                   
                   <div className="mt-6 lg:mt-0 lg:ml-8">
-                    <button className="w-full lg:w-auto px-8 py-3 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300 flex items-center justify-center">
+                    <button className="w-full lg:w-auto px-8 py-3 bg-brand hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300 flex items-center justify-center">
                       <Briefcase className="w-4 h-4 mr-2" />
                       Apply Now
                     </button>
@@ -281,7 +281,7 @@ const Careers: React.FC = () => {
       </div>
 
       {/* Application Process */}
-      <div className="py-20 bg-gradient-to-r from-[#4ECFBF]/10 to-[#3a9e92]/10">
+      <div className="py-20 bg-gradient-to-r from-brand/10 to-[#3a9e92]/10">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -309,7 +309,7 @@ const Careers: React.FC = () => {
                 transition={{ duration: 0.6, delay: 0.1 * (index + 3) }}
                 className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 text-center"
               >
-                <div className="w-12 h-12 bg-[#4ECFBF] text-white rounded-full flex items-center justify-center mx-auto mb-4 font-bold text-lg">
+                <div className="w-12 h-12 bg-brand text-white rounded-full flex items-center justify-center mx-auto mb-4 font-bold text-lg">
                   {step.step}
                 </div>
                 <h3 className="text-xl font-bold text-gray-800 mb-3">{step.title}</h3>
@@ -336,13 +336,13 @@ const Careers: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
                 href="mailto:careers@languagetutor.ai"
-                className="px-8 py-4 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300"
+                className="px-8 py-4 bg-brand hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300"
               >
                 Send Resume
               </a>
               <a
                 href="/about"
-                className="px-8 py-4 border-2 border-[#4ECFBF] text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white font-medium rounded-lg transition-all duration-300"
+                className="px-8 py-4 border-2 border-brand text-brand hover:bg-brand hover:text-white font-medium rounded-lg transition-all duration-300"
               >
                 Learn More About Us
               </a>

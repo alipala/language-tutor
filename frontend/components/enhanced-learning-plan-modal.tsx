@@ -156,7 +156,7 @@ export default function EnhancedLearningPlanModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="relative bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] p-6 text-white">
+        <div className="relative bg-gradient-to-r from-brand to-[#3AA8B1] p-6 text-white">
           <button
             onClick={handleClose}
             className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/20 transition-colors"
@@ -179,7 +179,7 @@ export default function EnhancedLearningPlanModal({
           <div className="flex items-center justify-center space-x-2 mt-6">
             <div className={`flex items-center ${step === 'goals' ? 'text-white' : 'text-white/60'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                step === 'goals' ? 'bg-white text-[#4ECFBF]' : 'bg-white/20'
+                step === 'goals' ? 'bg-white text-brand' : 'bg-white/20'
               }`}>
                 1
               </div>
@@ -190,7 +190,7 @@ export default function EnhancedLearningPlanModal({
             
             <div className={`flex items-center ${step === 'subgoals' ? 'text-white' : 'text-white/60'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                step === 'subgoals' ? 'bg-white text-[#4ECFBF]' : 'bg-white/20'
+                step === 'subgoals' ? 'bg-white text-brand' : 'bg-white/20'
               }`}>
                 2
               </div>
@@ -201,7 +201,7 @@ export default function EnhancedLearningPlanModal({
             
             <div className={`flex items-center ${step === 'duration' || step === 'creating' ? 'text-white' : 'text-white/60'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                step === 'duration' || step === 'creating' ? 'bg-white text-[#4ECFBF]' : 'bg-white/20'
+                step === 'duration' || step === 'creating' ? 'bg-white text-brand' : 'bg-white/20'
               }`}>
                 3
               </div>
@@ -232,7 +232,7 @@ export default function EnhancedLearningPlanModal({
 
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 text-[#4ECFBF] animate-spin" />
+                  <Loader2 className="h-8 w-8 text-brand animate-spin" />
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -240,18 +240,18 @@ export default function EnhancedLearningPlanModal({
                     <button
                       key={goal.id}
                       onClick={() => handleMainGoalSelect(goal.id)}
-                      className="group relative p-6 bg-gradient-to-br from-white to-[#F8FDFC] rounded-xl border-2 border-[#4ECFBF]/20 hover:border-[#4ECFBF] shadow-md hover:shadow-xl transition-all duration-300 text-left"
+                      className="group relative p-6 bg-gradient-to-br from-white to-[#F8FDFC] rounded-xl border-2 border-brand/20 hover:border-brand shadow-md hover:shadow-xl transition-all duration-300 text-left"
                     >
                       <div className="flex items-start space-x-4">
                         <div className="text-4xl">{goal.icon}</div>
                         <div className="flex-1">
-                          <h4 className="text-lg font-bold text-[#333333] mb-2 group-hover:text-[#4ECFBF] transition-colors">
+                          <h4 className="text-lg font-bold text-[#333333] mb-2 group-hover:text-brand transition-colors">
                             {goal.text}
                           </h4>
                           <p className="text-sm text-[#555555] mb-3">
                             {goal.description}
                           </p>
-                          <div className="flex items-center text-xs text-[#4ECFBF] font-medium">
+                          <div className="flex items-center text-xs text-brand font-medium">
                             <span>Select goal</span>
                             <ChevronRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
                           </div>
@@ -269,7 +269,7 @@ export default function EnhancedLearningPlanModal({
             <div className="space-y-4">
               <button
                 onClick={handleBack}
-                className="flex items-center text-[#4ECFBF] hover:text-[#3AA8B1] transition-colors mb-4"
+                className="flex items-center text-brand hover:text-[#3AA8B1] transition-colors mb-4"
               >
                 <ChevronRight className="h-4 w-4 rotate-180 mr-1" />
                 <span className="text-sm">Back to goals</span>
@@ -286,7 +286,7 @@ export default function EnhancedLearningPlanModal({
 
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 text-[#4ECFBF] animate-spin" />
+                  <Loader2 className="h-8 w-8 text-brand animate-spin" />
                 </div>
               ) : (
                 <>
@@ -302,16 +302,16 @@ export default function EnhancedLearningPlanModal({
                           disabled={isDisabled}
                           className={`p-4 rounded-xl border-2 transition-all duration-200 text-left ${
                             isSelected
-                              ? 'bg-[#4ECFBF]/10 border-[#4ECFBF] shadow-md'
+                              ? 'bg-brand/10 border-brand shadow-md'
                               : isDisabled
                               ? 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed'
-                              : 'bg-white border-gray-200 hover:border-[#4ECFBF]/50 hover:shadow-md'
+                              : 'bg-white border-gray-200 hover:border-brand/50 hover:shadow-md'
                           }`}
                         >
                           <div className="flex items-start space-x-3">
                             <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                               isSelected
-                                ? 'bg-[#4ECFBF] border-[#4ECFBF]'
+                                ? 'bg-brand border-brand'
                                 : 'border-gray-300'
                             }`}>
                               {isSelected && <Check className="h-3 w-3 text-white" />}
@@ -336,7 +336,7 @@ export default function EnhancedLearningPlanModal({
                     </div>
                     <Button
                       onClick={() => setStep('duration')}
-                      className="bg-[#4ECFBF] hover:bg-[#3AA8B1] text-white px-6 py-2 rounded-lg flex items-center space-x-2"
+                      className="bg-brand hover:bg-[#3AA8B1] text-white px-6 py-2 rounded-lg flex items-center space-x-2"
                     >
                       <span>Continue</span>
                       <ArrowRight className="h-4 w-4" />
@@ -352,7 +352,7 @@ export default function EnhancedLearningPlanModal({
             <div className="space-y-6">
               <button
                 onClick={handleBack}
-                className="flex items-center text-[#4ECFBF] hover:text-[#3AA8B1] transition-colors mb-4"
+                className="flex items-center text-brand hover:text-[#3AA8B1] transition-colors mb-4"
               >
                 <ChevronRight className="h-4 w-4 rotate-180 mr-1" />
                 <span className="text-sm">Back to focus areas</span>
@@ -374,13 +374,13 @@ export default function EnhancedLearningPlanModal({
                     onClick={() => setDuration(months)}
                     className={`p-6 rounded-xl border-2 transition-all duration-200 ${
                       duration === months
-                        ? 'bg-[#4ECFBF]/10 border-[#4ECFBF] shadow-lg scale-105'
-                        : 'bg-white border-gray-200 hover:border-[#4ECFBF]/50 hover:shadow-md'
+                        ? 'bg-brand/10 border-brand shadow-lg scale-105'
+                        : 'bg-white border-gray-200 hover:border-brand/50 hover:shadow-md'
                     }`}
                   >
                     <div className="text-center">
                       <Calendar className={`h-8 w-8 mx-auto mb-2 ${
-                        duration === months ? 'text-[#4ECFBF]' : 'text-gray-400'
+                        duration === months ? 'text-brand' : 'text-gray-400'
                       }`} />
                       <div className="text-2xl font-bold text-[#333333] mb-1">
                         {months}
@@ -397,9 +397,9 @@ export default function EnhancedLearningPlanModal({
               </div>
 
               {/* Summary Card */}
-              <div className="bg-gradient-to-br from-[#F0FDFB] to-white p-6 rounded-xl border border-[#4ECFBF]/30 shadow-md">
+              <div className="bg-gradient-to-br from-[#F0FDFB] to-white p-6 rounded-xl border border-brand/30 shadow-md">
                 <h4 className="font-semibold text-[#333333] mb-4 flex items-center">
-                  <Target className="h-5 w-5 mr-2 text-[#4ECFBF]" />
+                  <Target className="h-5 w-5 mr-2 text-brand" />
                   Your Learning Plan Summary
                 </h4>
                 
@@ -437,9 +437,9 @@ export default function EnhancedLearningPlanModal({
                     <span className="text-[#555555]">Duration:</span>
                     <span className="font-medium text-[#333333]">{duration} months</span>
                   </div>
-                  <div className="flex items-center justify-between pt-3 border-t border-[#4ECFBF]/20">
+                  <div className="flex items-center justify-between pt-3 border-t border-brand/20">
                     <span className="text-[#555555]">Total Sessions:</span>
-                    <span className="font-bold text-[#4ECFBF] text-lg">{duration * 8}</span>
+                    <span className="font-bold text-brand text-lg">{duration * 8}</span>
                   </div>
                 </div>
               </div>
@@ -447,7 +447,7 @@ export default function EnhancedLearningPlanModal({
               <Button
                 onClick={handleCreatePlan}
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] hover:from-[#5CCFC0] hover:to-[#4BB8C1] text-white py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center space-x-2"
+                className="w-full bg-gradient-to-r from-brand to-[#3AA8B1] hover:from-[#5CCFC0] hover:to-[#4BB8C1] text-white py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center space-x-2"
               >
                 {isLoading ? (
                   <>
@@ -468,8 +468,8 @@ export default function EnhancedLearningPlanModal({
           {step === 'creating' && (
             <div className="flex flex-col items-center justify-center py-12">
               <div className="relative mb-6">
-                <div className="absolute inset-0 bg-[#4ECFBF]/20 rounded-full blur-xl animate-pulse"></div>
-                <div className="relative w-24 h-24 bg-gradient-to-br from-[#4ECFBF] to-[#3AA8B1] rounded-full flex items-center justify-center shadow-xl">
+                <div className="absolute inset-0 bg-brand/20 rounded-full blur-xl animate-pulse"></div>
+                <div className="relative w-24 h-24 bg-gradient-to-br from-brand to-[#3AA8B1] rounded-full flex items-center justify-center shadow-xl">
                   <Loader2 className="h-12 w-12 text-white animate-spin" />
                 </div>
               </div>
@@ -482,9 +482,9 @@ export default function EnhancedLearningPlanModal({
               </p>
               
               <div className="mt-8 flex items-center space-x-2">
-                <div className="w-2 h-2 bg-[#4ECFBF] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2 h-2 bg-[#4ECFBF] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2 h-2 bg-[#4ECFBF] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                <div className="w-2 h-2 bg-brand rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-2 h-2 bg-brand rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-2 h-2 bg-brand rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
               </div>
             </div>
           )}

@@ -103,7 +103,7 @@ function MonthGrid({
               onMouseLeave={() => onDayHover(null)}
               className={`
                 relative h-9 flex items-center justify-center cursor-pointer text-sm transition-all
-                ${inRange && !isStart && !isEnd ? 'bg-[#4ECFBF]/15' : ''}
+                ${inRange && !isStart && !isEnd ? 'bg-brand/15' : ''}
                 ${isStart ? 'rounded-l-full' : ''}
                 ${isEnd ? 'rounded-r-full' : ''}
                 ${isStart && isEnd ? 'rounded-full' : ''}
@@ -112,12 +112,12 @@ function MonthGrid({
               <span className={`
                 w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all z-10
                 ${isStart || isEnd
-                  ? 'bg-[#4ECFBF] text-white font-bold shadow-md'
+                  ? 'bg-brand text-white font-bold shadow-md'
                   : inRange
                   ? 'text-[#2a9e92] font-semibold'
                   : isToday
-                  ? 'ring-2 ring-[#4ECFBF]/50 text-[#4ECFBF] font-bold'
-                  : 'text-gray-700 hover:bg-[#4ECFBF]/20 hover:text-[#4ECFBF]'}
+                  ? 'ring-2 ring-brand/50 text-brand font-bold'
+                  : 'text-gray-700 hover:bg-brand/20 hover:text-brand'}
               `}>
                 {date.getDate()}
               </span>
@@ -208,8 +208,8 @@ export function DateRangePicker({ value, onChange, align = 'left' }: Props) {
         onClick={() => setOpen(o => !o)}
         className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
           hasFilter
-            ? 'bg-[#4ECFBF]/10 border-[#4ECFBF]/40 text-[#4ECFBF]'
-            : 'bg-white border-gray-200 text-gray-500 hover:border-[#4ECFBF]/40 hover:text-[#4ECFBF]'
+            ? 'bg-brand/10 border-brand/40 text-brand'
+            : 'bg-white border-gray-200 text-gray-500 hover:border-brand/40 hover:text-brand'
         }`}
       >
         <Calendar className="w-3.5 h-3.5" strokeWidth={1.8} />
@@ -217,7 +217,7 @@ export function DateRangePicker({ value, onChange, align = 'left' }: Props) {
         {hasFilter && (
           <span
             onClick={(e) => { e.stopPropagation(); onChange({ start: null, end: null, label: 'All time' }); }}
-            className="ml-0.5 hover:bg-[#4ECFBF]/20 rounded-full p-0.5 cursor-pointer"
+            className="ml-0.5 hover:bg-brand/20 rounded-full p-0.5 cursor-pointer"
           >
             <X className="w-3 h-3" />
           </span>
@@ -237,8 +237,8 @@ export function DateRangePicker({ value, onChange, align = 'left' }: Props) {
                 onClick={() => applyPreset(p)}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                   value.label === p.label && !open
-                    ? 'bg-[#4ECFBF] text-white border-[#4ECFBF]'
-                    : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-[#4ECFBF]/10 hover:border-[#4ECFBF]/40 hover:text-[#4ECFBF]'
+                    ? 'bg-brand text-white border-brand'
+                    : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-brand/10 hover:border-brand/40 hover:text-brand'
                 }`}
               >
                 {p.label}
@@ -251,7 +251,7 @@ export function DateRangePicker({ value, onChange, align = 'left' }: Props) {
             <p className="text-xs text-gray-400 font-medium">
               {phase === 'start' ? '① Select start date' : '② Select end date'}
               {tempStart && phase === 'end' && (
-                <span className="ml-2 text-[#4ECFBF] font-semibold">
+                <span className="ml-2 text-brand font-semibold">
                   From: {formatDate(tempStart)}
                 </span>
               )}
@@ -315,7 +315,7 @@ export function DateRangePicker({ value, onChange, align = 'left' }: Props) {
             </p>
             <button
               onClick={() => { setOpen(false); setTempStart(null); setPhase('start'); }}
-              className="px-3 py-1.5 bg-[#4ECFBF] text-white rounded-xl text-xs font-bold hover:bg-[#3a9e92] transition-colors"
+              className="px-3 py-1.5 bg-brand text-white rounded-xl text-xs font-bold hover:bg-[#3a9e92] transition-colors"
             >
               Done
             </button>

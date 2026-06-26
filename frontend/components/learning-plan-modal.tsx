@@ -272,17 +272,17 @@ export default function LearningPlanModal({
   
   return (
     <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[600px] p-0 rounded-xl shadow-lg bg-white border border-[#4ECFBF]/20 overflow-hidden">
+      <DialogContent className="sm:max-w-[600px] p-0 rounded-xl shadow-lg bg-white border border-brand/20 overflow-hidden">
         {/* Step indicator - Only show for authenticated users */}
         {step < 4 && isAuthenticated() && (
-          <div className="w-full bg-white px-6 pt-5 pb-3 border-b border-[#4ECFBF]/30">
+          <div className="w-full bg-white px-6 pt-5 pb-3 border-b border-brand/30">
             <div className="flex justify-between items-center relative">
               {/* Progress bar background */}
               <div className="absolute h-1 bg-gray-200 top-4 left-4 right-4 z-0 rounded-full"></div>
               
               {/* Animated progress bar */}
               <div 
-                className={`absolute h-1 bg-[#4ECFBF] top-4 left-4 z-10 rounded-full transition-all duration-500 ease-in-out`}
+                className={`absolute h-1 bg-brand top-4 left-4 z-10 rounded-full transition-all duration-500 ease-in-out`}
                 style={{ width: `${Math.min((step - 1) * 45, 90)}%` }}
               ></div>
               
@@ -292,7 +292,7 @@ export default function LearningPlanModal({
                   <div 
                     className={`w-9 h-9 rounded-full flex items-center justify-center mb-2 transition-all duration-300 transform
                     ${step >= stepNumber 
-                      ? 'bg-[#4ECFBF] text-white font-bold scale-110 shadow-sm' 
+                      ? 'bg-brand text-white font-bold scale-110 shadow-sm' 
                       : 'bg-gray-200 text-gray-500'}`}
                   >
                     {stepNumber}
@@ -327,8 +327,8 @@ export default function LearningPlanModal({
         {/* Non-logged user simplified flow */}
         {!isAuthenticated() && step === 1 && (
           <div className="py-4">
-            <div className="space-y-4 mb-6 bg-white p-6 rounded-lg shadow-sm border border-[#4ECFBF]/20">
-              <div className="bg-[#EAFAF7] p-4 rounded-md border-l-4 border-l-[#4ECFBF] border border-[#4ECFBF]/20">
+            <div className="space-y-4 mb-6 bg-white p-6 rounded-lg shadow-sm border border-brand/20">
+              <div className="bg-[#EAFAF7] p-4 rounded-md border-l-4 border-l-[#4ECFBF] border border-brand/20">
                 <h3 className="font-semibold text-gray-900">Language</h3>
                 <p className="text-gray-700 mt-1 capitalize">{language}</p>
               </div>
@@ -341,7 +341,7 @@ export default function LearningPlanModal({
             
             {isCreatingPlan && (
               <div className="mt-6 flex flex-col items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-[#4ECFBF] mb-3"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-brand mb-3"></div>
                 <p className="text-gray-600 text-sm font-medium">Preparing your practice session...</p>
               </div>
             )}
@@ -354,15 +354,15 @@ export default function LearningPlanModal({
             <ScrollArea className="h-[300px] pr-4">
               {/* Goals List - Mobile Friendly */}
               {Object.entries(goalsByCategory).map(([category, categoryGoals]) => (
-                <div key={category} className="mb-6 bg-[#EAFAF7] p-5 rounded-lg shadow-sm border border-[#4ECFBF]/20">
+                <div key={category} className="mb-6 bg-[#EAFAF7] p-5 rounded-lg shadow-sm border border-brand/20">
                   {/* Removed category title as requested */}
                   <div className="space-y-3">
                     {categoryGoals.map((goal) => (
-                      <div key={goal.id} className="flex items-center space-x-3 hover:bg-[#4ECFBF]/10 p-3 rounded-md transition-colors">
+                      <div key={goal.id} className="flex items-center space-x-3 hover:bg-brand/10 p-3 rounded-md transition-colors">
                         <Checkbox
                           id={goal.id}
                           checked={selectedGoals.includes(goal.id)}
-                          className="border-[#4ECFBF]/50 data-[state=checked]:bg-[#4ECFBF] data-[state=checked]:text-white h-5 w-5 flex-shrink-0"
+                          className="border-brand/50 data-[state=checked]:bg-brand data-[state=checked]:text-white h-5 w-5 flex-shrink-0"
                           onCheckedChange={(checked: boolean) => {
                             if (checked) {
                               setSelectedGoals([...selectedGoals, goal.id]);
@@ -380,7 +380,7 @@ export default function LearningPlanModal({
                 </div>
               ))}
               {/* Custom Goal Input */}
-              <div className="mt-6 bg-[#EAFAF7] p-5 rounded-lg shadow-sm border border-[#4ECFBF]/20">
+              <div className="mt-6 bg-[#EAFAF7] p-5 rounded-lg shadow-sm border border-brand/20">
                 <h3 className="text-lg font-semibold mb-3 text-gray-900">Custom Goal (Optional)</h3>
                 <Input
                   placeholder="Enter your specific learning goal..."
@@ -396,7 +396,7 @@ export default function LearningPlanModal({
         {/* Step 2: Duration Selection */}
         {step === 2 && (
           <div className="py-4 space-y-6">
-            <div className="bg-[#EAFAF7] p-4 sm:p-6 rounded-lg shadow-sm border border-[#4ECFBF]/20">
+            <div className="bg-[#EAFAF7] p-4 sm:p-6 rounded-lg shadow-sm border border-brand/20">
               <RadioGroup value={duration.toString()} onValueChange={(value: string) => {
                 if (value === 'custom') {
                   setDuration(0);
@@ -409,14 +409,14 @@ export default function LearningPlanModal({
                   <label 
                     key={months}
                     htmlFor={`duration-${months}`}
-                    className={`block w-full rounded-lg border-2 ${duration === months ? 'border-[#4ECFBF] bg-[#4ECFBF]/10' : 'border-transparent'} hover:border-[#4ECFBF]/50 transition-all cursor-pointer`}
+                    className={`block w-full rounded-lg border-2 ${duration === months ? 'border-brand bg-brand/10' : 'border-transparent'} hover:border-brand/50 transition-all cursor-pointer`}
                   >
                     <div className="flex items-center py-4 px-3 sm:px-4">
                       <div className="relative flex items-center justify-center">
                         <RadioGroupItem 
                           value={months.toString()} 
                           id={`duration-${months}`} 
-                          className="border-[#4ECFBF]/50 text-[#4ECFBF] h-6 w-6 sm:h-5 sm:w-5"
+                          className="border-brand/50 text-brand h-6 w-6 sm:h-5 sm:w-5"
                         />
                       </div>
                       <span className="ml-3 font-medium text-gray-800 text-base sm:text-sm">
@@ -427,14 +427,14 @@ export default function LearningPlanModal({
                 ))}
                 <label 
                   htmlFor="duration-custom"
-                  className={`block w-full rounded-lg border-2 ${duration === 0 ? 'border-[#4ECFBF] bg-[#4ECFBF]/10' : 'border-transparent'} hover:border-[#4ECFBF]/50 transition-all cursor-pointer`}
+                  className={`block w-full rounded-lg border-2 ${duration === 0 ? 'border-brand bg-brand/10' : 'border-transparent'} hover:border-brand/50 transition-all cursor-pointer`}
                 >
                   <div className="flex items-center py-4 px-3 sm:px-4">
                     <div className="relative flex items-center justify-center">
                       <RadioGroupItem 
                         value="custom" 
                         id="duration-custom" 
-                        className="border-[#4ECFBF]/50 text-[#4ECFBF] h-6 w-6 sm:h-5 sm:w-5"
+                        className="border-brand/50 text-brand h-6 w-6 sm:h-5 sm:w-5"
                       />
                     </div>
                     <span className="ml-3 font-medium text-gray-800 text-base sm:text-sm">
@@ -465,8 +465,8 @@ export default function LearningPlanModal({
         {/* Step 3: Review and Create */}
         {step === 3 && (
           <div className="py-4">
-            <div className="space-y-4 mb-6 bg-white p-6 rounded-lg shadow-sm border border-[#4ECFBF]/20">
-              <div className="bg-[#EAFAF7] p-4 rounded-md border-l-4 border-l-[#4ECFBF] border border-[#4ECFBF]/20">
+            <div className="space-y-4 mb-6 bg-white p-6 rounded-lg shadow-sm border border-brand/20">
+              <div className="bg-[#EAFAF7] p-4 rounded-md border-l-4 border-l-[#4ECFBF] border border-brand/20">
                 <h3 className="font-semibold text-gray-900">Language</h3>
                 <p className="text-gray-700 mt-1 capitalize">{language}</p>
               </div>
@@ -497,7 +497,7 @@ export default function LearningPlanModal({
             
             {isCreatingPlan && (
               <div className="mt-6 flex flex-col items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-[#4ECFBF] mb-3"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-brand mb-3"></div>
                 <p className="text-gray-600 text-sm font-medium">Creating your personalized learning plan...</p>
               </div>
             )}
@@ -508,8 +508,8 @@ export default function LearningPlanModal({
         {step === 4 && (
           <div className="py-6">
             <div className="text-center mb-8">
-              <div className="mx-auto w-24 h-24 bg-[#4ECFBF]/10 rounded-full flex items-center justify-center mb-5 shadow-sm border border-[#4ECFBF]/30 animate-[pulse_3s_ease-in-out_infinite]">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="mx-auto w-24 h-24 bg-brand/10 rounded-full flex items-center justify-center mb-5 shadow-sm border border-brand/30 animate-[pulse_3s_ease-in-out_infinite]">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
@@ -521,7 +521,7 @@ export default function LearningPlanModal({
             
             <div className="space-y-4">
               <Button 
-                className="w-full bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white font-medium py-4 rounded-lg shadow-sm transition-all hover:shadow-md transform hover:-translate-y-1"
+                className="w-full bg-brand hover:bg-[#5CCFC0] text-white font-medium py-4 rounded-lg shadow-sm transition-all hover:shadow-md transform hover:-translate-y-1"
                 onClick={handleSignIn}
               >
                 <span className="flex items-center justify-center">
@@ -584,7 +584,7 @@ export default function LearningPlanModal({
             <Button 
               onClick={handleNextStep}
               disabled={isCreatingPlan}
-              className="bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 px-5 py-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="bg-brand hover:bg-[#5CCFC0] text-white shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 px-5 py-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               <span className="flex items-center">
                 {isCreatingPlan ? (

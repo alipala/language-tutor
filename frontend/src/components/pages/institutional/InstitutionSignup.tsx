@@ -95,9 +95,9 @@ export const InstitutionSignup: React.FC = () => {
           <h2 className="text-3xl font-bold text-gray-900 mb-2">Account Created!</h2>
           <p className="text-gray-600 mb-4">Redirecting to your dashboard...</p>
           <div className="flex justify-center space-x-1">
-            <div className="w-2 h-2 bg-[#4ECFBF] rounded-full animate-pulse"></div>
-            <div className="w-2 h-2 bg-[#4ECFBF] rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-            <div className="w-2 h-2 bg-[#4ECFBF] rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+            <div className="w-2 h-2 bg-brand rounded-full animate-pulse"></div>
+            <div className="w-2 h-2 bg-brand rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+            <div className="w-2 h-2 bg-brand rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
           </div>
         </div>
       </div>
@@ -110,7 +110,7 @@ export const InstitutionSignup: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-xl p-8 text-gray-900">
           {/* Header */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-full mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-brand to-[#3a9e92] rounded-full mb-4">
               <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
@@ -132,7 +132,7 @@ export const InstitutionSignup: React.FC = () => {
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
                 placeholder="e.g., Lincoln Academy"
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent ${
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent ${
                   errors.name ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
@@ -148,7 +148,7 @@ export const InstitutionSignup: React.FC = () => {
                 id="institution_type"
                 value={formData.institution_type}
                 onChange={(e) => handleChange('institution_type', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent text-gray-900 bg-white"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent text-gray-900 bg-white"
               >
                 <option value="school">School</option>
                 <option value="university">University</option>
@@ -168,7 +168,7 @@ export const InstitutionSignup: React.FC = () => {
                 value={formData.admin_name}
                 onChange={(e) => handleChange('admin_name', e.target.value)}
                 placeholder="John Doe"
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent ${
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent ${
                   errors.admin_name ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
@@ -186,7 +186,7 @@ export const InstitutionSignup: React.FC = () => {
                 value={formData.admin_email}
                 onChange={(e) => handleChange('admin_email', e.target.value)}
                 placeholder="admin@institution.edu"
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent ${
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent ${
                   errors.admin_email ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
@@ -204,7 +204,7 @@ export const InstitutionSignup: React.FC = () => {
                 value={formData.admin_password}
                 onChange={(e) => handleChange('admin_password', e.target.value)}
                 placeholder="At least 8 characters"
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent ${
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent ${
                   errors.admin_password ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
@@ -222,7 +222,7 @@ export const InstitutionSignup: React.FC = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 bg-[#4ECFBF] text-white font-medium rounded-lg hover:bg-[#3a9e92] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-brand text-white font-medium rounded-lg hover:bg-[#3a9e92] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Creating Account...' : 'Create Institution Account'}
             </button>
@@ -230,7 +230,7 @@ export const InstitutionSignup: React.FC = () => {
             {/* Login Link */}
             <p className="text-center text-sm text-gray-600">
               Already have an account?{' '}
-              <Link href="/institution/login" className="text-[#4ECFBF] hover:text-[#3a9e92] font-medium">
+              <Link href="/institution/login" className="text-brand hover:text-[#3a9e92] font-medium">
                 Log in here
               </Link>
             </p>

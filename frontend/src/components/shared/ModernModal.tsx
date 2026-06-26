@@ -76,7 +76,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
         <div className="p-4 bg-white rounded-b-2xl">
           <button
             onClick={onClose}
-            className="w-full px-6 py-3 bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white rounded-lg font-medium hover:shadow-lg transform hover:scale-105 transition-all"
+            className="w-full px-6 py-3 bg-gradient-to-r from-brand to-[#3a9e92] text-white rounded-lg font-medium hover:shadow-lg transform hover:scale-105 transition-all"
           >
             {buttonText}
           </button>

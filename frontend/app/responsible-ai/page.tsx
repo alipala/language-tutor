@@ -8,7 +8,7 @@ export default function ResponsibleAIPage() {
       {/* Hero Section */}
       <section className="py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-[#4ECFBF] via-[#FFD63A] to-[#F75A5A] bg-clip-text text-transparent mb-6">
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-brand via-[#FFD63A] to-[#F75A5A] bg-clip-text text-transparent mb-6">
             Responsible AI
           </h1>
           <p className="text-xl text-white/60 leading-relaxed max-w-3xl mx-auto mb-8">
@@ -35,8 +35,8 @@ export default function ResponsibleAIPage() {
           <h2 className="text-3xl font-bold text-center text-white mb-12">Our AI Principles</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* Fairness & Bias Mitigation */}
-            <div className="bg-gradient-to-br from-[#4ECFBF]/10 to-[#4ECFBF]/5 rounded-2xl p-8 border border-[#4ECFBF]/20 hover:border-[#4ECFBF]/40 transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/5">
-              <div className="w-12 h-12 bg-[#4ECFBF] rounded-full flex items-center justify-center mb-6">
+            <div className="bg-gradient-to-br from-brand/10 to-brand/5 rounded-2xl p-8 border border-brand/20 hover:border-brand/40 transition-all duration-300 hover:shadow-lg hover:shadow-brand/5">
+              <div className="w-12 h-12 bg-brand rounded-full flex items-center justify-center mb-6">
                 <Scale className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-xl font-bold text-white mb-4">Fairness & Bias Mitigation</h3>
@@ -87,8 +87,8 @@ export default function ResponsibleAIPage() {
             </div>
 
             {/* Reliability & Safety */}
-            <div className="bg-gradient-to-br from-[#4ECFBF]/10 to-[#F75A5A]/5 rounded-2xl p-8 border border-[#4ECFBF]/20 hover:border-[#F75A5A]/20 transition-all duration-300 hover:shadow-lg">
-              <div className="w-12 h-12 bg-gradient-to-r from-[#4ECFBF] to-[#F75A5A] rounded-full flex items-center justify-center mb-6">
+            <div className="bg-gradient-to-br from-brand/10 to-[#F75A5A]/5 rounded-2xl p-8 border border-brand/20 hover:border-[#F75A5A]/20 transition-all duration-300 hover:shadow-lg">
+              <div className="w-12 h-12 bg-gradient-to-r from-brand to-[#F75A5A] rounded-full flex items-center justify-center mb-6">
                 <Shield className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-xl font-bold text-white mb-4">Reliability & Safety</h3>
@@ -163,8 +163,8 @@ export default function ResponsibleAIPage() {
           <h2 className="text-3xl font-bold text-center text-white mb-12">Implementation in Practice</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* Personalized Learning */}
-            <div className="text-center bg-gradient-to-br from-[#4ECFBF]/5 to-[#4ECFBF]/10 rounded-2xl p-6 border border-[#4ECFBF]/20">
-              <div className="w-16 h-16 bg-[#4ECFBF] rounded-full mx-auto mb-4 flex items-center justify-center">
+            <div className="text-center bg-gradient-to-br from-brand/5 to-brand/10 rounded-2xl p-6 border border-brand/20">
+              <div className="w-16 h-16 bg-brand rounded-full mx-auto mb-4 flex items-center justify-center">
                 <Brain className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-lg font-bold text-white mb-2">Personalized Learning</h3>
@@ -220,7 +220,7 @@ export default function ResponsibleAIPage() {
           <div className="grid md:grid-cols-2 gap-8">
             <div className="rounded-2xl p-8 border border-white/[0.10]" style={{ backgroundColor: '#13131F' }}>
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-[#4ECFBF] rounded-full flex items-center justify-center mr-4">
+                <div className="w-12 h-12 bg-brand rounded-full flex items-center justify-center mr-4">
                   <Heart className="w-6 h-6 text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-white">Learner-Centric AI</h3>
@@ -284,7 +284,7 @@ export default function ResponsibleAIPage() {
 
           <div className="grid md:grid-cols-3 gap-8">
             <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-[#4ECFBF] rounded-full flex items-center justify-center mb-4">
+              <div className="w-16 h-16 bg-brand rounded-full flex items-center justify-center mb-4">
                 <Users className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-lg font-bold text-white mb-2">Community Feedback</h3>

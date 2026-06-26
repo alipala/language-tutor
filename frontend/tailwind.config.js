@@ -18,7 +18,7 @@ module.exports = {
     extend: {
       fontFamily: {
         nunito: ['var(--font-nunito)', 'Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],
-        sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-nunito)', 'ui-rounded', 'system-ui', 'sans-serif'],
       },
       animation: {
         "fade-in": "fadeIn 0.5s ease-out forwards",
@@ -32,6 +32,8 @@ module.exports = {
         "ready-bounce": "ready-bounce 1s ease-in-out",
         "shimmer": "shimmer 1.5s infinite",
         "notification-pulse": "notification-pulse 1.5s ease-in-out infinite",
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
       },
       keyframes: {
         fadeIn: {
@@ -76,6 +78,14 @@ module.exports = {
           "50%": { transform: "scale(1.2)", opacity: "0.7" },
           "100%": { transform: "scale(1)", opacity: "1" },
         },
+        "accordion-down": {
+          from: { height: 0 },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: 0 },
+        },
       },
       colors: {
         border: "hsl(var(--border))",
@@ -111,25 +121,52 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+
+        /* ── Design tokens (single source of truth, defined in globals.css) ── */
+        bg: "rgb(var(--bg-base) / <alpha-value>)",
+        surface: {
+          0: "rgb(var(--surface-0) / <alpha-value>)",
+          1: "rgb(var(--surface-1) / <alpha-value>)",
+          2: "rgb(var(--surface-2) / <alpha-value>)",
+          3: "rgb(var(--surface-3) / <alpha-value>)",
+          sunken: "rgb(var(--surface-sunken) / <alpha-value>)",
+        },
+        brand: {
+          DEFAULT: "rgb(var(--brand) / <alpha-value>)",
+          bright: "rgb(var(--brand-bright) / <alpha-value>)",
+          deep: "rgb(var(--brand-deep) / <alpha-value>)",
+          ink: "rgb(var(--brand-ink) / <alpha-value>)",
+        },
+        ink: {
+          strong: "rgb(var(--ink-strong) / <alpha-value>)",
+          DEFAULT: "rgb(var(--ink) / <alpha-value>)",
+          muted: "rgb(var(--ink-muted) / <alpha-value>)",
+          faint: "rgb(var(--ink-faint) / <alpha-value>)",
+        },
+        cat: {
+          dna: "rgb(var(--cat-dna) / <alpha-value>)",
+          missions: "rgb(var(--cat-missions) / <alpha-value>)",
+          challenge: "rgb(var(--cat-challenge) / <alpha-value>)",
+          hearts: "rgb(var(--cat-hearts) / <alpha-value>)",
+          news: "rgb(var(--cat-news) / <alpha-value>)",
+          story: "rgb(var(--cat-story) / <alpha-value>)",
+        },
+        success: "rgb(var(--success) / <alpha-value>)",
+        warning: "rgb(var(--warning) / <alpha-value>)",
+        danger: "rgb(var(--danger) / <alpha-value>)",
+        info: "rgb(var(--info) / <alpha-value>)",
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        card: "var(--r-lg)",
       },
-      keyframes: {
-        "accordion-down": {
-          from: { height: 0 },
-          to: { height: "var(--radix-accordion-content-height)" },
-        },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: 0 },
-        },
-      },
-      animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
+      boxShadow: {
+        e1: "var(--shadow-1)",
+        e2: "var(--shadow-2)",
+        e3: "var(--shadow-3)",
+        glow: "var(--glow-brand)",
       },
     },
   },

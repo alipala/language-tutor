@@ -19,7 +19,7 @@ export function Spinner({ size = 'md', label, fullPage = false, overlay = false 
     <div className="flex flex-col items-center justify-center gap-3">
       <div className="relative">
         {/* Outer ring */}
-        <div className={`${SIZE_MAP[size]} rounded-full border-4 border-[#4ECFBF]/20`} />
+        <div className={`${SIZE_MAP[size]} rounded-full border-4 border-brand/20`} />
         {/* Spinning arc */}
         <div
           className={`${SIZE_MAP[size]} rounded-full border-4 border-transparent border-t-[#4ECFBF] border-r-[#4ECFBF]/60 animate-spin absolute inset-0`}
@@ -90,7 +90,7 @@ export function ModalSpinner({ label = 'Loading data...' }: { label?: string }) 
   return (
     <div className="flex flex-col items-center justify-center py-16 gap-4">
       <div className="relative">
-        <div className="w-14 h-14 rounded-full border-4 border-[#4ECFBF]/15" />
+        <div className="w-14 h-14 rounded-full border-4 border-brand/15" />
         <div
           className="w-14 h-14 rounded-full border-4 border-transparent border-t-[#4ECFBF] border-r-[#4ECFBF]/50 animate-spin absolute inset-0"
           style={{ animationDuration: '0.7s' }}

@@ -32,7 +32,7 @@ const Research: React.FC = () => {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-[#4ECFBF]/20 to-[#3a9e92]/20 border-b border-white/[0.08] py-20">
+      <div className="bg-gradient-to-r from-brand/20 to-[#3a9e92]/20 border-b border-white/[0.08] py-20">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -75,14 +75,14 @@ const Research: React.FC = () => {
               >
                 <h3 className="text-2xl font-bold text-white mb-3">{pub.title}</h3>
                 <p className="text-white/60 mb-2">{pub.authors}</p>
-                <p className="text-[#4ECFBF] font-medium mb-4">{pub.journal} ({pub.year})</p>
+                <p className="text-brand font-medium mb-4">{pub.journal} ({pub.year})</p>
                 <p className="text-white/60 leading-relaxed mb-4">{pub.abstract}</p>
                 <div className="flex gap-4">
-                  <button className="flex items-center px-4 py-2 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors">
+                  <button className="flex items-center px-4 py-2 bg-brand text-white rounded-lg hover:bg-[#3a9e92] transition-colors">
                     <Download className="w-4 h-4 mr-2" />
                     Download PDF
                   </button>
-                  <button className="flex items-center px-4 py-2 border border-[#4ECFBF] text-[#4ECFBF] rounded-lg hover:bg-[#4ECFBF] hover:text-white transition-all">
+                  <button className="flex items-center px-4 py-2 border border-brand text-brand rounded-lg hover:bg-brand hover:text-white transition-all">
                     <ExternalLink className="w-4 h-4 mr-2" />
                     View Online
                   </button>
@@ -107,7 +107,7 @@ const Research: React.FC = () => {
             </p>
             <a
               href="mailto:research@languagetutor.ai"
-              className="px-8 py-4 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300"
+              className="px-8 py-4 bg-brand hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300"
             >
               Contact Research Team
             </a>

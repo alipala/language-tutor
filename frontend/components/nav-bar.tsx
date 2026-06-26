@@ -11,12 +11,18 @@ import LeaveConfirmationModal from '@/components/leave-confirmation-modal';
 import { fetchUnreadCount } from '@/lib/api-service';
 
 export default function NavBar({ activeSection = '' }: { activeSection?: string }) {
-  // Determine if we're on the landing page
+  // Determine if we're on the landing page (set in an effect after mount).
+  // Must start false to match the server-rendered HTML (no hydration mismatch);
+  // the `mounted` guard below keeps the navbar on the dark glass until we know
+  // for sure, so guests never see the teal flash.
   const [isLandingPage, setIsLandingPage] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isNavHidden, setIsNavHidden] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  // True once mounted on the client — until then we must not commit to the
+  // teal (signed-in) background, or guests see a teal flash on refresh.
+  const [mounted, setMounted] = useState(false);
   const { user, logout, loading: authLoading } = useAuth();
   const navigation = useNavigation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -73,7 +79,8 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
       };
       
       setIsLandingPage(window.location.pathname === '/');
-      
+      setMounted(true);
+
       // Check initially
       checkInstitutionUser();
       
@@ -302,15 +309,19 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
     }
   }, []);
 
-  // Navbar background: transparent dark glass on landing page, teal everywhere else
   const isLandingGuest = isLandingPage && !user && !isInstitutionUser && !isTutorUser;
+  // Navbar background: transparent dark glass on the landing page, teal elsewhere.
+  // Show teal ONLY once mounted AND we're certain this isn't the landing page —
+  // otherwise (pre-mount, or landing) default to the dark/transparent glass so
+  // guests never see a teal flash on refresh.
+  const useDarkGlass = !mounted || isLandingPage;
   let navbarBg: string;
-  if (isLandingGuest) {
+  if (useDarkGlass) {
     navbarBg = isScrolled
-      ? 'bg-[#0A0A0F]/90 backdrop-blur-xl border-b border-white/[0.08] shadow-none'
+      ? 'bg-bg/90 backdrop-blur-xl border-b border-white/[0.08] shadow-none'
       : 'bg-transparent border-b border-white/[0.04]';
   } else {
-    navbarBg = isScrolled ? 'bg-[#4ECFBF]/95 shadow-lg' : 'bg-[#4ECFBF]/90';
+    navbarBg = isScrolled ? 'bg-brand/95 shadow-lg' : 'bg-brand/90';
   }
   let navbarClass = `w-full backdrop-blur-sm transition-all duration-300 fixed left-0 right-0 z-50 ${navbarBg} ${activeSection ? 'navbar-section1' : ''}`;
   navbarClass += isScrolled ? ' py-1' : ' py-2';
@@ -359,8 +370,9 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
           {isLandingPage && !user && (
             <div className="flex items-center space-x-1 mr-4">
               {[
-                { label: 'Features', id: 'features' },
+                { label: 'Features', id: 'bento-features' },
                 { label: 'How It Works', id: 'how-it-works' },
+                { label: 'For Schools', id: 'for-schools' },
                 { label: 'Pricing', id: 'pricing' },
                 { label: 'FAQ', id: 'faq' },
               ].map(({ label, id }) => (
@@ -605,14 +617,14 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
       {isMenuOpen && (
         <div className={`block md:hidden backdrop-blur-xl border shadow-lg mt-2 mx-4 rounded-2xl overflow-hidden mobile-menu-container ${
           isLandingGuest
-            ? 'bg-[#0E0E1A]/95 border-white/[0.08]'
+            ? 'bg-surface-sunken/95 border-white/[0.08]'
             : 'bg-white/10 border-white/20'
         }`}>
           {/* Landing page menu items on mobile - only show when not logged in */}
           {isLandingPage && !user ? (
             <>
               <button
-                onClick={() => scrollToSection('features')}
+                onClick={() => scrollToSection('bento-features')}
                 className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/[0.08] transition-all duration-200 touch-target"
               >
                 Features
@@ -622,6 +634,12 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
                 className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/[0.08] transition-all duration-200 touch-target"
               >
                 How It Works
+              </button>
+              <button
+                onClick={() => scrollToSection('for-schools')}
+                className="block w-full text-left py-4 px-4 mx-2 my-1 rounded-md text-white/80 hover:text-white hover:bg-white/[0.08] transition-all duration-200 touch-target"
+              >
+                For Schools
               </button>
               <button
                 onClick={() => scrollToSection('pricing')}

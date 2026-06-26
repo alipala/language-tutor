@@ -36,7 +36,7 @@ export default function LoadingModalDemo() {
         <div className="space-y-4">
           <Button 
             onClick={showModal}
-            className="w-full bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white font-medium py-3 rounded-lg shadow-lg transition-all hover:shadow-xl hover:scale-105"
+            className="w-full bg-brand hover:bg-[#5CCFC0] text-white font-medium py-3 rounded-lg shadow-lg transition-all hover:shadow-xl hover:scale-105"
           >
             Show Default Loading Modal
           </Button>

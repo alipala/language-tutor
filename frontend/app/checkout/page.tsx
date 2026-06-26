@@ -189,7 +189,7 @@ export default function CheckoutPage() {
                 <div className="mb-8">
                   <div className="flex items-center justify-center space-x-4 mb-4">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-[#4ECFBF] text-white rounded-full flex items-center justify-center text-sm font-medium">
+                      <div className="w-8 h-8 bg-brand text-white rounded-full flex items-center justify-center text-sm font-medium">
                         1
                       </div>
                       <span className="ml-2 text-sm font-medium text-gray-800">Payment</span>
@@ -211,7 +211,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                <div className="w-16 h-16 mx-auto mb-6 bg-[#4ECFBF]/10 rounded-full flex items-center justify-center">
+                <div className="w-16 h-16 mx-auto mb-6 bg-brand/10 rounded-full flex items-center justify-center">
                   <LoadingSpinner size="lg" />
                 </div>
                 
@@ -244,7 +244,7 @@ export default function CheckoutPage() {
                       </div>
                     )}
                     
-                    <div className="text-2xl font-bold text-[#4ECFBF]">
+                    <div className="text-2xl font-bold text-brand">
                       {currentPricing.price}
                       <span className="text-sm text-gray-600 ml-1">{currentPricing.priceNote}</span>
                     </div>
@@ -306,7 +306,7 @@ export default function CheckoutPage() {
                 <div className="space-y-3">
                   <button
                     onClick={handleCheckout}
-                    className="w-full bg-[#4ECFBF] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#3a9e92] transition-colors"
+                    className="w-full bg-brand text-white py-3 px-4 rounded-lg font-medium hover:bg-[#3a9e92] transition-colors"
                   >
                     Try Again
                   </button>

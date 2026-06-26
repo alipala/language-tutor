@@ -8,8 +8,13 @@ import LearningPlanDashboard from '@/components/dashboard/LearningPlanDashboard'
 import ProjectKnowledgeChatbot from '@/components/project-knowledge-chatbot';
 import SubscriptionPlans from '@/components/subscription-plans';
 import SoundWaveLoader from '@/components/sound-wave-loader';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import LearningJourneySection from '@/components/learning-journey-section';
+import { Card, CardIcon, CardHeader, CardTitle, CardBody } from '@/components/ui/card';
+import SpeakingDNASection from '@/components/landing/speaking-dna-section';
+import StoryWorldsSection from '@/components/landing/story-worlds-section';
+import ForSchoolsSection from '@/components/landing/for-schools-section';
+import SecurityComplianceSection from '@/components/landing/security-compliance-section';
 
 /**
  * SectionDivider — layered separator between dark sections.
@@ -81,7 +86,7 @@ function VoiceWaveform({ bars = 40, className = '' }: { bars?: number; className
         return (
           <motion.div
             key={i}
-            className="w-[3px] rounded-full bg-gradient-to-t from-[#4ECFBF] to-[#7EEEE3] flex-shrink-0"
+            className="w-[3px] rounded-full bg-gradient-to-t from-brand to-[#7EEEE3] flex-shrink-0"
             style={{ height: baseH }}
             animate={{ height: [baseH, baseH * 1.8, baseH * 0.6, baseH] }}
             transition={{ duration: 1.4 + (i % 5) * 0.2, repeat: Infinity, delay: i * 0.05, ease: 'easeInOut' }}
@@ -89,103 +94,6 @@ function VoiceWaveform({ bars = 40, className = '' }: { bars?: number; className
         );
       })}
     </div>
-  );
-}
-
-// Fix 4 — Proper hexagonal SVG Radar Chart (replaces DNAStrandMini in the DNA bento card)
-function RadarChart() {
-  const strands = [
-    { label: 'Rhythm', value: 82, color: '#4ECFBF', angle: -90 },
-    { label: 'Confidence', value: 74, color: '#7C3AED', angle: -30 },
-    { label: 'Vocabulary', value: 91, color: '#F59E0B', angle: 30 },
-    { label: 'Accuracy', value: 68, color: '#EF4444', angle: 90 },
-    { label: 'Learning', value: 85, color: '#10B981', angle: 150 },
-    { label: 'Emotional', value: 77, color: '#EC4899', angle: 210 },
-  ];
-  const cx = 110, cy = 110, r = 75;
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const point = (angle: number, pct: number) => ({
-    x: cx + r * pct * Math.cos(toRad(angle)),
-    y: cy + r * pct * Math.sin(toRad(angle)),
-  });
-  const polygon = strands.map(s => point(s.angle, s.value / 100));
-  const polygonStr = polygon.map(p => `${p.x},${p.y}`).join(' ');
-  const rings = [0.25, 0.5, 0.75, 1.0];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      whileInView={{ opacity: 1, scale: 1 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-    >
-      <svg width="220" height="220" viewBox="0 0 220 220">
-        <defs>
-          <radialGradient id="radarFill" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#4ECFBF" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#7C3AED" stopOpacity="0.15" />
-          </radialGradient>
-        </defs>
-        {/* Grid rings */}
-        {rings.map((ring, ri) => {
-          const pts = strands.map(s => point(s.angle, ring));
-          return (
-            <polygon
-              key={ri}
-              points={pts.map(p => `${p.x},${p.y}`).join(' ')}
-              fill="none"
-              stroke="rgba(255,255,255,0.08)"
-              strokeWidth="1"
-            />
-          );
-        })}
-        {/* Axis lines */}
-        {strands.map((s, i) => {
-          const outer = point(s.angle, 1.0);
-          return (
-            <line
-              key={i}
-              x1={cx}
-              y1={cy}
-              x2={outer.x}
-              y2={outer.y}
-              stroke="rgba(255,255,255,0.06)"
-              strokeWidth="1"
-            />
-          );
-        })}
-        {/* Filled area */}
-        <polygon
-          points={polygonStr}
-          fill="url(#radarFill)"
-          stroke="#4ECFBF"
-          strokeWidth="1.5"
-          strokeOpacity="0.6"
-        />
-        {/* Data points */}
-        {strands.map((s, i) => {
-          const p = point(s.angle, s.value / 100);
-          return <circle key={i} cx={p.x} cy={p.y} r="4" fill={s.color} />;
-        })}
-        {/* Labels */}
-        {strands.map((s, i) => {
-          const labelR = r + 22;
-          const lx = cx + labelR * Math.cos(toRad(s.angle));
-          const ly = cy + labelR * Math.sin(toRad(s.angle));
-          const anchor = lx < cx - 5 ? 'end' : lx > cx + 5 ? 'start' : 'middle';
-          return (
-            <g key={i}>
-              <text x={lx} y={ly - 4} textAnchor={anchor} fontSize="9" fill={s.color} fontWeight="600">
-                {s.label}
-              </text>
-              <text x={lx} y={ly + 8} textAnchor={anchor} fontSize="9" fill="rgba(255,255,255,0.4)">
-                {s.value}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-    </motion.div>
   );
 }
 
@@ -199,7 +107,7 @@ function StatChip({ value, label, delay = 0 }: { value: string; label: string; d
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.5 }}
     >
-      <span className="text-[#4ECFBF] font-bold text-xs sm:text-sm">{value}</span>
+      <span className="text-brand font-bold text-xs sm:text-sm">{value}</span>
       <span className="text-white/50 text-[10px] sm:text-xs">{label}</span>
     </motion.div>
   );
@@ -235,12 +143,15 @@ export default function Home() {
   const [wordIndex, setWordIndex] = useState(0);
   const [isInstitutionUser, setIsInstitutionUser] = useState(false);
   const [isTutorUser, setIsTutorUser] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
+    // Don't rotate the hero word for users who asked for reduced motion.
+    if (prefersReducedMotion) return;
     const id = setInterval(() => setWordIndex(i => (i + 1) % WORDS.length), 2800);
     return () => clearInterval(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [prefersReducedMotion]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -270,11 +181,11 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden w-full bg-[#0A0A0F]">
+    <div className="min-h-screen overflow-x-hidden w-full bg-bg">
       <NavBar />
 
       {isLoading ? (
-        <div className="min-h-screen flex items-center justify-center bg-[#0A0A0F]">
+        <div className="min-h-screen flex items-center justify-center bg-bg">
           <SoundWaveLoader size="lg" color="#4ECFBF" text="Loading..." subtext="Preparing your experience" />
         </div>
       ) : (
@@ -297,14 +208,14 @@ export default function Home() {
 
             {/* Eyebrow badge */}
             <motion.div
-              className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#4ECFBF]/30 bg-[#4ECFBF]/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-[#4ECFBF]"
+              className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-brand"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
               <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#4ECFBF] opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#4ECFBF]" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-brand" />
               </span>
               Voice · AI · Language Learning
             </motion.div>
@@ -320,29 +231,32 @@ export default function Home() {
                 {/* Line 1 — static */}
                 <span className="block text-white">Become</span>
 
-                {/* Line 2 — rotating word, fixed height, overflow hidden so exit never bleeds */}
+                {/* Line 2 — rotating word.
+                    Solid brand color (no gradient-clip), simple fade + small
+                    rise (no blur / no scale) so it renders reliably on every
+                    browser & mobile GPU. Reduced-motion → shows a fixed word. */}
                 <span
-                  className="relative block overflow-hidden"
-                  style={{ height: '1.08em' }}
+                  className="relative grid overflow-hidden text-brand"
+                  style={{ minHeight: '1.15em' }}
                 >
-                  <AnimatePresence mode="wait" initial={false}>
-                    <motion.span
-                      key={WORDS[wordIndex]}
-                      className="absolute inset-0 flex items-center justify-center font-extrabold"
-                      style={{
-                        background: 'linear-gradient(135deg, #4ECFBF 0%, #7EEEE3 45%, #a78bfa 100%)',
-                        backgroundClip: 'text',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                      }}
-                      initial={{ opacity: 0, filter: 'blur(12px)', scale: 0.94 }}
-                      animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
-                      exit={{ opacity: 0, filter: 'blur(12px)', scale: 1.04 }}
-                      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                    >
-                      {WORDS[wordIndex]}
-                    </motion.span>
-                  </AnimatePresence>
+                  {prefersReducedMotion ? (
+                    <span className="col-start-1 row-start-1 flex items-center justify-center font-extrabold">
+                      Fluent
+                    </span>
+                  ) : (
+                    <AnimatePresence mode="wait" initial={false}>
+                      <motion.span
+                        key={WORDS[wordIndex]}
+                        className="col-start-1 row-start-1 flex items-center justify-center font-extrabold will-change-[opacity,transform]"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                      >
+                        {WORDS[wordIndex]}
+                      </motion.span>
+                    </AnimatePresence>
+                  )}
                 </span>
 
                 {/* Line 3 — static */}
@@ -372,7 +286,7 @@ export default function Home() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Download on the App Store"
-                    className="group flex items-center gap-3 rounded-2xl bg-white px-6 py-3.5 text-[#0A0A0F] font-semibold text-sm shadow-lg hover:shadow-[0_0_32px_rgba(78,207,191,0.35)] hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
+                    className="group flex items-center gap-3 rounded-2xl bg-white px-6 py-3.5 text-bg font-semibold text-sm shadow-lg hover:shadow-[0_0_32px_rgba(78,207,191,0.35)] hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
                   >
                     <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
@@ -385,7 +299,7 @@ export default function Home() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Get it on Google Play"
-                    className="group flex items-center gap-3 rounded-2xl border border-white/20 bg-white/[0.06] backdrop-blur-md px-6 py-3.5 text-white font-semibold text-sm hover:bg-white/10 hover:border-[#4ECFBF]/40 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
+                    className="group flex items-center gap-3 rounded-2xl border border-white/20 bg-white/[0.06] backdrop-blur-md px-6 py-3.5 text-white font-semibold text-sm hover:bg-white/10 hover:border-brand/40 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
                   >
                     <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M3.18 23.76c.34.19.73.23 1.1.12l12.02-12.02-2.49-2.49L3.18 23.76zM20.54 10.23l-2.93-1.65-2.81 2.81 2.81 2.81 2.96-1.67c.84-.47.84-1.83-.03-2.3zM1.91.17C1.65.45 1.5.86 1.5 1.38v21.24c0 .52.15.93.41 1.21l.07.06L13.17 12 1.98.11l-.07.06zM14.38 12l2.49-2.49L4.28.23c-.35-.2-.73-.24-1.1-.14L14.38 12z" />
@@ -429,8 +343,8 @@ export default function Home() {
                 <div className="px-4 sm:px-6 py-4 sm:py-5">
                   {/* Waveform — fixed height via VoiceWaveform component */}
                   <div className="flex items-center gap-3 mb-5">
-                    <div className="w-8 h-8 rounded-full bg-[#4ECFBF]/20 border border-[#4ECFBF]/30 flex items-center justify-center shrink-0">
-                      <div className="w-2 h-2 rounded-full bg-[#4ECFBF] animate-pulse" />
+                    <div className="w-8 h-8 rounded-full bg-brand/20 border border-brand/30 flex items-center justify-center shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-brand animate-pulse" />
                     </div>
                     <VoiceWaveform bars={28} className="flex-1" />
                     <span className="text-xs text-white/30 font-mono shrink-0">0:43</span>
@@ -439,7 +353,7 @@ export default function Home() {
                   {/* Chat messages */}
                   <div className="space-y-3 mb-5">
                     <div className="flex items-start gap-3">
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] flex items-center justify-center shrink-0">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand to-[#3a9e92] flex items-center justify-center shrink-0">
                         <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                         </svg>
@@ -452,7 +366,7 @@ export default function Home() {
                       <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center shrink-0 text-[10px] text-white/60 font-semibold">
                         You
                       </div>
-                      <div className="rounded-2xl rounded-tr-sm bg-[#4ECFBF]/15 border border-[#4ECFBF]/20 px-4 py-2.5 text-sm text-white/80 max-w-[75%]">
+                      <div className="rounded-2xl rounded-tr-sm bg-brand/15 border border-brand/20 px-4 py-2.5 text-sm text-white/80 max-w-[75%]">
                         The word order was very confusing for me at first.
                       </div>
                     </div>
@@ -483,11 +397,11 @@ export default function Home() {
 
               {/* Floating DNA badge */}
               <motion.div
-                className="absolute -top-4 right-2 sm:-right-6 rounded-2xl bg-[#0A0A0F] border border-[#7C3AED]/40 px-3 py-2 shadow-lg backdrop-blur-xl"
+                className="absolute -top-4 right-2 sm:-right-6 rounded-2xl bg-bg border border-cat-challenge/40 px-3 py-2 shadow-lg backdrop-blur-xl"
                 animate={{ y: [0, -6, 0] }}
                 transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
               >
-                <div className="text-[10px] uppercase tracking-wider text-[#7C3AED] font-semibold mb-1">
+                <div className="text-[10px] uppercase tracking-wider text-cat-challenge font-semibold mb-1">
                   Speaking DNA
                 </div>
                 <div className="text-sm font-bold text-white">Identified ✓</div>
@@ -495,11 +409,11 @@ export default function Home() {
 
               {/* Floating streak badge */}
               <motion.div
-                className="absolute -bottom-4 left-2 sm:-left-6 rounded-2xl bg-[#0A0A0F] border border-[#F59E0B]/40 px-3 py-2 shadow-lg"
+                className="absolute -bottom-4 left-2 sm:-left-6 rounded-2xl bg-bg border border-cat-missions/40 px-3 py-2 shadow-lg"
                 animate={{ y: [0, 6, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
               >
-                <div className="text-xs font-bold text-[#F59E0B]">🔥 12-day streak</div>
+                <div className="text-xs font-bold text-cat-missions">🔥 12-day streak</div>
                 <div className="text-[10px] text-white/50">Keep going!</div>
               </motion.div>
             </motion.div>
@@ -518,6 +432,11 @@ export default function Home() {
 
           <SectionDivider accent="#4ECFBF" />
 
+          {/* ─── SPEAKING DNA (flagship feature) ──────────────── */}
+          <SpeakingDNASection />
+
+          <SectionDivider accent="#7C3AED" />
+
           {/* ─── BENTO FEATURES ───────────────────────────────── */}
           <section
             id="bento-features"
@@ -526,11 +445,11 @@ export default function Home() {
           >
             <div className="max-w-6xl mx-auto">
               <Reveal className="text-center mb-16">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#4ECFBF] mb-4">
-                  What makes MyTaco different
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-brand mb-4">
+                  Everything in one place
                 </p>
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white leading-tight tracking-tight">
-                  A learning experience{' '}
+                  More ways to{' '}
                   <br className="hidden sm:block" />
                   <span
                     style={{
@@ -540,120 +459,60 @@ export default function Home() {
                       WebkitTextFillColor: 'transparent',
                     }}
                   >
-                    built from your voice
+                    practise every day
                   </span>
                 </h2>
               </Reveal>
 
-              {/* Fix 3 — Bento grid: DNA in ONE card only; other cards have distinct visuals */}
+              {/* Bento grid — every card shares one elevation system (color = identity) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-auto">
 
-                {/* Fix 3+4 — Big card: Speaking DNA with RadarChart (not waveform/bar) */}
-                <Reveal delay={0} className="sm:col-span-2 lg:col-span-2">
-                  <div className="relative rounded-3xl border border-[#4ECFBF]/25 bg-[#13131F] p-6 h-full min-h-[280px] overflow-hidden group hover:border-[#4ECFBF]/50 transition-all duration-300"
-                    style={{ boxShadow: '0 1px 0 0 rgba(78,207,191,0.35) inset' }}>
-                    <div
-                      className="pointer-events-none absolute inset-0 opacity-40 group-hover:opacity-70 transition-opacity duration-500"
-                      style={{
-                        background:
-                          'radial-gradient(ellipse at 20% 0%, rgba(78,207,191,0.07) 0%, transparent 60%)',
-                      }}
-                    />
-                    <div className="relative z-10 flex flex-col gap-6 items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 rounded-2xl bg-[#4ECFBF]/15 flex items-center justify-center">
-                            <svg className="w-5 h-5 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 3v1m0 16v1M15 3v1m0 16v1M3 9h1m16 0h1M3 15h1m16 0h1M6.343 6.343l.707.707m9.9 9.9.707.707M6.343 17.657l.707-.707m9.9-9.9.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" /></svg>
-                          </div>
-                          <div>
-                            <div className="text-white font-bold text-lg leading-tight">Speaking DNA</div>
-                            <div className="text-white/40 text-xs">Your unique voice fingerprint</div>
-                          </div>
-                          <div className="ml-auto">
-                            <span className="text-[10px] font-semibold uppercase tracking-wider bg-[#4ECFBF]/10 text-[#4ECFBF] border border-[#4ECFBF]/20 rounded-full px-3 py-1">
-                              Standout Feature
-                            </span>
-                          </div>
-                        </div>
-                        <p className="text-white/50 text-sm mb-5 leading-relaxed max-w-lg">
-                          Every voice is unique. MyTaco analyses 6 dimensions of your speech — rhythm, confidence,
-                          vocabulary, accuracy, learning speed, and emotional expression — to create a profile that&apos;s
-                          entirely yours.
-                        </p>
-                        {/* Strand legend with colored dots */}
-                        <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2">
-                          {[
-                            { label: 'Rhythm', color: '#4ECFBF', value: 82 },
-                            { label: 'Confidence', color: '#7C3AED', value: 74 },
-                            { label: 'Vocabulary', color: '#F59E0B', value: 91 },
-                            { label: 'Accuracy', color: '#EF4444', value: 68 },
-                            { label: 'Learning', color: '#10B981', value: 85 },
-                            { label: 'Emotional', color: '#EC4899', value: 77 },
-                          ].map(s => (
-                            <div key={s.label} className="flex items-center gap-1.5">
-                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
-                              <span className="text-[11px] text-white/50">{s.label}</span>
-                              <span className="text-[11px] font-semibold" style={{ color: s.color }}>{s.value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      {/* Fix 4 — RadarChart replacing DNAStrandMini here */}
-                      <div className="shrink-0 self-center w-full sm:w-auto flex justify-center">
-                        <RadarChart />
-                      </div>
-                    </div>
-                  </div>
-                </Reveal>
-
-                {/* Daily Missions — distinct visual: mission tier checklist */}
+                {/* Daily Missions — mission tier checklist */}
                 <Reveal delay={0.08}>
-                  <div className="relative rounded-3xl border border-[#F59E0B]/20 bg-[#13131F] p-6 h-full min-h-[280px] overflow-hidden group hover:border-[#F59E0B]/45 transition-all duration-300"
-                    style={{ boxShadow: '0 1px 0 0 rgba(245,158,11,0.3) inset' }}>
-                    <div className="w-10 h-10 rounded-2xl bg-[#F59E0B]/15 flex items-center justify-center mb-4">
-                      <svg className="w-5 h-5 text-[#F59E0B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
-                    </div>
-                    <div className="text-white font-bold text-lg mb-2">Daily Missions</div>
-                    <p className="text-white/45 text-sm leading-relaxed mb-5">
+                  <Card elevation="rest" category="missions" interactive className="h-full min-h-[280px]">
+                    <CardIcon category="missions" className="mb-4">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                    </CardIcon>
+                    <CardTitle className="mb-2">Daily Missions</CardTitle>
+                    <CardBody className="mb-5">
                       Bronze, Silver, and Gold missions every day. Complete your plan session, a challenge,
                       and review flashcards — all in under 10 minutes.
-                    </p>
+                    </CardBody>
                     <div className="space-y-2">
                       {[
                         { tier: 'Bronze', label: "Complete today's plan session", color: '#CD7F32', done: true },
                         { tier: 'Silver', label: 'Play Native Check challenge', color: '#C0C0C0', done: true },
                         { tier: 'Gold', label: 'Review 3 flashcard sets', color: '#FFD700', done: false },
                       ].map((m) => (
-                        <div key={m.tier} className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0E0E1A] px-3 py-2">
+                        <div key={m.tier} className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-surface-sunken px-3 py-2">
                           <div
                             className="w-2.5 h-2.5 rounded-full shrink-0"
                             style={{ backgroundColor: m.color }}
                           />
-                          <span className={`text-xs flex-1 ${m.done ? 'text-white/40 line-through' : 'text-white/80'}`}>
+                          <span className={`text-xs flex-1 ${m.done ? 'text-ink-faint line-through' : 'text-white/80'}`}>
                             {m.label}
                           </span>
                           {m.done ? (
-                            <span className="text-[10px] text-[#4ECFBF] font-bold">✓</span>
+                            <span className="text-[10px] text-brand font-bold">✓</span>
                           ) : (
-                            <span className="text-[10px] text-white/25">...</span>
+                            <span className="text-[10px] text-ink-faint">...</span>
                           )}
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </Card>
                 </Reveal>
 
-                {/* 7 Challenges — distinct visual: challenge pill grid */}
+                {/* 7 Challenges — challenge pill grid */}
                 <Reveal delay={0.12}>
-                  <div className="relative rounded-3xl border border-[#7C3AED]/20 bg-[#13131F] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#7C3AED]/45 transition-all duration-300"
-                    style={{ boxShadow: '0 1px 0 0 rgba(124,58,237,0.3) inset' }}>
-                    <div className="w-10 h-10 rounded-2xl bg-[#7C3AED]/15 flex items-center justify-center mb-4">
-                      <svg className="w-5 h-5 text-[#7C3AED]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                    </div>
-                    <div className="text-white font-bold text-lg mb-2">7 Challenge Types</div>
-                    <p className="text-white/45 text-sm leading-relaxed mb-4">
+                  <Card elevation="rest" category="challenge" interactive className="h-full min-h-[220px]">
+                    <CardIcon category="challenge" className="mb-4">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    </CardIcon>
+                    <CardTitle className="mb-2">7 Challenge Types</CardTitle>
+                    <CardBody className="mb-4">
                       15,000+ curated exercises across Error Spotting, Micro Quiz, Brain Tickler, Story Builder and more.
-                    </p>
+                    </CardBody>
                     <div className="flex flex-wrap gap-1.5">
                       {[
                         { name: 'Error Spot', color: '#EF4444' },
@@ -673,80 +532,78 @@ export default function Home() {
                         </span>
                       ))}
                     </div>
-                  </div>
+                  </Card>
                 </Reveal>
 
-                {/* Heart system — distinct visual: animated heart row */}
+                {/* Heart system — animated heart row */}
                 <Reveal delay={0.16}>
-                  <div className="relative rounded-3xl border border-[#EF4444]/20 bg-[#13131F] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#EF4444]/45 transition-all duration-300"
-                    style={{ boxShadow: '0 1px 0 0 rgba(239,68,68,0.3) inset' }}>
-                    <div className="w-10 h-10 rounded-2xl bg-[#EF4444]/15 flex items-center justify-center mb-4">
-                      <svg className="w-5 h-5 text-[#EF4444]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-                    </div>
-                    <div className="text-white font-bold text-lg mb-2">Heart System</div>
-                    <p className="text-white/45 text-sm leading-relaxed mb-4">
+                  <Card elevation="rest" category="hearts" interactive className="h-full min-h-[220px]">
+                    <CardIcon category="hearts" className="mb-4">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                    </CardIcon>
+                    <CardTitle className="mb-2">Heart System</CardTitle>
+                    <CardBody className="mb-4">
                       Stay sharp with limited hearts per challenge. Build a streak shield and protect your progress.
-                    </p>
+                    </CardBody>
                     <div className="flex gap-2 items-center mb-3">
                       {[true, true, true, true, false].map((full, i) => (
                         <motion.span
                           key={i}
                           className="text-2xl"
+                          aria-hidden="true"
                           animate={full ? { scale: [1, 1.15, 1] } : {}}
                           transition={{ duration: 0.6, delay: i * 0.1, repeat: Infinity, repeatDelay: 3 }}
                         >
                           {full ? '❤️' : '🖤'}
                         </motion.span>
                       ))}
-                      <span className="ml-2 text-[10px] text-[#4ECFBF] font-semibold">4 / 5 left</span>
+                      <span className="ml-2 text-[10px] text-brand font-semibold">4 / 5 left</span>
                     </div>
-                    <div className="text-[10px] text-white/30 flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
+                    <div className="text-[10px] text-ink-faint flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-warning" />
                       Streak shield active · refills at midnight
                     </div>
-                  </div>
+                  </Card>
                 </Reveal>
 
-                {/* News Sessions — distinct visual: live feed cards */}
+                {/* News Sessions — live feed cards */}
                 <Reveal delay={0.2}>
-                  <div className="relative rounded-3xl border border-[#10B981]/20 bg-[#13131F] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#10B981]/45 transition-all duration-300"
-                    style={{ boxShadow: '0 1px 0 0 rgba(16,185,129,0.3) inset' }}>
-                    <div className="w-10 h-10 rounded-2xl bg-[#10B981]/15 flex items-center justify-center mb-4">
-                      <svg className="w-5 h-5 text-[#10B981]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
-                    </div>
-                    <div className="text-white font-bold text-lg mb-2">News Sessions</div>
-                    <p className="text-white/45 text-sm leading-relaxed mb-3">
+                  <Card elevation="rest" category="news" interactive className="h-full min-h-[220px]">
+                    <CardIcon category="news" className="mb-4">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
+                    </CardIcon>
+                    <CardTitle className="mb-2">News Sessions</CardTitle>
+                    <CardBody className="mb-3">
                       Practice with today&apos;s real news — curated in your target language at your CEFR level.
                       Then start an AI conversation about the article.
-                    </p>
+                    </CardBody>
                     <div className="space-y-1.5">
                       {['🇩🇪 Aktuelle Nachrichten · B2', '🇪🇸 Noticias de hoy · A2', '🇫🇷 Infos du jour · C1'].map(item => (
-                        <div key={item} className="text-[11px] text-white/40 bg-[#0E0E1A] border border-white/[0.08] rounded-lg px-3 py-1.5 flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse shrink-0" />
+                        <div key={item} className="text-[11px] text-ink-muted bg-surface-sunken border border-white/[0.08] rounded-lg px-3 py-1.5 flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse shrink-0" />
                           {item}
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </Card>
                 </Reveal>
 
-                {/* Real-Time AI Conversation — wide; distinct visual: chat bubbles, no waveform */}
+                {/* Real-Time AI Conversation — wide; chat transcript */}
                 <Reveal delay={0.24} className="sm:col-span-2 lg:col-span-2">
-                  <div className="relative rounded-3xl border border-[#4ECFBF]/20 bg-[#13131F] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#4ECFBF]/45 transition-all duration-300"
-                    style={{ boxShadow: '0 1px 0 0 rgba(78,207,191,0.25) inset' }}>
+                  <Card elevation="rest" category="conversation" interactive className="h-full min-h-[220px]">
                     <div className="flex flex-col sm:flex-row gap-6 items-start">
                       <div className="flex-1 shrink-0">
-                        <div className="w-10 h-10 rounded-2xl bg-[#4ECFBF]/15 flex items-center justify-center mb-4">
-                          <svg className="w-5 h-5 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
-                        </div>
-                        <div className="text-white font-bold text-lg mb-2">Real-Time Conversation</div>
-                        <p className="text-white/45 text-sm leading-relaxed max-w-sm">
-                          WebRTC-powered voice sessions with your AI tutor. No typing, no delays — just speak.
-                          Get corrections, hints, and vocabulary tips as you go.
-                        </p>
+                        <CardIcon category="conversation" className="mb-4">
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                        </CardIcon>
+                        <CardTitle className="mb-2">Real-Time Conversation</CardTitle>
+                        <CardBody className="max-w-sm">
+                          Instant, natural voice sessions with your AI tutor — no typing, no lag, just speak.
+                          Get corrections, hints, and vocabulary tips the moment you need them.
+                        </CardBody>
                       </div>
-                      {/* Distinct visual: mini live transcript */}
-                      <div className="w-full sm:w-64 shrink-0 sm:ml-auto space-y-2">
+                      {/* Mini live transcript */}
+                      <div className="w-full sm:w-72 shrink-0 sm:ml-auto space-y-2">
                         {[
                           { from: 'AI', text: 'How was your weekend?', teal: true },
                           { from: 'You', text: 'Ich war... uh, im Park?', teal: false },
@@ -755,61 +612,46 @@ export default function Home() {
                           <motion.div
                             key={i}
                             className={`rounded-2xl px-3 py-2 text-xs ${msg.teal
-                              ? 'bg-[#4ECFBF]/10 border border-[#4ECFBF]/20 text-white/70'
-                              : 'bg-white/[0.06] border border-white/[0.08] text-white/60 ml-4'
+                              ? 'bg-brand/10 border border-brand/20 text-white/75'
+                              : 'bg-white/[0.06] border border-white/[0.08] text-ink-muted ml-4'
                             }`}
                             initial={{ opacity: 0, x: msg.teal ? -8 : 8 }}
                             whileInView={{ opacity: 1, x: 0 }}
                             transition={{ delay: 0.15 * i, duration: 0.4 }}
                             viewport={{ once: true }}
                           >
-                            <span className="font-semibold text-[10px] block mb-0.5" style={{ color: msg.teal ? '#4ECFBF' : 'rgba(255,255,255,0.3)' }}>{msg.from}</span>
+                            <span className="font-semibold text-[10px] block mb-0.5" style={{ color: msg.teal ? '#4ECFBF' : 'rgba(255,255,255,0.4)' }}>{msg.from}</span>
                             {msg.text}
                           </motion.div>
                         ))}
-                        <div className="text-center text-[10px] text-white/20 mt-1">Live audio · real-time analysis</div>
+                        <div className="text-center text-[10px] text-ink-faint mt-1">Live audio · real-time analysis</div>
                       </div>
                     </div>
-                  </div>
-                </Reveal>
-
-                {/* Story Worlds — distinct visual: genre cards */}
-                <Reveal delay={0.28}>
-                  <div className="relative rounded-3xl border border-[#EC4899]/20 bg-[#13131F] p-6 h-full min-h-[220px] overflow-hidden group hover:border-[#EC4899]/45 transition-all duration-300"
-                    style={{ boxShadow: '0 1px 0 0 rgba(236,72,153,0.3) inset' }}>
-                    <div className="w-10 h-10 rounded-2xl bg-[#EC4899]/15 flex items-center justify-center mb-4">
-                      <svg className="w-5 h-5 text-[#EC4899]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-                    </div>
-                    <div className="text-white font-bold text-lg mb-2">Story Worlds</div>
-                    <p className="text-white/45 text-sm leading-relaxed mb-3">
-                      Collaborate with other learners to build stories in your target language. 26 worlds — mystery,
-                      romance, sci-fi and more.
-                    </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                      {[
-                        { emoji: '🔮', genre: 'Mystery' },
-                        { emoji: '🚀', genre: 'Sci-Fi' },
-                        { emoji: '🏰', genre: 'Fantasy' },
-                        { emoji: '🌊', genre: 'Adventure' },
-                        { emoji: '💘', genre: 'Romance' },
-                        { emoji: '🌿', genre: 'Nature' },
-                      ].map((w) => (
-                        <div key={w.genre} className="flex flex-col items-center gap-1 rounded-xl bg-[#0E0E1A] border border-white/[0.09] py-2">
-                          <span className="text-lg">{w.emoji}</span>
-                          <span className="text-[9px] text-white/35">{w.genre}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  </Card>
                 </Reveal>
               </div>
             </div>
           </section>
 
+          <SectionDivider accent="#E84C88" />
+
+          {/* ─── STORY WORLDS (flagship game showcase) ─────────── */}
+          <StoryWorldsSection />
+
           <SectionDivider accent="#7C3AED" />
 
           {/* ─── YOUR LEARNING JOURNEY ────────────────────────── */}
           <LearningJourneySection scrollTo={scrollTo} />
+
+          <SectionDivider accent="#4ECFBF" />
+
+          {/* ─── FOR SCHOOLS & INSTITUTIONS (B2B) ─────────────── */}
+          <ForSchoolsSection />
+
+          <SectionDivider accent="#10B981" />
+
+          {/* ─── SECURITY & COMPLIANCE ────────────────────────── */}
+          <SecurityComplianceSection />
 
           <SectionDivider accent="#4ECFBF" />
 
@@ -826,7 +668,7 @@ export default function Home() {
           >
             <div className="max-w-3xl mx-auto">
               <Reveal className="text-center mb-12">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#4ECFBF] mb-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-brand mb-4">
                   Got questions?
                 </p>
                 <h2 className="text-4xl sm:text-5xl font-extrabold text-white">
@@ -843,7 +685,7 @@ export default function Home() {
                     href="https://apps.apple.com/br/app/mytaco/id6757149290?l=en-GB"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-2xl bg-white px-6 py-3.5 text-[#0A0A0F] font-semibold text-sm hover:shadow-[0_0_32px_rgba(78,207,191,0.3)] hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
+                    className="flex items-center gap-3 rounded-2xl bg-white px-6 py-3.5 text-bg font-semibold text-sm hover:shadow-[0_0_32px_rgba(78,207,191,0.3)] hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
@@ -854,7 +696,7 @@ export default function Home() {
                     href="https://play.google.com/store/apps/details?id=com.bigdavinci.MyTacoAI"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/[0.04] px-6 py-3.5 text-white font-semibold text-sm hover:border-[#4ECFBF]/40 hover:bg-white/[0.08] hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
+                    className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/[0.04] px-6 py-3.5 text-white font-semibold text-sm hover:border-brand/40 hover:bg-white/[0.08] hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M3.18 23.76c.34.19.73.23 1.1.12l12.02-12.02-2.49-2.49L3.18 23.76zM20.54 10.23l-2.93-1.65-2.81 2.81 2.81 2.81 2.96-1.67c.84-.47.84-1.83-.03-2.3zM1.91.17C1.65.45 1.5.86 1.5 1.38v21.24c0 .52.15.93.41 1.21l.07.06L13.17 12 1.98.11l-.07.06zM14.38 12l2.49-2.49L4.28.23c-.35-.2-.73-.24-1.1-.14L14.38 12z" />

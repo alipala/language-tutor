@@ -207,7 +207,7 @@ export const InstitutionDashboard: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#4ECFBF]"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
@@ -224,7 +224,7 @@ export const InstitutionDashboard: React.FC = () => {
 
       {/* Institution Code Banner */}
       {institutionCode && (
-        <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white py-3">
+        <div className="bg-gradient-to-r from-brand to-[#3a9e92] text-white py-3">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -257,7 +257,7 @@ export const InstitutionDashboard: React.FC = () => {
               onClick={() => setActiveTab('overview')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'overview'
-                  ? 'border-[#4ECFBF] text-[#4ECFBF]'
+                  ? 'border-brand text-brand'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -267,7 +267,7 @@ export const InstitutionDashboard: React.FC = () => {
               onClick={() => setActiveTab('tutors')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'tutors'
-                  ? 'border-[#4ECFBF] text-[#4ECFBF]'
+                  ? 'border-brand text-brand'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -277,7 +277,7 @@ export const InstitutionDashboard: React.FC = () => {
               onClick={() => setActiveTab('learners')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'learners'
-                  ? 'border-[#4ECFBF] text-[#4ECFBF]'
+                  ? 'border-brand text-brand'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -297,7 +297,7 @@ export const InstitutionDashboard: React.FC = () => {
               <select
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-transparent text-gray-900 bg-white"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent text-gray-900 bg-white"
               >
                 <option value="7">Last 7 Days</option>
                 <option value="30">Last 30 Days</option>
@@ -369,7 +369,7 @@ export const InstitutionDashboard: React.FC = () => {
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-8">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-gray-900">👥 Tutors ({tutors.length})</h3>
-                <button className="px-4 py-2 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors text-sm font-medium">
+                <button className="px-4 py-2 bg-brand text-white rounded-lg hover:bg-[#3a9e92] transition-colors text-sm font-medium">
                   + Add Tutor
                 </button>
               </div>
@@ -389,7 +389,7 @@ export const InstitutionDashboard: React.FC = () => {
                       <tr key={tutor.id} className="border-b border-gray-100 hover:bg-gray-50">
                         <td className="py-4 px-4">
                           <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-[#4ECFBF] to-[#3a9e92] rounded-full flex items-center justify-center text-white font-medium">
+                            <div className="w-10 h-10 bg-gradient-to-br from-brand to-[#3a9e92] rounded-full flex items-center justify-center text-white font-medium">
                               {tutor.name.charAt(0)}
                             </div>
                             <div>
@@ -403,7 +403,7 @@ export const InstitutionDashboard: React.FC = () => {
                           <div className="flex items-center space-x-2">
                             <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-[100px]">
                               <div 
-                                className="bg-[#4ECFBF] h-2 rounded-full" 
+                                className="bg-brand h-2 rounded-full" 
                                 style={{ width: `${tutor.avg_progress}%` }}
                               ></div>
                             </div>
@@ -418,7 +418,7 @@ export const InstitutionDashboard: React.FC = () => {
               </div>
               
               <div className="mt-4 text-center">
-                <button className="text-[#4ECFBF] hover:text-[#3a9e92] font-medium text-sm">
+                <button className="text-brand hover:text-[#3a9e92] font-medium text-sm">
                   View All Tutors →
                 </button>
               </div>
@@ -430,7 +430,7 @@ export const InstitutionDashboard: React.FC = () => {
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-bold text-gray-900">🎯 Top Performing Learners</h3>
-                  <button className="text-[#4ECFBF] hover:text-[#3a9e92] font-medium text-sm">
+                  <button className="text-brand hover:text-[#3a9e92] font-medium text-sm">
                     View All →
                   </button>
                 </div>
@@ -454,7 +454,7 @@ export const InstitutionDashboard: React.FC = () => {
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-bold text-gray-900">⚠️ At-Risk Learners ({atRiskLearners.length})</h3>
-                  <button className="text-[#4ECFBF] hover:text-[#3a9e92] font-medium text-sm">
+                  <button className="text-brand hover:text-[#3a9e92] font-medium text-sm">
                     View All →
                   </button>
                 </div>
@@ -482,7 +482,7 @@ export const InstitutionDashboard: React.FC = () => {
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Tutor Management</h2>
-              <button className="px-6 py-3 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors font-medium">
+              <button className="px-6 py-3 bg-brand text-white rounded-lg hover:bg-[#3a9e92] transition-colors font-medium">
                 + Add Tutor
               </button>
             </div>
@@ -495,10 +495,10 @@ export const InstitutionDashboard: React.FC = () => {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Learner Management</h2>
               <div className="flex space-x-3">
-                <button className="px-6 py-3 bg-white border-2 border-[#4ECFBF] text-[#4ECFBF] rounded-lg hover:bg-[#4ECFBF] hover:text-white transition-colors font-medium">
+                <button className="px-6 py-3 bg-white border-2 border-brand text-brand rounded-lg hover:bg-brand hover:text-white transition-colors font-medium">
                   📤 Import CSV
                 </button>
-                <button className="px-6 py-3 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors font-medium">
+                <button className="px-6 py-3 bg-brand text-white rounded-lg hover:bg-[#3a9e92] transition-colors font-medium">
                   + Add Learner
                 </button>
               </div>

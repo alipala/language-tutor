@@ -1126,7 +1126,7 @@ export default function ProfilePage() {
                         className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                           currentSlideIndex === 0
                             ? 'opacity-0 cursor-not-allowed'
-                            : 'bg-white text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
+                            : 'bg-white text-brand hover:bg-brand hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
                         }`}
                         aria-label="Previous conversation"
                       >
@@ -1140,7 +1140,7 @@ export default function ProfilePage() {
                         className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                           currentSlideIndex === conversationHistory.length - 1
                             ? 'opacity-0 cursor-not-allowed'
-                            : 'bg-white text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
+                            : 'bg-white text-brand hover:bg-brand hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
                         }`}
                         aria-label="Next conversation"
                       >
@@ -1549,7 +1549,7 @@ export default function ProfilePage() {
                               className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                                 currentFlashcardSlideIndex === 0
                                   ? 'opacity-0 cursor-not-allowed'
-                                  : 'bg-white text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
+                                  : 'bg-white text-brand hover:bg-brand hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
                               }`}
                               aria-label="Previous flashcard set"
                             >
@@ -1563,7 +1563,7 @@ export default function ProfilePage() {
                               className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                                 currentFlashcardSlideIndex === filteredFlashcardSets.length - 1
                                   ? 'opacity-0 cursor-not-allowed'
-                                  : 'bg-white text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
+                                  : 'bg-white text-brand hover:bg-brand hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
                               }`}
                               aria-label="Next flashcard set"
                             >

@@ -52,7 +52,7 @@ const SoundwaveLoader = () => {
       {[...Array(7)].map((_, i) => (
         <div
           key={i}
-          className="w-2 bg-[#4ECFBF] rounded-full animate-pulse"
+          className="w-2 bg-brand rounded-full animate-pulse"
           style={{
             height: `${Math.random() * 60 + 30}px`,
             animationDelay: `${i * 0.15}s`,
@@ -373,10 +373,10 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
         )}
 
         {/* Header */}
-        <div className="bg-[#4ECFBF] p-6 flex items-center justify-between">
+        <div className="bg-brand p-6 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="p-3 bg-white rounded-2xl">
-              <Sparkles className="h-6 w-6 text-[#4ECFBF]" />
+              <Sparkles className="h-6 w-6 text-brand" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-white">
@@ -427,7 +427,7 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
                       disabled={!week.is_completed}
                       className={`p-6 rounded-2xl border-2 transition-all duration-300 ${
                         week.is_completed
-                          ? 'border-gray-200 bg-white text-gray-700 hover:border-[#4ECFBF] hover:shadow-md cursor-pointer'
+                          ? 'border-gray-200 bg-white text-gray-700 hover:border-brand hover:shadow-md cursor-pointer'
                           : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed opacity-60'
                       }`}
                     >
@@ -490,7 +490,7 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
                   <div className="flex justify-center">
                     <Button
                       onClick={() => setStep('selection')}
-                      className="bg-white border-2 border-[#4ECFBF] text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white transition-colors px-6 py-2 rounded-xl font-medium"
+                      className="bg-white border-2 border-brand text-brand hover:bg-brand hover:text-white transition-colors px-6 py-2 rounded-xl font-medium"
                     >
                       <ArrowLeft className="h-4 w-4 mr-2" />
                       Choose Different Week
@@ -505,7 +505,7 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
                 {/* Share Text */}
                 <div className="bg-gray-50 rounded-2xl p-4">
                   <div className="flex items-center space-x-3 mb-3">
-                    <Zap className="h-5 w-5 text-[#4ECFBF]" />
+                    <Zap className="h-5 w-5 text-brand" />
                     <h3 className="text-lg font-semibold text-gray-800">Share Your Success</h3>
                   </div>
                   
@@ -513,7 +513,7 @@ export const ShareProgressModal: React.FC<ShareProgressModalProps> = ({
                     <p className="text-gray-700 text-sm whitespace-pre-line leading-relaxed">{shareData.share_text}</p>
                     <button
                       onClick={() => copyToClipboard(shareData.share_text)}
-                      className="mt-2 text-xs text-[#4ECFBF] hover:text-[#4ECFBF]/80 flex items-center transition-colors"
+                      className="mt-2 text-xs text-brand hover:text-brand/80 flex items-center transition-colors"
                     >
                       <Copy className="h-3 w-3 mr-1" />
                       Copy text

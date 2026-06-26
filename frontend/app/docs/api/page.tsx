@@ -34,7 +34,7 @@ const ApiDocs: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
-      <div className="bg-gradient-to-r from-[#4ECFBF] to-[#3a9e92] text-white py-20">
+      <div className="bg-gradient-to-r from-brand to-[#3a9e92] text-white py-20">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -59,8 +59,8 @@ const ApiDocs: React.FC = () => {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200 text-center"
             >
-              <div className="w-16 h-16 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mx-auto mb-6">
-                <Key className="w-8 h-8 text-[#4ECFBF]" />
+              <div className="w-16 h-16 bg-brand/10 rounded-xl flex items-center justify-center mx-auto mb-6">
+                <Key className="w-8 h-8 text-brand" />
               </div>
               <h3 className="text-xl font-bold text-gray-800 mb-4">Authentication</h3>
               <p className="text-gray-600">Secure API access with JWT tokens</p>
@@ -72,8 +72,8 @@ const ApiDocs: React.FC = () => {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200 text-center"
             >
-              <div className="w-16 h-16 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mx-auto mb-6">
-                <Code className="w-8 h-8 text-[#4ECFBF]" />
+              <div className="w-16 h-16 bg-brand/10 rounded-xl flex items-center justify-center mx-auto mb-6">
+                <Code className="w-8 h-8 text-brand" />
               </div>
               <h3 className="text-xl font-bold text-gray-800 mb-4">RESTful API</h3>
               <p className="text-gray-600">Clean, predictable REST endpoints</p>
@@ -85,8 +85,8 @@ const ApiDocs: React.FC = () => {
               transition={{ duration: 0.6, delay: 0.6 }}
               className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200 text-center"
             >
-              <div className="w-16 h-16 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mx-auto mb-6">
-                <Shield className="w-8 h-8 text-[#4ECFBF]" />
+              <div className="w-16 h-16 bg-brand/10 rounded-xl flex items-center justify-center mx-auto mb-6">
+                <Shield className="w-8 h-8 text-brand" />
               </div>
               <h3 className="text-xl font-bold text-gray-800 mb-4">Rate Limiting</h3>
               <p className="text-gray-600">Fair usage policies and limits</p>
@@ -98,8 +98,8 @@ const ApiDocs: React.FC = () => {
               transition={{ duration: 0.6, delay: 0.8 }}
               className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200 text-center"
             >
-              <div className="w-16 h-16 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mx-auto mb-6">
-                <Book className="w-8 h-8 text-[#4ECFBF]" />
+              <div className="w-16 h-16 bg-brand/10 rounded-xl flex items-center justify-center mx-auto mb-6">
+                <Book className="w-8 h-8 text-brand" />
               </div>
               <h3 className="text-xl font-bold text-gray-800 mb-4">Documentation</h3>
               <p className="text-gray-600">Comprehensive guides and examples</p>
@@ -138,7 +138,7 @@ const ApiDocs: React.FC = () => {
         </div>
       </div>
 
-      <div className="py-20 bg-gradient-to-r from-[#4ECFBF]/10 to-[#3a9e92]/10">
+      <div className="py-20 bg-gradient-to-r from-brand/10 to-[#3a9e92]/10">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -152,13 +152,13 @@ const ApiDocs: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
                 href="mailto:api@languagetutor.ai"
-                className="px-8 py-4 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300"
+                className="px-8 py-4 bg-brand hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300"
               >
                 Request API Key
               </a>
               <a
                 href="#"
-                className="px-8 py-4 border-2 border-[#4ECFBF] text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white font-medium rounded-lg transition-all duration-300 flex items-center justify-center"
+                className="px-8 py-4 border-2 border-brand text-brand hover:bg-brand hover:text-white font-medium rounded-lg transition-all duration-300 flex items-center justify-center"
               >
                 View Full Docs <ExternalLink className="w-4 h-4 ml-2" />
               </a>

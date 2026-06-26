@@ -8,7 +8,7 @@ const Community: React.FC = () => {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-[#4ECFBF]/20 to-[#3a9e92]/20 border-b border-white/[0.08] py-20">
+      <div className="bg-gradient-to-r from-brand/20 to-[#3a9e92]/20 border-b border-white/[0.08] py-20">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -32,15 +32,15 @@ const Community: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="rounded-2xl p-8 border border-white/[0.10] text-center hover:border-[#4ECFBF]/30 transition-all duration-300"
+              className="rounded-2xl p-8 border border-white/[0.10] text-center hover:border-brand/30 transition-all duration-300"
               style={{ backgroundColor: '#13131F' }}
             >
-              <div className="w-16 h-16 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mx-auto mb-6">
-                <MessageSquare className="w-8 h-8 text-[#4ECFBF]" />
+              <div className="w-16 h-16 bg-brand/10 rounded-xl flex items-center justify-center mx-auto mb-6">
+                <MessageSquare className="w-8 h-8 text-brand" />
               </div>
               <h3 className="text-xl font-bold text-white mb-4">Discord Server</h3>
               <p className="text-white/60 mb-6">Join our active Discord community for real-time chat and language exchange.</p>
-              <a href="#" className="flex items-center justify-center px-6 py-3 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors">
+              <a href="#" className="flex items-center justify-center px-6 py-3 bg-brand text-white rounded-lg hover:bg-[#3a9e92] transition-colors">
                 Join Discord <ExternalLink className="w-4 h-4 ml-2" />
               </a>
             </motion.div>
@@ -49,15 +49,15 @@ const Community: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
-              className="rounded-2xl p-8 border border-white/[0.10] text-center hover:border-[#4ECFBF]/30 transition-all duration-300"
+              className="rounded-2xl p-8 border border-white/[0.10] text-center hover:border-brand/30 transition-all duration-300"
               style={{ backgroundColor: '#13131F' }}
             >
-              <div className="w-16 h-16 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mx-auto mb-6">
-                <Users className="w-8 h-8 text-[#4ECFBF]" />
+              <div className="w-16 h-16 bg-brand/10 rounded-xl flex items-center justify-center mx-auto mb-6">
+                <Users className="w-8 h-8 text-brand" />
               </div>
               <h3 className="text-xl font-bold text-white mb-4">Study Groups</h3>
               <p className="text-white/60 mb-6">Find study partners and join language-specific practice groups.</p>
-              <a href="#" className="flex items-center justify-center px-6 py-3 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors">
+              <a href="#" className="flex items-center justify-center px-6 py-3 bg-brand text-white rounded-lg hover:bg-[#3a9e92] transition-colors">
                 Find Groups <ExternalLink className="w-4 h-4 ml-2" />
               </a>
             </motion.div>
@@ -66,15 +66,15 @@ const Community: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.6 }}
-              className="rounded-2xl p-8 border border-white/[0.10] text-center hover:border-[#4ECFBF]/30 transition-all duration-300"
+              className="rounded-2xl p-8 border border-white/[0.10] text-center hover:border-brand/30 transition-all duration-300"
               style={{ backgroundColor: '#13131F' }}
             >
-              <div className="w-16 h-16 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mx-auto mb-6">
-                <Calendar className="w-8 h-8 text-[#4ECFBF]" />
+              <div className="w-16 h-16 bg-brand/10 rounded-xl flex items-center justify-center mx-auto mb-6">
+                <Calendar className="w-8 h-8 text-brand" />
               </div>
               <h3 className="text-xl font-bold text-white mb-4">Events</h3>
               <p className="text-white/60 mb-6">Participate in virtual language meetups and learning challenges.</p>
-              <a href="#" className="flex items-center justify-center px-6 py-3 bg-[#4ECFBF] text-white rounded-lg hover:bg-[#3a9e92] transition-colors">
+              <a href="#" className="flex items-center justify-center px-6 py-3 bg-brand text-white rounded-lg hover:bg-[#3a9e92] transition-colors">
                 View Events <ExternalLink className="w-4 h-4 ml-2" />
               </a>
             </motion.div>
@@ -96,7 +96,7 @@ const Community: React.FC = () => {
             </p>
             <a
               href="/community/guidelines"
-              className="px-8 py-4 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300"
+              className="px-8 py-4 bg-brand hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300"
             >
               Read Guidelines
             </a>

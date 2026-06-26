@@ -124,7 +124,7 @@ const Blog: React.FC = () => {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-[#4ECFBF]/20 to-[#3a9e92]/20 border-b border-white/[0.08] py-20">
+      <div className="bg-gradient-to-r from-brand/20 to-[#3a9e92]/20 border-b border-white/[0.08] py-20">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -148,17 +148,17 @@ const Blog: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="rounded-2xl overflow-hidden border border-white/[0.10] cursor-pointer hover:border-[#4ECFBF]/30 transition-all duration-300"
+            className="rounded-2xl overflow-hidden border border-white/[0.10] cursor-pointer hover:border-brand/30 transition-all duration-300"
             style={{ backgroundColor: '#13131F' }}
             onClick={() => handlePostClick(featuredPost.link)}
           >
             <div className="grid lg:grid-cols-2 gap-8">
-              <div className="bg-gradient-to-br from-[#4ECFBF]/20 to-[#3a9e92]/20 p-12 flex items-center justify-center">
-                <featuredPost.icon className="w-32 h-32 text-[#4ECFBF]" />
+              <div className="bg-gradient-to-br from-brand/20 to-[#3a9e92]/20 p-12 flex items-center justify-center">
+                <featuredPost.icon className="w-32 h-32 text-brand" />
               </div>
               <div className="p-8 lg:p-12 flex flex-col justify-center">
                 <div className="flex items-center mb-4">
-                  <span className="px-3 py-1 bg-[#4ECFBF]/10 text-[#4ECFBF] border border-[#4ECFBF]/20 rounded-full text-sm font-medium">
+                  <span className="px-3 py-1 bg-brand/10 text-brand border border-brand/20 rounded-full text-sm font-medium">
                     {featuredPost.category}
                   </span>
                   <span className="ml-2 text-white/40 text-sm">Featured</span>
@@ -174,7 +174,7 @@ const Blog: React.FC = () => {
                     <Clock className="w-4 h-4 mr-2" />
                     <span>{featuredPost.readTime}</span>
                   </div>
-                  <div className="flex items-center text-[#4ECFBF] hover:text-white font-medium transition-colors duration-200">
+                  <div className="flex items-center text-brand hover:text-white font-medium transition-colors duration-200">
                     Read More <ExternalLink className="w-4 h-4 ml-2" />
                   </div>
                 </div>
@@ -197,8 +197,8 @@ const Blog: React.FC = () => {
                 onClick={() => setSelectedCategory(category)}
                 className={`px-6 py-2 rounded-full font-medium transition-all duration-300 ${
                   selectedCategory === category
-                    ? "bg-[#4ECFBF] text-white"
-                    : "text-white/60 hover:text-[#4ECFBF] border border-white/[0.10] hover:border-[#4ECFBF]/40"
+                    ? "bg-brand text-white"
+                    : "text-white/60 hover:text-brand border border-white/[0.10] hover:border-brand/40"
                 }`}
                 style={selectedCategory !== category ? { backgroundColor: '#13131F' } : {}}
               >
@@ -219,20 +219,20 @@ const Blog: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 * (index + 3) }}
-                className="rounded-2xl border border-white/[0.10] overflow-hidden hover:border-[#4ECFBF]/30 transition-all duration-300 cursor-pointer group"
+                className="rounded-2xl border border-white/[0.10] overflow-hidden hover:border-brand/30 transition-all duration-300 cursor-pointer group"
                 style={{ backgroundColor: '#13131F' }}
                 onClick={() => handlePostClick(post.link)}
               >
-                <div className="bg-gradient-to-br from-[#4ECFBF]/10 to-[#3a9e92]/10 p-8 flex items-center justify-center group-hover:from-[#4ECFBF]/20 group-hover:to-[#3a9e92]/20 transition-all duration-300">
-                  <post.icon className="w-16 h-16 text-[#4ECFBF] group-hover:scale-110 transition-transform duration-300" />
+                <div className="bg-gradient-to-br from-brand/10 to-[#3a9e92]/10 p-8 flex items-center justify-center group-hover:from-brand/20 group-hover:to-[#3a9e92]/20 transition-all duration-300">
+                  <post.icon className="w-16 h-16 text-brand group-hover:scale-110 transition-transform duration-300" />
                 </div>
                 <div className="p-6">
                   <div className="flex items-center mb-3">
-                    <span className="px-3 py-1 bg-[#4ECFBF]/10 text-[#4ECFBF] border border-[#4ECFBF]/20 rounded-full text-sm font-medium">
+                    <span className="px-3 py-1 bg-brand/10 text-brand border border-brand/20 rounded-full text-sm font-medium">
                       {post.category}
                     </span>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3 group-hover:text-[#4ECFBF] transition-colors duration-300">
+                  <h3 className="text-xl font-bold text-white mb-3 group-hover:text-brand transition-colors duration-300">
                     {post.title}
                   </h3>
                   <p className="text-white/60 leading-relaxed mb-4">{post.excerpt}</p>
@@ -246,7 +246,7 @@ const Blog: React.FC = () => {
                       <span>{post.readTime}</span>
                     </div>
                   </div>
-                  <div className="mt-4 flex items-center text-[#4ECFBF] opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="mt-4 flex items-center text-brand opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <span className="text-sm font-medium">Read Article</span>
                     <ExternalLink className="w-3 h-3 ml-1" />
                   </div>

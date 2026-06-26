@@ -344,7 +344,7 @@ const languages: Language[] = [
             <div className="relative">
               <span className="text-gray-800 drop-shadow-sm">Choose Your Language</span>
               {/* Animated underline effect */}
-              <div className="absolute -bottom-2 left-0 w-full h-[3px] bg-[#4ECFBF]"></div>
+              <div className="absolute -bottom-2 left-0 w-full h-[3px] bg-brand"></div>
             </div>
           </h1>
           <div className="mt-4 text-lg max-w-md mx-auto min-h-[2rem]">
@@ -363,12 +363,12 @@ const languages: Language[] = [
                 className={`
                   group relative overflow-hidden rounded-xl 
                   transition-all duration-500 ease-out 
-                  bg-white/95 backdrop-blur-sm border-2 border-[#4ECFBF]/40
-                  hover:shadow-lg hover:shadow-[#4ECFBF]/20
+                  bg-white/95 backdrop-blur-sm border-2 border-brand/40
+                  hover:shadow-lg hover:shadow-brand/20
                   ${
                     selectedLanguage === language.code
-                      ? 'ring-2 ring-[#4ECFBF]/50 shadow-[#4ECFBF]/30 shadow-md border-[#4ECFBF]/60'
-                      : 'hover:border-[#4ECFBF]/60'
+                      ? 'ring-2 ring-brand/50 shadow-brand/30 shadow-md border-brand/60'
+                      : 'hover:border-brand/60'
                   }
                 `}
               >
@@ -423,7 +423,7 @@ const languages: Language[] = [
                     
                     {/* Language details */}
                     <div className="flex-1 text-left pt-1">
-                      <h3 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-[#4ECFBF] transition-colors duration-300">
+                      <h3 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-brand transition-colors duration-300">
                         {language.name}
                       </h3>
                       
@@ -462,7 +462,7 @@ const languages: Language[] = [
                 {/* Bottom flowing accent line with animation */}
                 <div 
                   className={`
-                    absolute bottom-0 left-0 h-0.5 bg-[#4ECFBF]
+                    absolute bottom-0 left-0 h-0.5 bg-brand
                     transition-all duration-700 ease-out opacity-80
                     ${
                       selectedLanguage === language.code

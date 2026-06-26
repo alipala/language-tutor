@@ -2246,11 +2246,11 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
         )}
 
         {/* User Selection Summary - Desktop Only */}
-        <div className="hidden sm:block bg-white border-2 border-[#4ECFBF] rounded-xl p-2 sm:p-3 md:p-4 mb-3 sm:mb-4 w-full relative z-10 shadow-lg">
+        <div className="hidden sm:block bg-white border-2 border-brand rounded-xl p-2 sm:p-3 md:p-4 mb-3 sm:mb-4 w-full relative z-10 shadow-lg">
           {/* Desktop: Original layout */}
           <div className="flex flex-wrap items-center justify-center gap-4 text-gray-800">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-[#4ECFBF] rounded-full flex items-center justify-center shadow-lg">
+              <div className="w-8 h-8 bg-brand rounded-full flex items-center justify-center shadow-lg">
                 <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M7 2a1 1 0 011 1v1h3a1 1 0 110 2H9.578a18.87 18.87 0 01-1.724 4.78c.29.354.596.696.914 1.026a1 1 0 11-1.44 1.389c-.188-.196-.373-.396-.554-.6a19.098 19.098 0 01-3.107 3.567 1 1 0 01-1.334-1.49 17.087 17.087 0 003.13-3.733a18.992 18.992 0 01-1.487-2.494 1 1 0 111.79-.89c.234.47.489.928.764 1.372.417-.934.752-1.913.997-2.927H3a1 1 0 110-2h3V3a1 1 0 011-1zm6 6a1 1 0 01.894.553l2.991 5.982a.869.869 0 01.02.037l.99 1.98A1 1 0 0117 18H10a1 1 0 01-.894-1.447l.99-1.98.019-.038 2.991-5.982A1 1 0 0114 8h-1z" clipRule="evenodd" />
                 </svg>
@@ -2271,7 +2271,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
             
             {topic && (
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-[#4ECFBF] rounded-full flex items-center justify-center shadow-lg">
+                <div className="w-8 h-8 bg-brand rounded-full flex items-center justify-center shadow-lg">
                   <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
                   </svg>
@@ -2365,7 +2365,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                     
                     {/* Analysis Display */}
                     <div className="flex-1 p-3 sm:p-4 lg:p-6 pt-0 overflow-hidden">
-                      <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 h-full flex flex-col">
+                      <div className="bg-[#F0FAFA] rounded-lg border border-brand/30 h-full flex flex-col">
                         {backgroundAnalyses.length > 0 ? (
                           <div className="flex-1 overflow-hidden">
                             {/* Mobile: Show one analysis at a time with navigation */}
@@ -2388,14 +2388,14 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                               
                               {/* Navigation for multiple analyses on mobile */}
                               {backgroundAnalyses.length > 1 && (
-                                <div className="border-t border-[#4ECFBF]/20 p-2 flex items-center justify-between bg-white/50">
+                                <div className="border-t border-brand/20 p-2 flex items-center justify-between bg-white/50">
                                   <button
                                     onClick={() => {
                                       setCurrentAnalysisIndex(prev => 
                                         prev > 0 ? prev - 1 : backgroundAnalyses.length - 1
                                       );
                                     }}
-                                    className="flex items-center gap-1 text-xs text-[#4ECFBF] font-medium"
+                                    className="flex items-center gap-1 text-xs text-brand font-medium"
                                   >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -2413,7 +2413,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                                         prev < backgroundAnalyses.length - 1 ? prev + 1 : 0
                                       );
                                     }}
-                                    className="flex items-center gap-1 text-xs text-[#4ECFBF] font-medium"
+                                    className="flex items-center gap-1 text-xs text-brand font-medium"
                                   >
                                     Next
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2538,7 +2538,7 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                     </div>
                     
                     <div className="flex-1 p-3 sm:p-4 lg:p-6 pt-0 overflow-hidden">
-                      <div className="bg-[#F0FAFA] rounded-lg border border-[#4ECFBF]/30 h-full overflow-y-auto custom-scrollbar flex flex-col">
+                      <div className="bg-[#F0FAFA] rounded-lg border border-brand/30 h-full overflow-y-auto custom-scrollbar flex flex-col">
                         <div className="space-y-4 flex-1 flex flex-col p-3">
                           {processedMessages.length > 0 ? (
                             // Sort messages by timestamp if available, otherwise use the array order
@@ -2669,11 +2669,11 @@ export default function SpeechClient({ language, level, topic, userPrompt, onTim
                               })
                           ) : (
                             <div className="flex justify-center items-center h-full flex-1">
-                              <div className="text-center p-4 sm:p-6 rounded-lg bg-[#4ECFBF]/10 border border-[#4ECFBF]/20 animate-fadeIn w-full">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-2 sm:mb-4 text-[#4ECFBF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <div className="text-center p-4 sm:p-6 rounded-lg bg-brand/10 border border-brand/20 animate-fadeIn w-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-2 sm:mb-4 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                 </svg>
-                                <p className="text-[#4ECFBF] font-medium text-sm sm:text-lg">Your conversation will appear here</p>
+                                <p className="text-brand font-medium text-sm sm:text-lg">Your conversation will appear here</p>
                                 <p className="text-slate-400 text-xs sm:text-base mt-1 sm:mt-2">Click the microphone button to start talking</p>
                               </div>
                             </div>

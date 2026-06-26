@@ -877,7 +877,7 @@ export default function SpeakingAssessment({
   };
 
   return (
-    <div className="bg-white text-[#333333] rounded-lg p-8 w-full mx-auto space-y-8 border border-[#4ECFBF]/30 shadow-md">
+    <div className="bg-white text-[#333333] rounded-lg p-8 w-full mx-auto space-y-8 border border-brand/30 shadow-md">
       {/* Hidden audio player*/}
       {/* audioUrl && (
         <audio 
@@ -890,7 +890,7 @@ export default function SpeakingAssessment({
       
       {/* Centered Guest User Mode Banner */}
       {!isAuthenticated() && (
-        <div className={`relative overflow-hidden bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] rounded-xl shadow-lg mb-4 ${isMobile ? 'p-4' : 'p-6 mb-6'}`}>
+        <div className={`relative overflow-hidden bg-gradient-to-r from-brand to-[#3AA8B1] rounded-xl shadow-lg mb-4 ${isMobile ? 'p-4' : 'p-6 mb-6'}`}>
           <div className="text-center">
             <div className="flex items-center justify-center mb-3">
               <div className="bg-white/20 p-2 rounded-full mr-3">
@@ -949,7 +949,7 @@ export default function SpeakingAssessment({
                 className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                   currentTopicIndex === 0
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
-                    : 'bg-white text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
+                    : 'bg-white text-brand hover:bg-brand hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
                 }`}
                 aria-label="Previous topic"
               >
@@ -963,7 +963,7 @@ export default function SpeakingAssessment({
                 className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                   currentTopicIndex === topics.length - 1
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
-                    : 'bg-white text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
+                    : 'bg-white text-brand hover:bg-brand hover:text-white shadow-lg hover:shadow-xl hover:scale-110'
                 }`}
                 aria-label="Next topic"
               >
@@ -985,7 +985,7 @@ export default function SpeakingAssessment({
                     <div key={topic.id} className="w-full flex-shrink-0 px-2">
                       <button
                         onClick={() => handleTopicSelect(topic)}
-                        className="w-full bg-gradient-to-br from-white to-[#F8FDFC] p-6 rounded-2xl border-2 border-[#4ECFBF]/20 active:border-[#4ECFBF] shadow-lg active:shadow-xl transition-all duration-200 text-left"
+                        className="w-full bg-gradient-to-br from-white to-[#F8FDFC] p-6 rounded-2xl border-2 border-brand/20 active:border-brand shadow-lg active:shadow-xl transition-all duration-200 text-left"
                       >
                         <div className="flex flex-col items-center text-center space-y-4">
                           <div className="text-6xl">{topic.icon}</div>
@@ -995,7 +995,7 @@ export default function SpeakingAssessment({
                           <p className="text-sm text-[#555555]">
                             {topic.prompt}
                           </p>
-                          <div className="flex items-center text-sm text-[#4ECFBF] font-medium pt-2">
+                          <div className="flex items-center text-sm text-brand font-medium pt-2">
                             <span>Tap to select</span>
                             <ChevronRight className="h-4 w-4 ml-1" />
                           </div>
@@ -1008,7 +1008,7 @@ export default function SpeakingAssessment({
               
               {/* Topic Counter */}
               <div className="text-center mt-6">
-                <p className="text-sm font-medium text-[#4ECFBF]">
+                <p className="text-sm font-medium text-brand">
                   {currentTopicIndex + 1} / {topics.length}
                 </p>
               </div>
@@ -1020,18 +1020,18 @@ export default function SpeakingAssessment({
                 <button
                   key={topic.id}
                   onClick={() => handleTopicSelect(topic)}
-                  className="group bg-gradient-to-br from-white to-[#F8FDFC] p-6 rounded-2xl border-2 border-[#4ECFBF]/20 hover:border-[#4ECFBF] shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 text-left"
+                  className="group bg-gradient-to-br from-white to-[#F8FDFC] p-6 rounded-2xl border-2 border-brand/20 hover:border-brand shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 text-left"
                 >
                   <div className="flex items-start space-x-4">
                     <div className="text-4xl">{topic.icon}</div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-bold text-[#333333] mb-2 group-hover:text-[#4ECFBF] transition-colors">
+                      <h3 className="text-lg font-bold text-[#333333] mb-2 group-hover:text-brand transition-colors">
                         {topic.title}
                       </h3>
                       <p className="text-sm text-[#555555] mb-3">
                         {topic.prompt}
                       </p>
-                      <div className="flex items-center text-xs text-[#4ECFBF] font-medium">
+                      <div className="flex items-center text-xs text-brand font-medium">
                         <span>Select topic</span>
                         <ChevronRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
                       </div>
@@ -1049,13 +1049,13 @@ export default function SpeakingAssessment({
         <div className="space-y-4">
           <button
             onClick={handleChangeTopic}
-            className="flex items-center text-[#4ECFBF] hover:text-[#3AA8B1] transition-colors"
+            className="flex items-center text-brand hover:text-[#3AA8B1] transition-colors"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             <span>Change Topic</span>
           </button>
 
-          <div className={`bg-gradient-to-br from-[#F0FDFB] to-white ${isMobile ? 'p-6' : 'p-8'} rounded-2xl border-2 border-[#4ECFBF] shadow-lg`}>
+          <div className={`bg-gradient-to-br from-[#F0FDFB] to-white ${isMobile ? 'p-6' : 'p-8'} rounded-2xl border-2 border-brand shadow-lg`}>
             <div className="flex items-center mb-6">
               <div className={`${isMobile ? 'text-5xl mr-3' : 'text-5xl mr-4'}`}>{selectedTopic.icon}</div>
               <div>
@@ -1070,15 +1070,15 @@ export default function SpeakingAssessment({
               </div>
             </div>
 
-            <div className={`bg-white ${isMobile ? 'p-4' : 'p-6'} rounded-xl border border-[#4ECFBF]/30 mb-6`}>
+            <div className={`bg-white ${isMobile ? 'p-4' : 'p-6'} rounded-xl border border-brand/30 mb-6`}>
               <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-[#333333] ${isMobile ? 'mb-3' : 'mb-4'} flex items-center`}>
-                <Target className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} mr-2 text-[#4ECFBF]`} />
+                <Target className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} mr-2 text-brand`} />
                 Things you can talk about:
               </h3>
               <ul className={`${isMobile ? 'space-y-2' : 'space-y-3'}`}>
                 {selectedTopic.hints.map((hint: string, index: number) => (
                   <li key={index} className={`flex items-start ${isMobile ? 'space-x-2' : 'space-x-3'}`}>
-                    <div className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} bg-[#4ECFBF] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                    <div className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} bg-brand rounded-full flex items-center justify-center flex-shrink-0 mt-0.5`}>
                       <span className="text-white text-xs font-bold">{index + 1}</span>
                     </div>
                     <p className={`${isMobile ? 'text-sm' : 'text-base'} text-[#555555]`}>{hint}</p>
@@ -1101,24 +1101,24 @@ export default function SpeakingAssessment({
               <div className="relative mb-4 group">
                 {!isMobile && (
                   <>
-                    <div className="absolute -inset-6 bg-gradient-to-r from-[#4ECFBF]/20 via-[#3AA8B1]/20 to-[#4ECFBF]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500 animate-pulse"></div>
-                    <div className="absolute -inset-3 bg-gradient-to-r from-[#4ECFBF]/30 to-[#3AA8B1]/30 rounded-full blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
+                    <div className="absolute -inset-6 bg-gradient-to-r from-brand/20 via-[#3AA8B1]/20 to-brand/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500 animate-pulse"></div>
+                    <div className="absolute -inset-3 bg-gradient-to-r from-brand/30 to-[#3AA8B1]/30 rounded-full blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
                   </>
                 )}
                 {isMobile && (
-                  <div className="absolute -inset-3 bg-gradient-to-r from-[#4ECFBF]/30 to-[#3AA8B1]/30 rounded-full blur-lg opacity-75"></div>
+                  <div className="absolute -inset-3 bg-gradient-to-r from-brand/30 to-[#3AA8B1]/30 rounded-full blur-lg opacity-75"></div>
                 )}
                 <button
                   onClick={handleStartFromPreparation}
-                  className={`relative ${isMobile ? 'w-32 h-32' : 'w-40 h-40'} rounded-full flex items-center justify-center bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] text-white shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 group-hover:from-[#5CCFC0] group-hover:to-[#4BB8C1] border-0 cursor-pointer ${isMobile ? 'active:scale-95' : ''}`}
+                  className={`relative ${isMobile ? 'w-32 h-32' : 'w-40 h-40'} rounded-full flex items-center justify-center bg-gradient-to-r from-brand to-[#3AA8B1] text-white shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 group-hover:from-[#5CCFC0] group-hover:to-[#4BB8C1] border-0 cursor-pointer ${isMobile ? 'active:scale-95' : ''}`}
                   type="button"
                 >
                   <Mic className={`${isMobile ? 'h-12 w-12' : 'h-14 w-14'} group-hover:scale-110 transition-transform duration-300`} />
                 </button>
                 
                 {/* Pulse rings */}
-                <div className="absolute inset-0 rounded-full border-2 border-[#4ECFBF]/30 animate-ping pointer-events-none"></div>
-                <div className={`absolute ${isMobile ? 'inset-1' : 'inset-2'} rounded-full border-2 border-[#4ECFBF]/20 animate-ping pointer-events-none`} style={{animationDelay: '0.5s'}}></div>
+                <div className="absolute inset-0 rounded-full border-2 border-brand/30 animate-ping pointer-events-none"></div>
+                <div className={`absolute ${isMobile ? 'inset-1' : 'inset-2'} rounded-full border-2 border-brand/20 animate-ping pointer-events-none`} style={{animationDelay: '0.5s'}}></div>
               </div>
               
               <p className={`${isMobile ? 'text-sm' : 'text-base'} font-medium text-[#333333] text-center`}>
@@ -1134,11 +1134,11 @@ export default function SpeakingAssessment({
         <div className={`${isMobile ? 'space-y-4' : 'grid grid-cols-1 lg:grid-cols-3 gap-8'}`}>
           {/* Primary Recording Section - Compact for Mobile */}
           <div className={`${isMobile ? 'order-1' : 'lg:col-span-2 order-1 lg:order-1'}`}>
-            <div className={`flex flex-col items-center justify-center ${isMobile ? 'p-6' : 'p-12'} bg-gradient-to-br from-white via-[#F8FDFC] to-[#F0FDFB] rounded-2xl shadow-xl border border-[#4ECFBF]/20 relative overflow-hidden`}>
+            <div className={`flex flex-col items-center justify-center ${isMobile ? 'p-6' : 'p-12'} bg-gradient-to-br from-white via-[#F8FDFC] to-[#F0FDFB] rounded-2xl shadow-xl border border-brand/20 relative overflow-hidden`}>
               {/* Background decoration - smaller on mobile */}
               {!isMobile && (
                 <>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-[#4ECFBF]/10 to-transparent rounded-full -mr-16 -mt-16"></div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-brand/10 to-transparent rounded-full -mr-16 -mt-16"></div>
                   <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-[#FFD63A]/10 to-transparent rounded-full -ml-12 -mb-12"></div>
                 </>
               )}
@@ -1149,10 +1149,10 @@ export default function SpeakingAssessment({
                 </h2>
                 <p className={`text-[#555555] ${isMobile ? 'text-sm' : 'text-lg'} max-w-lg mx-auto leading-relaxed`}>
                   {isMobile ? (
-                    <>Tap the mic and speak for <span className="font-semibold text-[#4ECFBF]">{formatTime(getAssessmentDuration(isAuthenticated()))}</span></>
+                    <>Tap the mic and speak for <span className="font-semibold text-brand">{formatTime(getAssessmentDuration(isAuthenticated()))}</span></>
                   ) : (
                     <>Press the microphone button below and speak naturally in {language} for {isAuthenticated() ? 'up to ' : ''}
-                    <span className="font-semibold text-[#4ECFBF]">{formatTime(getAssessmentDuration(isAuthenticated()))}</span>.</>
+                    <span className="font-semibold text-brand">{formatTime(getAssessmentDuration(isAuthenticated()))}</span>.</>
                   )}
                 </p>
               </div>
@@ -1161,26 +1161,26 @@ export default function SpeakingAssessment({
               <div className={`relative ${isMobile ? 'mb-4' : 'mb-8'} group`}>
                 {!isMobile && (
                   <>
-                    <div className="absolute -inset-6 bg-gradient-to-r from-[#4ECFBF]/20 via-[#3AA8B1]/20 to-[#4ECFBF]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500 animate-pulse"></div>
-                    <div className="absolute -inset-3 bg-gradient-to-r from-[#4ECFBF]/30 to-[#3AA8B1]/30 rounded-full blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
+                    <div className="absolute -inset-6 bg-gradient-to-r from-brand/20 via-[#3AA8B1]/20 to-brand/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500 animate-pulse"></div>
+                    <div className="absolute -inset-3 bg-gradient-to-r from-brand/30 to-[#3AA8B1]/30 rounded-full blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
                   </>
                 )}
                 <button
                   onClick={startRecording}
-                  className={`relative ${isMobile ? 'w-24 h-24' : 'w-40 h-40'} rounded-full flex items-center justify-center bg-gradient-to-r from-[#4ECFBF] to-[#3AA8B1] text-white shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 group-hover:from-[#5CCFC0] group-hover:to-[#4BB8C1] border-0 cursor-pointer`}
+                  className={`relative ${isMobile ? 'w-24 h-24' : 'w-40 h-40'} rounded-full flex items-center justify-center bg-gradient-to-r from-brand to-[#3AA8B1] text-white shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 group-hover:from-[#5CCFC0] group-hover:to-[#4BB8C1] border-0 cursor-pointer`}
                   type="button"
                 >
                   <Mic className={`${isMobile ? 'h-8 w-8' : 'h-14 w-14'} group-hover:scale-110 transition-transform duration-300`} />
                 </button>
                 
                 {/* Pulse rings - smaller on mobile */}
-                <div className={`absolute inset-0 rounded-full border-2 border-[#4ECFBF]/30 animate-ping pointer-events-none`}></div>
-                <div className={`absolute ${isMobile ? 'inset-1' : 'inset-2'} rounded-full border-2 border-[#4ECFBF]/20 animate-ping pointer-events-none`} style={{animationDelay: '0.5s'}}></div>
+                <div className={`absolute inset-0 rounded-full border-2 border-brand/30 animate-ping pointer-events-none`}></div>
+                <div className={`absolute ${isMobile ? 'inset-1' : 'inset-2'} rounded-full border-2 border-brand/20 animate-ping pointer-events-none`} style={{animationDelay: '0.5s'}}></div>
               </div>
               
               {/* Status Indicator - Compact on Mobile */}
-              <div className={`flex items-center justify-center space-x-2 ${isMobile ? 'text-xs' : 'text-sm'} text-[#555555] bg-white/80 backdrop-blur-sm ${isMobile ? 'px-4 py-2' : 'px-6 py-3'} rounded-lg shadow-md border border-[#4ECFBF]/20`}>
-                <div className={`${isMobile ? 'w-2 h-2' : 'w-3 h-3'} rounded-full bg-[#4ECFBF] animate-pulse shadow-sm`}></div>
+              <div className={`flex items-center justify-center space-x-2 ${isMobile ? 'text-xs' : 'text-sm'} text-[#555555] bg-white/80 backdrop-blur-sm ${isMobile ? 'px-4 py-2' : 'px-6 py-3'} rounded-lg shadow-md border border-brand/20`}>
+                <div className={`${isMobile ? 'w-2 h-2' : 'w-3 h-3'} rounded-full bg-brand animate-pulse shadow-sm`}></div>
                 <p className="font-medium">
                   {isMobile ? 'Ready' : 'Microphone ready'} • {isAuthenticated() ? 'Up to ' : ''}{formatTime(getAssessmentDuration(isAuthenticated()))}
                 </p>
@@ -1273,9 +1273,9 @@ export default function SpeakingAssessment({
                 </div>
                 
                 {/* Encouragement section */}
-                <div className="mt-6 p-4 bg-gradient-to-r from-[#4ECFBF]/10 to-[#FFD63A]/10 rounded-xl border border-[#4ECFBF]/20">
+                <div className="mt-6 p-4 bg-gradient-to-r from-brand/10 to-[#FFD63A]/10 rounded-xl border border-brand/20">
                   <div className="flex items-center mb-2">
-                    <ThumbsUp className="h-4 w-4 text-[#4ECFBF] mr-2" />
+                    <ThumbsUp className="h-4 w-4 text-brand mr-2" />
                     <span className="text-sm font-semibold text-[#333333]">You've got this!</span>
                   </div>
                   <p className="text-xs text-[#555555] leading-relaxed">
@@ -1290,10 +1290,10 @@ export default function SpeakingAssessment({
       
       {/* Recording State - Animated Transition from Microphone */}
       {status === 'recording' && (
-        <div className="bg-white rounded-2xl shadow-xl border border-[#4ECFBF]/20 p-8 animate-in fade-in duration-500">
+        <div className="bg-white rounded-2xl shadow-xl border border-brand/20 p-8 animate-in fade-in duration-500">
           {/* Show selected topic at top */}
           {selectedTopic && (
-            <div className="bg-[#F0FDFB] p-4 rounded-xl border border-[#4ECFBF]/30 mb-6">
+            <div className="bg-[#F0FDFB] p-4 rounded-xl border border-brand/30 mb-6">
               <div className="flex items-center mb-2">
                 <span className="text-2xl mr-2">{selectedTopic.icon}</span>
                 <h3 className="text-lg font-bold text-[#333333]">{selectedTopic.title}</h3>
@@ -1354,7 +1354,7 @@ export default function SpeakingAssessment({
                 <span>{canStopRecording ? 'Stop Recording' : 'Recording...'}</span>
               </Button>
             ) : (
-              <div className="bg-[#4ECFBF]/10 backdrop-blur-sm px-4 py-2 rounded-lg border border-[#4ECFBF]/30 inline-block">
+              <div className="bg-brand/10 backdrop-blur-sm px-4 py-2 rounded-lg border border-brand/30 inline-block">
                 <p className="text-[#555555] text-sm">
                   🎯 Recording will stop automatically when time reaches zero
                 </p>
@@ -1423,10 +1423,10 @@ export default function SpeakingAssessment({
               <div className="space-y-6">
                 {/* Playback Controls - Commented out as requested*/}
                 {/* audioUrl && (
-                  <div className="flex items-center justify-center space-x-4 bg-[#F0FDFB] p-3 rounded-lg border border-[#4ECFBF] shadow-md">
+                  <div className="flex items-center justify-center space-x-4 bg-[#F0FDFB] p-3 rounded-lg border border-brand shadow-md">
                     <Button 
                       onClick={handlePlayAudio}
-                      className="bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md transition-all duration-300"
+                      className="bg-brand hover:bg-[#5CCFC0] text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md transition-all duration-300"
                     >
                       {isAudioPlaying ? <Square className="h-5 w-5" /> : <Play className="h-5 w-5" />}
                     </Button>
@@ -1435,10 +1435,10 @@ export default function SpeakingAssessment({
                 )}
                 
                 {/* Recommended Level*/}
-                <div className="bg-[#F0FDFB] p-6 rounded-lg text-center border border-[#4ECFBF] shadow-md">
+                <div className="bg-[#F0FDFB] p-6 rounded-lg text-center border border-brand shadow-md">
                   <h3 className="text-xl text-[#333333] mb-3 font-medium">Recommended Level</h3>
                   <div className="text-5xl font-bold text-[#333333] mb-3">{assessment.recommended_level}</div>
-                  <div className="inline-block bg-[#4ECFBF] px-4 py-2 rounded-full text-white text-sm font-medium shadow-md">
+                  <div className="inline-block bg-brand px-4 py-2 rounded-full text-white text-sm font-medium shadow-md">
                     Confidence: {assessment.confidence.toFixed(1)}%
                   </div>
                 </div>
@@ -1455,20 +1455,20 @@ export default function SpeakingAssessment({
                       className="h-4 bg-white flex-1 rounded-full border border-[#FFD63A]/30"
                       indicatorClassName={`${assessment.overall_score < 25 ? 'bg-[#F75A5A]' : 
                         assessment.overall_score < 50 ? 'bg-[#FFD63A]' : 
-                        assessment.overall_score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
+                        assessment.overall_score < 75 ? 'bg-brand' : 'bg-[#4CAF50]'}`}
                     />
                   </div>
                 </div>
                 
                 {/* Strengths*/}
-                <div className="bg-[#F0FDFB] p-5 rounded-lg border border-[#4ECFBF] shadow-md">
+                <div className="bg-[#F0FDFB] p-5 rounded-lg border border-brand shadow-md">
                   <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
-                    <ThumbsUp className="h-5 w-5 mr-2 text-[#4ECFBF]" /> Strengths
+                    <ThumbsUp className="h-5 w-5 mr-2 text-brand" /> Strengths
                   </h3>
                   <ul className="space-y-3">
                     {assessment.strengths.map((strength, index) => (
-                      <li key={index} className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#4ECFBF]/30 shadow-sm">
-                        <div className="bg-[#4ECFBF] rounded-full p-1 mt-0.5 flex-shrink-0">
+                      <li key={index} className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-brand/30 shadow-sm">
+                        <div className="bg-brand rounded-full p-1 mt-0.5 flex-shrink-0">
                           <Check className="h-4 w-4 text-white" />
                         </div>
                         <p className="text-[#333333]">{strength}</p>
@@ -1494,12 +1494,12 @@ export default function SpeakingAssessment({
                   
                   <div className="space-y-4 max-h-[600px] overflow-auto pr-2">
                     {/* Pronunciation*/}
-                    <div className="bg-white p-3 rounded-lg border border-[#4ECFBF] shadow-sm">
+                    <div className="bg-white p-3 rounded-lg border border-brand shadow-sm">
                       <div className="flex justify-between mb-2">
                         <span className="text-[#333333] font-medium">Pronunciation</span>
                         <span className={`text-white px-3 py-1 rounded-md font-medium shadow-sm ${assessment.pronunciation.score < 25 ? 'bg-[#F75A5A]' : 
                           assessment.pronunciation.score < 50 ? 'bg-[#FFD63A] text-[#333333]' : 
-                          assessment.pronunciation.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}>
+                          assessment.pronunciation.score < 75 ? 'bg-brand' : 'bg-[#4CAF50]'}`}>
                           {assessment.pronunciation.score.toFixed(1)}
                         </span>
                       </div>
@@ -1508,9 +1508,9 @@ export default function SpeakingAssessment({
                         className="h-3 bg-gray-100 rounded-full"
                         indicatorClassName={`${assessment.pronunciation.score < 25 ? 'bg-[#F75A5A]' : 
                           assessment.pronunciation.score < 50 ? 'bg-[#FFD63A]' : 
-                          assessment.pronunciation.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
+                          assessment.pronunciation.score < 75 ? 'bg-brand' : 'bg-[#4CAF50]'}`}
                       />
-                      <p className="text-[#555555] mt-1 text-sm bg-[#F0FDFB] p-2 rounded-md border border-[#4ECFBF]/20">{assessment.pronunciation.feedback}</p>
+                      <p className="text-[#555555] mt-1 text-sm bg-[#F0FDFB] p-2 rounded-md border border-brand/20">{assessment.pronunciation.feedback}</p>
                     </div>
                     
                     {/* Vocabulary*/}
@@ -1519,7 +1519,7 @@ export default function SpeakingAssessment({
                         <span className="text-[#333333] font-medium">Vocabulary</span>
                         <span className={`px-3 py-1 rounded-md font-medium shadow-sm ${assessment.vocabulary.score < 25 ? 'bg-[#F75A5A] text-white' : 
                           assessment.vocabulary.score < 50 ? 'bg-[#FFD63A] text-[#333333]' : 
-                          assessment.vocabulary.score < 75 ? 'bg-[#4ECFBF] text-white' : 'bg-[#4CAF50] text-white'}`}>
+                          assessment.vocabulary.score < 75 ? 'bg-brand text-white' : 'bg-[#4CAF50] text-white'}`}>
                           {assessment.vocabulary.score.toFixed(1)}
                         </span>
                       </div>
@@ -1528,7 +1528,7 @@ export default function SpeakingAssessment({
                         className="h-3 bg-gray-100 rounded-full"
                         indicatorClassName={`${assessment.vocabulary.score < 25 ? 'bg-[#F75A5A]' : 
                           assessment.vocabulary.score < 50 ? 'bg-[#FFD63A]' : 
-                          assessment.vocabulary.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
+                          assessment.vocabulary.score < 75 ? 'bg-brand' : 'bg-[#4CAF50]'}`}
                       />
                       <p className="text-[#555555] mt-1 text-sm bg-[#FFFBEB] p-2 rounded-md border border-[#FFD63A]/20">{assessment.vocabulary.feedback}</p>
                     </div>
@@ -1539,7 +1539,7 @@ export default function SpeakingAssessment({
                         <span className="text-[#333333] font-medium">Grammar</span>
                         <span className={`px-3 py-1 rounded-md font-medium shadow-sm ${assessment.grammar.score < 25 ? 'bg-[#F75A5A] text-white' : 
                           assessment.grammar.score < 50 ? 'bg-[#FFD63A] text-[#333333]' : 
-                          assessment.grammar.score < 75 ? 'bg-[#4ECFBF] text-white' : 'bg-[#4CAF50] text-white'}`}>
+                          assessment.grammar.score < 75 ? 'bg-brand text-white' : 'bg-[#4CAF50] text-white'}`}>
                           {assessment.grammar.score.toFixed(1)}
                         </span>
                       </div>
@@ -1548,18 +1548,18 @@ export default function SpeakingAssessment({
                         className="h-3 bg-gray-100 rounded-full"
                         indicatorClassName={`${assessment.grammar.score < 25 ? 'bg-[#F75A5A]' : 
                           assessment.grammar.score < 50 ? 'bg-[#FFD63A]' : 
-                          assessment.grammar.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
+                          assessment.grammar.score < 75 ? 'bg-brand' : 'bg-[#4CAF50]'}`}
                       />
                       <p className="text-[#555555] mt-1 text-sm bg-[#FFF8F8] p-2 rounded-md border border-[#F75A5A]/20">{assessment.grammar.feedback}</p>
                     </div>
                     
                     {/* Fluency*/}
-                    <div className="bg-white p-3 rounded-lg border border-[#4ECFBF] shadow-sm">
+                    <div className="bg-white p-3 rounded-lg border border-brand shadow-sm">
                       <div className="flex justify-between mb-2">
                         <span className="text-[#333333] font-medium">Fluency</span>
                         <span className={`px-3 py-1 rounded-md font-medium shadow-sm ${assessment.fluency.score < 25 ? 'bg-[#F75A5A] text-white' : 
                           assessment.fluency.score < 50 ? 'bg-[#FFD63A] text-[#333333]' : 
-                          assessment.fluency.score < 75 ? 'bg-[#4ECFBF] text-white' : 'bg-[#4CAF50] text-white'}`}>
+                          assessment.fluency.score < 75 ? 'bg-brand text-white' : 'bg-[#4CAF50] text-white'}`}>
                           {assessment.fluency.score.toFixed(1)}
                         </span>
                       </div>
@@ -1568,9 +1568,9 @@ export default function SpeakingAssessment({
                         className="h-3 bg-gray-100 rounded-full"
                         indicatorClassName={`${assessment.fluency.score < 25 ? 'bg-[#F75A5A]' : 
                           assessment.fluency.score < 50 ? 'bg-[#FFD63A]' : 
-                          assessment.fluency.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
+                          assessment.fluency.score < 75 ? 'bg-brand' : 'bg-[#4CAF50]'}`}
                       />
-                      <p className="text-[#555555] mt-1 text-sm bg-[#F0FDFB] p-2 rounded-md border border-[#4ECFBF]/20">{assessment.fluency.feedback}</p>
+                      <p className="text-[#555555] mt-1 text-sm bg-[#F0FDFB] p-2 rounded-md border border-brand/20">{assessment.fluency.feedback}</p>
                     </div>
                     
                     {/* Coherence*/}
@@ -1579,7 +1579,7 @@ export default function SpeakingAssessment({
                         <span className="text-[#333333] font-medium">Coherence</span>
                         <span className={`px-3 py-1 rounded-md font-medium shadow-sm ${assessment.coherence.score < 25 ? 'bg-[#F75A5A] text-white' : 
                           assessment.coherence.score < 50 ? 'bg-[#FFD63A] text-[#333333]' : 
-                          assessment.coherence.score < 75 ? 'bg-[#4ECFBF] text-white' : 'bg-[#4CAF50] text-white'}`}>
+                          assessment.coherence.score < 75 ? 'bg-brand text-white' : 'bg-[#4CAF50] text-white'}`}>
                           {assessment.coherence.score.toFixed(1)}
                         </span>
                       </div>
@@ -1588,7 +1588,7 @@ export default function SpeakingAssessment({
                         className="h-3 bg-gray-100 rounded-full"
                         indicatorClassName={`${assessment.coherence.score < 25 ? 'bg-[#F75A5A]' : 
                           assessment.coherence.score < 50 ? 'bg-[#FFD63A]' : 
-                          assessment.coherence.score < 75 ? 'bg-[#4ECFBF]' : 'bg-[#4CAF50]'}`}
+                          assessment.coherence.score < 75 ? 'bg-brand' : 'bg-[#4CAF50]'}`}
                       />
                       <p className="text-[#555555] mt-1 text-sm bg-[#FFFBEB] p-2 rounded-md border border-[#FFD63A]/20">{assessment.coherence.feedback}</p>
                     </div>
@@ -1620,10 +1620,10 @@ export default function SpeakingAssessment({
               <div className="space-y-6">
                 {/* Playback Controls - Commented out as requested*/}
                 {/* audioUrl && (
-                  <div className="flex items-center justify-center space-x-4 bg-[#F0FDFB] p-3 rounded-lg border border-[#4ECFBF] shadow-md">
+                  <div className="flex items-center justify-center space-x-4 bg-[#F0FDFB] p-3 rounded-lg border border-brand shadow-md">
                     <Button 
                       onClick={handlePlayAudio}
-                      className="bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md transition-all duration-300"
+                      className="bg-brand hover:bg-[#5CCFC0] text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md transition-all duration-300"
                     >
                       {isAudioPlaying ? <Square className="h-5 w-5" /> : <Play className="h-5 w-5" />}
                     </Button>
@@ -1632,20 +1632,20 @@ export default function SpeakingAssessment({
                 )}
                 
                 {/* Recommended Level*/}
-                <div className="bg-[#F0FDFB] p-6 rounded-lg text-center border border-[#4ECFBF] shadow-md">
+                <div className="bg-[#F0FDFB] p-6 rounded-lg text-center border border-brand shadow-md">
                   <h3 className="text-xl text-[#333333] mb-3 font-medium">Recommended Level</h3>
                   <div className="text-5xl font-bold text-[#333333] mb-3">{assessment.recommended_level}</div>
                 </div>
                 
                 {/* Strengths*/}
-                <div className="bg-[#F0FDFB] p-5 rounded-lg border border-[#4ECFBF] shadow-md">
+                <div className="bg-[#F0FDFB] p-5 rounded-lg border border-brand shadow-md">
                   <h3 className="text-lg text-[#333333] mb-3 font-medium flex items-center">
-                    <ThumbsUp className="h-5 w-5 mr-2 text-[#4ECFBF]" /> Strengths
+                    <ThumbsUp className="h-5 w-5 mr-2 text-brand" /> Strengths
                   </h3>
                   <ul className="space-y-3">
                     {assessment.strengths.map((strength, index) => (
-                      <li key={index} className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-[#4ECFBF]/30 shadow-sm">
-                        <div className="bg-[#4ECFBF] rounded-full p-1 mt-0.5 flex-shrink-0">
+                      <li key={index} className="flex items-start space-x-3 bg-white p-3 rounded-lg border border-brand/30 shadow-sm">
+                        <div className="bg-brand rounded-full p-1 mt-0.5 flex-shrink-0">
                           <Check className="h-4 w-4 text-white" />
                         </div>
                         <p className="text-[#333333]">{strength}</p>
@@ -1709,7 +1709,7 @@ export default function SpeakingAssessment({
             <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
               <Button 
                 onClick={handleTryAgain}
-                className="bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white font-medium px-6 py-3 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all duration-300 flex-1"
+                className="bg-brand hover:bg-[#5CCFC0] text-white font-medium px-6 py-3 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all duration-300 flex-1"
               >
                 <RotateCw className="h-5 w-5" />
                 <span>New Assessment</span>
@@ -1734,10 +1734,10 @@ export default function SpeakingAssessment({
       {/* Bottom-right notification for optimal recording duration */}
       {showOptimalNotification && (
         <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-right duration-300">
-          <div className="bg-white border-l-4 border-[#4ECFBF] rounded-lg shadow-xl p-4 max-w-sm">
+          <div className="bg-white border-l-4 border-brand rounded-lg shadow-xl p-4 max-w-sm">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-[#4ECFBF] rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-brand rounded-full flex items-center justify-center">
                   <Check className="h-5 w-5 text-white" />
                 </div>
               </div>

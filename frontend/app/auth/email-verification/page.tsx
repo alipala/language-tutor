@@ -66,12 +66,12 @@ export default function EmailVerificationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#4ECFBF] via-[#3a9e92] to-[#2d7a6e] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-brand via-[#3a9e92] to-[#2d7a6e] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
         <div className="mb-6">
           {verificationStatus === 'loading' && (
             <>
-              <div className="w-16 h-16 border-4 border-[#4ECFBF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <div className="w-16 h-16 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
               <h1 className="text-2xl font-bold text-gray-800 mb-2">Verifying Email</h1>
               <p className="text-gray-600">Please wait while we verify your email address...</p>
             </>
@@ -100,7 +100,7 @@ export default function EmailVerificationPage() {
               <p className="text-gray-600 mb-4">The verification link is invalid or has expired.</p>
               <button
                 onClick={() => router.push('/auth/login')}
-                className="bg-[#4ECFBF] text-white px-6 py-2 rounded-lg hover:bg-[#3a9e92] transition-colors"
+                className="bg-brand text-white px-6 py-2 rounded-lg hover:bg-[#3a9e92] transition-colors"
               >
                 Go to Login
               </button>

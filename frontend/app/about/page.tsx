@@ -8,7 +8,7 @@ export default function AboutPage() {
       {/* Hero Section */}
       <section className="py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-[#4ECFBF] via-[#FFD63A] to-[#F75A5A] bg-clip-text text-transparent mb-6">
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-brand via-[#FFD63A] to-[#F75A5A] bg-clip-text text-transparent mb-6">
             About MyTaco AI
           </h1>
           <p className="text-xl text-white/60 leading-relaxed max-w-3xl mx-auto mb-8">
@@ -35,8 +35,8 @@ export default function AboutPage() {
           <h2 className="text-3xl font-bold text-center text-white mb-12">Our Values</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* Accessibility Value */}
-            <div className="bg-gradient-to-br from-[#4ECFBF]/10 to-[#4ECFBF]/5 rounded-2xl p-8 border border-[#4ECFBF]/20 hover:border-[#4ECFBF]/40 transition-all duration-300 hover:shadow-lg hover:shadow-[#4ECFBF]/5">
-              <div className="w-12 h-12 bg-[#4ECFBF] rounded-full flex items-center justify-center mb-6">
+            <div className="bg-gradient-to-br from-brand/10 to-brand/5 rounded-2xl p-8 border border-brand/20 hover:border-brand/40 transition-all duration-300 hover:shadow-lg hover:shadow-brand/5">
+              <div className="w-12 h-12 bg-brand rounded-full flex items-center justify-center mb-6">
                 <Globe className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-xl font-bold text-white mb-4">Accessibility for All</h3>
@@ -87,8 +87,8 @@ export default function AboutPage() {
             </div>
 
             {/* Responsible AI Value */}
-            <div className="bg-gradient-to-br from-[#4ECFBF]/10 to-[#F75A5A]/5 rounded-2xl p-8 border border-[#4ECFBF]/20 hover:border-[#F75A5A]/20 transition-all duration-300 hover:shadow-lg">
-              <div className="w-12 h-12 bg-gradient-to-r from-[#4ECFBF] to-[#F75A5A] rounded-full flex items-center justify-center mb-6">
+            <div className="bg-gradient-to-br from-brand/10 to-[#F75A5A]/5 rounded-2xl p-8 border border-brand/20 hover:border-[#F75A5A]/20 transition-all duration-300 hover:shadow-lg">
+              <div className="w-12 h-12 bg-gradient-to-r from-brand to-[#F75A5A] rounded-full flex items-center justify-center mb-6">
                 <Shield className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-xl font-bold text-white mb-4">Responsible AI</h3>
@@ -161,13 +161,13 @@ export default function AboutPage() {
           {/* Founders */}
           <div className="grid md:grid-cols-2 gap-8 mb-12">
             {/* Gamze */}
-            <div className="bg-gradient-to-br from-[#4ECFBF]/5 to-[#FFD63A]/5 rounded-2xl p-8 border border-white/[0.10] hover:shadow-lg hover:shadow-black/20 transition-all duration-300">
+            <div className="bg-gradient-to-br from-brand/5 to-[#FFD63A]/5 rounded-2xl p-8 border border-white/[0.10] hover:shadow-lg hover:shadow-black/20 transition-all duration-300">
               <div className="text-center mb-6">
-                <div className="w-24 h-24 bg-gradient-to-r from-[#4ECFBF] to-[#FFD63A] rounded-full mx-auto mb-4 flex items-center justify-center">
+                <div className="w-24 h-24 bg-gradient-to-r from-brand to-[#FFD63A] rounded-full mx-auto mb-4 flex items-center justify-center">
                   <span className="text-white text-2xl font-bold">GP</span>
                 </div>
                 <h3 className="text-xl font-bold text-white">Gamze Dede Pala</h3>
-                <p className="text-[#4ECFBF] font-semibold">Co-Founder</p>
+                <p className="text-brand font-semibold">Co-Founder</p>
               </div>
               <p className="text-white/60 leading-relaxed">
                 Former business analyst and QA Engineer from Turkey, Gamze is the visionary founder of Kolay Gelsin NL
@@ -198,13 +198,13 @@ export default function AboutPage() {
           {/* AI Agents */}
           <div className="grid md:grid-cols-2 gap-8">
             {/* Educational Psychologist AI */}
-            <div className="bg-gradient-to-br from-[#4ECFBF]/10 to-[#4ECFBF]/5 rounded-2xl p-8 border border-[#4ECFBF]/20">
+            <div className="bg-gradient-to-br from-brand/10 to-brand/5 rounded-2xl p-8 border border-brand/20">
               <div className="text-center mb-6">
-                <div className="w-20 h-20 bg-[#4ECFBF] rounded-full mx-auto mb-4 flex items-center justify-center">
+                <div className="w-20 h-20 bg-brand rounded-full mx-auto mb-4 flex items-center justify-center">
                   <span className="text-white text-lg font-bold">EP</span>
                 </div>
                 <h3 className="text-lg font-bold text-white">Dr. Elena Psyche</h3>
-                <p className="text-[#4ECFBF] font-semibold">Educational Psychologist AI Agent</p>
+                <p className="text-brand font-semibold">Educational Psychologist AI Agent</p>
               </div>
               <p className="text-white/60 leading-relaxed text-sm">
                 Our specialized AI agent focused on understanding learning psychology and emotional barriers to
@@ -241,7 +241,7 @@ export default function AboutPage() {
           <h2 className="text-3xl font-bold text-center text-white mb-12">Our Journey So Far</h2>
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center rounded-2xl p-6 border border-white/[0.10]" style={{ backgroundColor: '#13131F' }}>
-              <div className="w-16 h-16 bg-gradient-to-r from-[#4ECFBF] to-[#FFD63A] rounded-full mx-auto mb-4 flex items-center justify-center">
+              <div className="w-16 h-16 bg-gradient-to-r from-brand to-[#FFD63A] rounded-full mx-auto mb-4 flex items-center justify-center">
                 <Lightbulb className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-lg font-bold text-white mb-2">Innovation Launch</h3>
@@ -261,7 +261,7 @@ export default function AboutPage() {
             </div>
 
             <div className="text-center rounded-2xl p-6 border border-white/[0.10]" style={{ backgroundColor: '#13131F' }}>
-              <div className="w-16 h-16 bg-gradient-to-r from-[#FFD63A] to-[#4ECFBF] rounded-full mx-auto mb-4 flex items-center justify-center">
+              <div className="w-16 h-16 bg-gradient-to-r from-[#FFD63A] to-brand rounded-full mx-auto mb-4 flex items-center justify-center">
                 <Target className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-lg font-bold text-white mb-2">Continuous Evolution</h3>
@@ -283,7 +283,7 @@ export default function AboutPage() {
 
           <div className="grid md:grid-cols-3 gap-8">
             <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-[#4ECFBF] rounded-full flex items-center justify-center mb-4">
+              <div className="w-16 h-16 bg-brand rounded-full flex items-center justify-center mb-4">
                 <Mail className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-lg font-bold text-white mb-2">Email</h3>

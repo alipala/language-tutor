@@ -10,7 +10,7 @@ const FAQS = [
   },
   {
     q: 'How does the real-time conversation work?',
-    a: 'MyTaco uses WebRTC technology to stream your voice directly to your AI tutor in real time. There is no typing — just speak naturally. The AI responds instantly, corrects you mid-conversation if needed, and provides post-session feedback on pronunciation, grammar, and fluency.',
+    a: 'Your voice streams directly to your AI tutor in real time — no typing, no lag, just speak naturally. The AI responds instantly, corrects you mid-conversation if needed, and provides post-session feedback on pronunciation, grammar, and fluency.',
   },
   {
     q: 'What languages can I learn?',
@@ -44,10 +44,14 @@ export default function FAQSection() {
             >
               <button
                 onClick={() => setOpenIndex(isOpen ? null : i)}
-                className="w-full flex items-center justify-between gap-3 px-4 sm:px-6 py-4 sm:py-5 text-left"
+                aria-expanded={isOpen}
+                aria-controls={`faq-panel-${i}`}
+                id={`faq-trigger-${i}`}
+                className="w-full flex items-center justify-between gap-3 px-4 sm:px-6 py-4 sm:py-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset rounded-2xl"
               >
                 <span className="text-sm sm:text-base font-semibold text-white/85">{faq.q}</span>
                 <motion.div
+                  aria-hidden="true"
                   className="shrink-0 w-6 h-6 rounded-full border border-white/20 flex items-center justify-center"
                   animate={{ rotate: isOpen ? 45 : 0, borderColor: isOpen ? 'rgba(78,207,191,0.5)' : 'rgba(255,255,255,0.2)' }}
                   transition={{ duration: 0.25 }}
@@ -60,12 +64,15 @@ export default function FAQSection() {
               <AnimatePresence initial={false}>
                 {isOpen && (
                   <motion.div
+                    id={`faq-panel-${i}`}
+                    role="region"
+                    aria-labelledby={`faq-trigger-${i}`}
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                   >
-                    <div className="px-4 sm:px-6 pb-4 sm:pb-5 text-sm text-white/50 leading-relaxed border-t border-white/[0.06] pt-4">
+                    <div className="px-4 sm:px-6 pb-4 sm:pb-5 text-sm text-ink-muted leading-relaxed border-t border-white/[0.06] pt-4">
                       {faq.a}
                     </div>
                   </motion.div>

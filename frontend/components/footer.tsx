@@ -145,7 +145,7 @@ export default function Footer() {
                 { icon: MapPin,  text: 'Amsterdam, NL',       href: null                          },
               ].map(({ icon: Icon, text, href }) => (
                 <div key={text} className="flex items-center gap-3 text-sm">
-                  <Icon className="w-4 h-4 text-[#4ECFBF] shrink-0" />
+                  <Icon className="w-4 h-4 text-brand shrink-0" />
                   {href
                     ? <a href={href} className="text-white/40 hover:text-white/80 transition-colors">{text}</a>
                     : <span className="text-white/40">{text}</span>
@@ -163,7 +163,7 @@ export default function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={s.name}
-                  className="w-9 h-9 rounded-xl border border-white/[0.08] bg-white/[0.04] flex items-center justify-center text-white/40 hover:text-white hover:border-[#4ECFBF]/40 hover:bg-[#4ECFBF]/10 transition-all duration-200"
+                  className="w-9 h-9 rounded-xl border border-white/[0.08] bg-white/[0.04] flex items-center justify-center text-white/40 hover:text-white hover:border-brand/40 hover:bg-brand/10 transition-all duration-200"
                 >
                   <s.icon className="w-4 h-4" />
                 </a>
@@ -185,7 +185,7 @@ export default function Footer() {
                         href={link.href}
                         className="group flex items-center gap-2 text-sm text-white/45 hover:text-white transition-colors duration-200"
                       >
-                        <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 -ml-1 transition-all duration-200 group-hover:translate-x-0.5 text-[#4ECFBF]" />
+                        <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 -ml-1 transition-all duration-200 group-hover:translate-x-0.5 text-brand" />
                         {link.name}
                       </a>
                     </li>
@@ -213,12 +213,12 @@ export default function Footer() {
                   placeholder="your@email.com"
                   disabled={isSubscribing}
                   required
-                  className="w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-white/25 border border-white/[0.08] bg-white/[0.04] focus:outline-none focus:border-[#4ECFBF]/50 focus:bg-white/[0.06] transition-all duration-200 disabled:opacity-50"
+                  className="w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-white/25 border border-white/[0.08] bg-white/[0.04] focus:outline-none focus:border-brand/50 focus:bg-white/[0.06] transition-all duration-200 disabled:opacity-50"
                 />
                 <button
                   type="submit"
                   disabled={isSubscribing}
-                  className="w-full py-2.5 rounded-xl text-sm font-semibold bg-[#4ECFBF] text-[#080810] hover:bg-[#3dc4b5] active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold bg-brand text-[#080810] hover:bg-[#3dc4b5] active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isSubscribing ? 'Subscribing…' : 'Subscribe'}
                 </button>
@@ -230,7 +230,7 @@ export default function Footer() {
                     initial={{ opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className={`mt-2 text-xs ${subscribeState === 'success' ? 'text-[#10B981]' : 'text-[#EF4444]'}`}
+                    className={`mt-2 text-xs ${subscribeState === 'success' ? 'text-cat-news' : 'text-cat-hearts'}`}
                   >
                     {message}
                   </motion.p>
@@ -249,10 +249,9 @@ export default function Footer() {
                   href={s.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] text-sm font-semibold text-white/70 hover:text-white hover:border-[#4ECFBF]/30 hover:bg-[#4ECFBF]/08 transition-all duration-200 group"
-                  style={{ backgroundColor: 'rgba(78,207,191,0)' }}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] text-sm font-semibold text-white/70 hover:text-white hover:border-brand/30 hover:bg-brand/8 transition-all duration-200 group"
                 >
-                  <span className="text-[#4ECFBF] group-hover:scale-110 transition-transform">{s.icon}</span>
+                  <span className="text-brand group-hover:scale-110 transition-transform">{s.icon}</span>
                   {s.label}
                 </a>
               ))}
@@ -274,7 +273,7 @@ export default function Footer() {
           <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3 text-xs text-white/25">
             <span className="flex items-center gap-1.5">
               © {new Date().getFullYear()} MyTaco AI · Made with
-              <Heart className="w-3 h-3 text-[#EF4444] fill-current" />
+              <Heart className="w-3 h-3 text-cat-hearts fill-current" />
               for language learners worldwide
             </span>
             <span className="hidden sm:inline opacity-40">·</span>
@@ -296,10 +295,13 @@ export default function Footer() {
                 {l.label}
               </a>
             ))}
-            <span className="hidden sm:flex items-center gap-1.5 text-xs text-white/25">
-              <Shield className="w-3 h-3 text-[#4ECFBF]" />
-              SOC 2
-            </span>
+            <a
+              href="/gdpr"
+              className="hidden sm:flex items-center gap-1.5 text-xs text-white/25 hover:text-white/60 transition-colors duration-200"
+            >
+              <Shield className="w-3 h-3 text-brand" />
+              GDPR · EU
+            </a>
           </div>
 
         </div>
@@ -307,7 +309,7 @@ export default function Footer() {
 
       {/* Scroll-to-top button */}
       <motion.button
-        className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 w-10 h-10 rounded-full border border-[#4ECFBF]/30 bg-[#4ECFBF]/10 backdrop-blur-md flex items-center justify-center text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-[#080810] hover:scale-110 active:scale-95 transition-all duration-200 z-50"
+        className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 w-10 h-10 rounded-full border border-brand/30 bg-brand/10 backdrop-blur-md flex items-center justify-center text-brand hover:bg-brand hover:text-[#080810] hover:scale-110 active:scale-95 transition-all duration-200 z-50"
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}

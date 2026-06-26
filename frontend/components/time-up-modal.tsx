@@ -34,7 +34,7 @@ export default function TimeUpModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-[#4ECFBF]/10 border-b border-[#4ECFBF]/20">
+        <div className="flex items-center justify-between px-6 py-4 bg-brand/10 border-b border-brand/20">
           <h2 className="text-xl font-semibold text-gray-900">Time's Up!</h2>
           <button 
             onClick={onClose}
@@ -80,7 +80,7 @@ export default function TimeUpModal({
             )}
             
             <Button 
-              className="w-full bg-[#4ECFBF] hover:bg-[#5CCFC0] text-white font-medium py-3 rounded-lg shadow-sm transition-all hover:shadow-md"
+              className="w-full bg-brand hover:bg-[#5CCFC0] text-white font-medium py-3 rounded-lg shadow-sm transition-all hover:shadow-md"
               onClick={onNewAssessment}
             >
               Start New Assessment

@@ -1,6 +1,8 @@
 :root {
-  /* New vibrant color palette */
-  --turquoise: #4ECFBF; /* Darker version of #6DE1D2 for better text contrast */
+  /* New vibrant color palette
+     NOTE: --turquoise is now a compat shim that points at the brand token
+     (see globals.css). Queued for migration off this file. */
+  --turquoise: rgb(var(--brand)); /* brand teal #4ECFBF */
   --yellow: #FFD63A;
   --orange: #FFA955;
   --coral: #F75A5A;

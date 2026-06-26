@@ -199,10 +199,10 @@ export const AuthForm: React.FC<AuthFormProps> = ({
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-2xl border-2 border-[#4ECFBF]/40 overflow-hidden relative">
+      <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-2xl border-2 border-brand/40 overflow-hidden relative">
         {/* Immersive glow effect */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#4ECFBF]/10 via-transparent to-[#3a9e92]/10 pointer-events-none"></div>
-        <div className="absolute -inset-1 bg-gradient-to-r from-[#4ECFBF]/20 to-[#3a9e92]/20 rounded-lg blur-sm opacity-75 pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-brand/10 via-transparent to-[#3a9e92]/10 pointer-events-none"></div>
+        <div className="absolute -inset-1 bg-gradient-to-r from-brand/20 to-[#3a9e92]/20 rounded-lg blur-sm opacity-75 pointer-events-none"></div>
         <div className="relative bg-white/95 backdrop-blur-sm rounded-lg">
         {/* Tab Navigation */}
         <div className="flex bg-gray-50 border-b border-gray-200">
@@ -211,7 +211,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             onClick={switchToLogin}
             className={`flex-1 py-3 px-4 text-center font-medium transition-all duration-200 ${
               type === 'login'
-                ? 'bg-white text-[#4ECFBF] border-b-2 border-[#4ECFBF] shadow-sm'
+                ? 'bg-white text-brand border-b-2 border-brand shadow-sm'
                 : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
             }`}
           >
@@ -222,7 +222,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             onClick={switchToSignup}
             className={`flex-1 py-3 px-4 text-center font-medium transition-all duration-200 ${
               type === 'signup'
-                ? 'bg-white text-[#4ECFBF] border-b-2 border-[#4ECFBF] shadow-sm'
+                ? 'bg-white text-brand border-b-2 border-brand shadow-sm'
                 : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
             }`}
           >
@@ -276,7 +276,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                   validateField('name', e.target.value);
                 }}
                 onBlur={(e) => validateField('name', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF] transition-colors duration-200 text-gray-900 placeholder-gray-500 bg-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand transition-colors duration-200 text-gray-900 placeholder-gray-500 bg-white"
                 required
               />
               {validationErrors.name && (
@@ -300,7 +300,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 validateField('email', e.target.value);
               }}
               onBlur={(e) => validateField('email', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF] transition-colors duration-200 text-gray-900 placeholder-gray-500 bg-white"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand transition-colors duration-200 text-gray-900 placeholder-gray-500 bg-white"
               required
             />
             {validationErrors.email && (
@@ -323,7 +323,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 validateField('password', e.target.value);
               }}
               onBlur={(e) => validateField('password', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF] transition-colors duration-200 text-gray-900 placeholder-gray-500 bg-white"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand transition-colors duration-200 text-gray-900 placeholder-gray-500 bg-white"
               required
             />
             {validationErrors.password && (
@@ -347,7 +347,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                   validateField('confirmPassword', e.target.value);
                 }}
                 onBlur={(e) => validateField('confirmPassword', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4ECFBF] focus:border-[#4ECFBF] transition-colors duration-200 text-gray-900 placeholder-gray-500 bg-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand transition-colors duration-200 text-gray-900 placeholder-gray-500 bg-white"
                 required
               />
               {validationErrors.confirmPassword && (
@@ -361,7 +361,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             <div className="text-right">
               <a 
                 href="/auth/forgot-password" 
-                className="text-sm text-[#4ECFBF] hover:text-[#3db3a7] font-medium transition-colors duration-200"
+                className="text-sm text-brand hover:text-[#3db3a7] font-medium transition-colors duration-200"
               >
                 Forgot password?
               </a>
@@ -372,7 +372,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-[#4ECFBF] hover:bg-[#3db3a7] disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center"
+            className="w-full bg-brand hover:bg-[#3db3a7] disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center"
           >
             {isLoading ? (
               <>

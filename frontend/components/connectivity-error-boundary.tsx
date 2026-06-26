@@ -264,7 +264,7 @@ export class ConnectivityErrorBoundary extends Component<Props, State> {
       const isConnectivityError = error ? this.isConnectivityError(error) : false;
 
       return (
-        <div className="min-h-screen bg-gradient-to-br from-[#4ECFBF] to-[#44A08D] flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-brand to-[#44A08D] flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
             <div className="text-center">
               <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
@@ -287,7 +287,7 @@ export class ConnectivityErrorBoundary extends Component<Props, State> {
                   <Button
                     onClick={this.handleRetry}
                     disabled={isRetrying}
-                    className="w-full bg-[#4ECFBF] hover:bg-[#44A08D] text-white"
+                    className="w-full bg-brand hover:bg-[#44A08D] text-white"
                   >
                     {isRetrying ? (
                       <>

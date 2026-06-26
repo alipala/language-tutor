@@ -64,7 +64,7 @@ const PressKit: React.FC = () => {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-[#4ECFBF]/20 to-[#3a9e92]/20 border-b border-white/[0.08] py-20">
+      <div className="bg-gradient-to-r from-brand/20 to-[#3a9e92]/20 border-b border-white/[0.08] py-20">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -118,13 +118,13 @@ const PressKit: React.FC = () => {
               <div className="flex flex-col sm:flex-row gap-4">
                 <a
                   href="mailto:hello@mytacoai.com"
-                  className="px-6 py-3 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300 text-center"
+                  className="px-6 py-3 bg-brand hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300 text-center"
                 >
                   Contact Press Team
                 </a>
                 <a
                   href="/about"
-                  className="px-6 py-3 border-2 border-[#4ECFBF] text-[#4ECFBF] hover:bg-[#4ECFBF] hover:text-white font-medium rounded-lg transition-all duration-300 text-center"
+                  className="px-6 py-3 border-2 border-brand text-brand hover:bg-brand hover:text-white font-medium rounded-lg transition-all duration-300 text-center"
                 >
                   Learn More
                 </a>
@@ -142,7 +142,7 @@ const PressKit: React.FC = () => {
               <div className="grid grid-cols-2 gap-6">
                 {stats.map((stat, index) => (
                   <div key={stat.label} className="text-center">
-                    <stat.icon className="w-8 h-8 text-[#4ECFBF] mx-auto mb-2" />
+                    <stat.icon className="w-8 h-8 text-brand mx-auto mb-2" />
                     <div className="text-2xl font-bold text-white mb-1">{stat.number}</div>
                     <div className="text-white/60 text-sm">{stat.label}</div>
                   </div>
@@ -188,8 +188,8 @@ const PressKit: React.FC = () => {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center">
-                    <div className="w-12 h-12 bg-[#4ECFBF]/10 rounded-xl flex items-center justify-center mr-4">
-                      <asset.icon className="w-6 h-6 text-[#4ECFBF]" />
+                    <div className="w-12 h-12 bg-brand/10 rounded-xl flex items-center justify-center mr-4">
+                      <asset.icon className="w-6 h-6 text-brand" />
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-white">{asset.title}</h3>
@@ -197,7 +197,7 @@ const PressKit: React.FC = () => {
                     </div>
                   </div>
                   <button
-                    className="p-2 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white rounded-lg transition-colors duration-300"
+                    className="p-2 bg-brand hover:bg-[#3a9e92] text-white rounded-lg transition-colors duration-300"
                     onClick={() => alert('Asset download will be available soon. Please contact hello@mytacoai.com for immediate access.')}
                   >
                     <Download className="w-5 h-5" />
@@ -213,7 +213,7 @@ const PressKit: React.FC = () => {
               <h4 className="text-lg font-bold text-white mb-2">Need Additional Assets?</h4>
               <p className="text-white/60 text-sm">
                 For immediate access to press assets or custom materials, please contact our press team at
-                <a href="mailto:hello@mytacoai.com" className="text-[#4ECFBF] hover:text-white font-medium"> hello@mytacoai.com</a>
+                <a href="mailto:hello@mytacoai.com" className="text-brand hover:text-white font-medium"> hello@mytacoai.com</a>
               </p>
             </div>
           </div>
@@ -249,7 +249,7 @@ const PressKit: React.FC = () => {
                   <div className="flex-1">
                     <div className="flex items-center mb-3">
                       <Star className="w-4 h-4 text-[#FFD63A] mr-2" />
-                      <span className="text-sm font-medium text-[#4ECFBF] bg-[#4ECFBF]/10 border border-[#4ECFBF]/20 px-3 py-1 rounded-full">
+                      <span className="text-sm font-medium text-brand bg-brand/10 border border-brand/20 px-3 py-1 rounded-full">
                         {item.timeline}
                       </span>
                     </div>
@@ -262,14 +262,14 @@ const PressKit: React.FC = () => {
           </div>
 
           <div className="mt-12 text-center">
-            <div className="bg-gradient-to-r from-[#4ECFBF]/10 to-[#FFD63A]/10 border border-[#4ECFBF]/20 rounded-2xl p-8 max-w-3xl mx-auto">
+            <div className="bg-gradient-to-r from-brand/10 to-[#FFD63A]/10 border border-brand/20 rounded-2xl p-8 max-w-3xl mx-auto">
               <h4 className="text-xl font-bold text-white mb-3">Stay Updated</h4>
               <p className="text-white/60 mb-4">
                 Be the first to know about MyTaco AI's major announcements, product launches, and company news.
               </p>
               <a
                 href="mailto:hello@mytacoai.com?subject=Press Updates Subscription"
-                className="inline-flex items-center px-6 py-3 bg-[#4ECFBF] hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300"
+                className="inline-flex items-center px-6 py-3 bg-brand hover:bg-[#3a9e92] text-white font-medium rounded-lg transition-colors duration-300"
               >
                 Subscribe to Press Updates
               </a>
@@ -294,7 +294,7 @@ const PressKit: React.FC = () => {
               <h3 className="text-lg font-bold text-white mb-4">Press Contact</h3>
               <p className="text-white/60 mb-2">Gamze Dede Pala & Ali Pala</p>
               <p className="text-white/60 mb-2">Co-Founders</p>
-              <p className="text-[#4ECFBF] mb-2 font-medium">hello@mytacoai.com</p>
+              <p className="text-brand mb-2 font-medium">hello@mytacoai.com</p>
               <p className="text-white/60 mb-2">+31 0657126162</p>
               <p className="text-white/40 text-sm">Amsterdam, Netherlands</p>
             </div>

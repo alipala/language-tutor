@@ -322,7 +322,7 @@ export default function LevelSelection() {
   const formattedLevels = getLevels(selectedLanguage);
 
   return (
-    <div className="min-h-screen text-[#4ECFBF] level-selection-container">
+    <div className="min-h-screen text-brand level-selection-container">
       <NavBar activeSection="section1" />
       <main className="flex-grow flex flex-col p-4 md:p-8 main-content-with-navbar" style={{paddingTop: '220px'}}>
         <div className="flex flex-col flex-1 items-stretch space-y-8 max-w-4xl mx-auto">
@@ -444,8 +444,8 @@ export default function LevelSelection() {
                       bg-white h-[220px] border-2
                       ${
                         selectedLevel === level.code
-                          ? `border-[#4ECFBF] shadow-xl shadow-[#4ECFBF]/20 ring-2 ring-[#4ECFBF]/50`
-                          : 'border-[#4ECFBF] hover:border-[#4ECFBF]/80 shadow-lg hover:shadow-[#4ECFBF]/20'
+                          ? `border-brand shadow-xl shadow-brand/20 ring-2 ring-brand/50`
+                          : 'border-brand hover:border-brand/80 shadow-lg hover:shadow-brand/20'
                       }
                     `}
                   >

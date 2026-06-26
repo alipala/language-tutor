@@ -177,10 +177,10 @@ function CEFRScore() {
     { label: 'Fluency',       pct: 71, color: '#10B981' },
   ];
   return (
-    <div className="rounded-xl border border-white/[0.10] bg-[#0E0E1A] p-4 space-y-2">
+    <div className="rounded-xl border border-white/[0.10] bg-surface-sunken p-4 space-y-2">
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] uppercase tracking-wider text-white/30">CEFR Score</span>
-        <span className="text-xs font-bold text-[#4ECFBF]">B1 → Assigned</span>
+        <span className="text-xs font-bold text-brand">B1 → Assigned</span>
       </div>
       {scores.map(s => (
         <div key={s.label} className="flex items-center gap-2">
@@ -211,13 +211,13 @@ function MissionList() {
   return (
     <div className="space-y-2">
       {missions.map(m => (
-        <div key={m.tier} className="flex items-center gap-3 rounded-xl border border-white/[0.09] bg-[#0E0E1A] px-3 py-2">
+        <div key={m.tier} className="flex items-center gap-3 rounded-xl border border-white/[0.09] bg-surface-sunken px-3 py-2">
           <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: m.color }} />
           <span className={`text-xs flex-1 ${m.done ? 'line-through text-white/30' : 'text-white/70'}`}>
             {m.label}
           </span>
           {m.done
-            ? <span className="text-[10px] font-bold text-[#4ECFBF]">✓</span>
+            ? <span className="text-[10px] font-bold text-brand">✓</span>
             : <span className="text-[10px] text-white/20">···</span>
           }
         </div>
@@ -258,25 +258,25 @@ function AssessmentBranch() {
   return (
     <div className="grid grid-cols-2 gap-3 mt-4">
       <motion.div
-        className="rounded-xl border border-[#10B981]/30 p-4"
+        className="rounded-xl border border-cat-news/30 p-4"
         style={{ backgroundColor: '#0E1A14' }}
         initial={{ opacity: 0, x: -20 }}
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: true }}
         transition={{ delay: 0.3, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="text-[#10B981] font-bold text-sm mb-1">✓ Pass</div>
+        <div className="text-cat-news font-bold text-sm mb-1">✓ Pass</div>
         <p className="text-white/40 text-xs leading-snug">Next level plan auto-generated.</p>
       </motion.div>
       <motion.div
-        className="rounded-xl border border-[#F59E0B]/30 p-4"
+        className="rounded-xl border border-cat-missions/30 p-4"
         style={{ backgroundColor: '#1A1508' }}
         initial={{ opacity: 0, x: 20 }}
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: true }}
         transition={{ delay: 0.4, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="text-[#F59E0B] font-bold text-sm mb-1">↺ Retry</div>
+        <div className="text-cat-missions font-bold text-sm mb-1">↺ Retry</div>
         <p className="text-white/40 text-xs leading-snug">Targeted retry plan created.</p>
       </motion.div>
     </div>
@@ -312,7 +312,7 @@ export default function LearningJourneySection({ scrollTo, locale: _locale }: { 
           viewport={{ once: true, margin: '-60px' }}
           transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#4ECFBF] mb-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-brand mb-4">
             Your path to fluency
           </p>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4">
@@ -418,7 +418,7 @@ export default function LearningJourneySection({ scrollTo, locale: _locale }: { 
         >
           <button
             onClick={() => scrollTo('pricing')}
-            className="inline-flex items-center gap-2 rounded-2xl bg-[#4ECFBF] px-8 py-4 text-[#0A0A0F] font-bold text-sm hover:bg-[#3dc4b5] hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 shadow-[0_0_40px_rgba(78,207,191,0.25)]"
+            className="inline-flex items-center gap-2 rounded-2xl bg-brand px-8 py-4 text-bg font-bold text-sm hover:bg-[#3dc4b5] hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 shadow-[0_0_40px_rgba(78,207,191,0.25)]"
           >
             Start your journey
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
