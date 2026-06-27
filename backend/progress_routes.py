@@ -288,11 +288,20 @@ async def _run_sentence_analysis_background(
                 return
 
             # Step 1: Create notification in notifications_collection
+            # Fetch user's UI language preference for localised notification
+            from notification_service import get_notification_strings, localise_language_name
+            user_doc_for_notif = await users_collection.find_one({"_id": ObjectId(user_id)}) if ObjectId.is_valid(user_id) else None
+            user_locale = (user_doc_for_notif or {}).get("app_language") or "en"
+            ns = get_notification_strings(user_locale)
+            localised_lang = localise_language_name(language, user_locale)
+            notif_title = ns["analysis_title"].format(language=localised_lang)
+            notif_body = ns["analysis_body"].format(count=len(analyses))
+
             notification_id = str(ObjectId())
             notification_doc = {
                 "_id": notification_id,
-                "title": f"Your {language.title()} practice analysis is ready!",
-                "content": f"I've analyzed {len(analyses)} sentences from your practice session. Tap to see detailed feedback and tips!",
+                "title": notif_title,
+                "content": notif_body,
                 "notification_type": "session_analysis",  # Custom type for TaalCoach
                 "created_by": "system",  # System-generated notification
                 "created_at": datetime.now(timezone.utc),

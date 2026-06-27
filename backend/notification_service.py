@@ -5,6 +5,77 @@ and WebSocket real-time updates
 """
 
 from typing import List, Dict, Any, Optional
+
+# ─── Localised push notification strings ────────────────────────────────────
+# Keyed by ISO 639-1 language code. All 7 supported UI languages are covered.
+# Falls back to 'en' for any unknown / None locale.
+
+NOTIFICATION_STRINGS: Dict[str, Dict[str, str]] = {
+    "en": {
+        "first_session_title":   "Great First Session! 🎉",
+        "first_session_body":    "You earned {xp} XP! Come back tomorrow to build your streak.",
+        "analysis_title":        "Your {language} practice analysis is ready!",
+        "analysis_body":         "I've analyzed {count} sentences from your practice session. Tap to see detailed feedback and tips!",
+    },
+    "tr": {
+        "first_session_title":   "Harika İlk Oturum! 🎉",
+        "first_session_body":    "{xp} XP kazandın! Serini sürdürmek için yarın geri gel.",
+        "analysis_title":        "{language} pratik analizin hazır!",
+        "analysis_body":         "Pratik oturumundan {count} cümle analiz ettim. Detaylı geri bildirim ve ipuçları için dokun!",
+    },
+    "es": {
+        "first_session_title":   "¡Gran primera sesión! 🎉",
+        "first_session_body":    "¡Ganaste {xp} XP! Vuelve mañana para mantener tu racha.",
+        "analysis_title":        "¡Tu análisis de práctica de {language} está listo!",
+        "analysis_body":         "Analicé {count} oraciones de tu sesión de práctica. ¡Toca para ver comentarios detallados y consejos!",
+    },
+    "fr": {
+        "first_session_title":   "Excellente première session ! 🎉",
+        "first_session_body":    "Tu as gagné {xp} XP ! Reviens demain pour maintenir ta série.",
+        "analysis_title":        "Ton analyse de pratique en {language} est prête !",
+        "analysis_body":         "J'ai analysé {count} phrases de ta session de pratique. Appuie pour voir les retours détaillés et les conseils !",
+    },
+    "de": {
+        "first_session_title":   "Tolle erste Sitzung! 🎉",
+        "first_session_body":    "Du hast {xp} XP verdient! Komm morgen wieder, um deine Serie zu verlängern.",
+        "analysis_title":        "Deine {language}-Übungsanalyse ist fertig!",
+        "analysis_body":         "Ich habe {count} Sätze aus deiner Übungssitzung analysiert. Tippe für detailliertes Feedback und Tipps!",
+    },
+    "nl": {
+        "first_session_title":   "Geweldige eerste sessie! 🎉",
+        "first_session_body":    "Je hebt {xp} XP verdiend! Kom morgen terug om je reeks voort te zetten.",
+        "analysis_title":        "Je {language}-oefenanalyse is klaar!",
+        "analysis_body":         "Ik heb {count} zinnen uit je oefensessie geanalyseerd. Tik voor gedetailleerde feedback en tips!",
+    },
+    "pt": {
+        "first_session_title":   "Ótima primeira sessão! 🎉",
+        "first_session_body":    "Você ganhou {xp} XP! Volte amanhã para manter sua sequência.",
+        "analysis_title":        "Sua análise de prática de {language} está pronta!",
+        "analysis_body":         "Analisei {count} frases da sua sessão de prática. Toque para ver feedback detalhado e dicas!",
+    },
+}
+
+# Language names localised per UI language (used in analysis_title)
+_LANGUAGE_NAMES: Dict[str, Dict[str, str]] = {
+    "en": {"english": "English", "spanish": "Spanish", "french": "French", "german": "German", "dutch": "Dutch", "portuguese": "Portuguese", "turkish": "Turkish"},
+    "tr": {"english": "İngilizce", "spanish": "İspanyolca", "french": "Fransızca", "german": "Almanca", "dutch": "Felemenkçe", "portuguese": "Portekizce", "turkish": "Türkçe"},
+    "es": {"english": "inglés", "spanish": "español", "french": "francés", "german": "alemán", "dutch": "neerlandés", "portuguese": "portugués", "turkish": "turco"},
+    "fr": {"english": "anglais", "spanish": "espagnol", "french": "français", "german": "allemand", "dutch": "néerlandais", "portuguese": "portugais", "turkish": "turc"},
+    "de": {"english": "Englisch", "spanish": "Spanisch", "french": "Französisch", "german": "Deutsch", "dutch": "Niederländisch", "portuguese": "Portugiesisch", "turkish": "Türkisch"},
+    "nl": {"english": "Engels", "spanish": "Spaans", "french": "Frans", "german": "Duits", "dutch": "Nederlands", "portuguese": "Portugees", "turkish": "Turks"},
+    "pt": {"english": "inglês", "spanish": "espanhol", "french": "francês", "german": "alemão", "dutch": "holandês", "portuguese": "português", "turkish": "turco"},
+}
+
+def get_notification_strings(locale: Optional[str]) -> Dict[str, str]:
+    """Return notification strings for the given locale (falls back to 'en')."""
+    lang = (locale or "en").lower()[:2]
+    return NOTIFICATION_STRINGS.get(lang, NOTIFICATION_STRINGS["en"])
+
+def localise_language_name(practice_language: str, ui_locale: Optional[str]) -> str:
+    """Translate a practice language name (e.g. 'english') into the UI locale."""
+    lang = (ui_locale or "en").lower()[:2]
+    names = _LANGUAGE_NAMES.get(lang, _LANGUAGE_NAMES["en"])
+    return names.get(practice_language.lower(), practice_language.title())
 from exponent_server_sdk import (
     DeviceNotRegisteredError,
     PushClient,

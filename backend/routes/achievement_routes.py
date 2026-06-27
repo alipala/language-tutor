@@ -405,14 +405,20 @@ async def complete_challenge_session(
                     print(f"📤 Sending first session welcome notification to user {current_user.id}")
 
                     try:
-                        from notification_service import NotificationService
+                        from notification_service import NotificationService, get_notification_strings
                         notification_service = NotificationService()
+
+                        # Localise notification using user's UI language preference
+                        user_locale = user_doc.get("app_language") or "en"
+                        ns = get_notification_strings(user_locale)
+                        notif_title = ns["first_session_title"]
+                        notif_body = ns["first_session_body"].format(xp=request.total_xp)
 
                         # Send push notification
                         result = notification_service.send_expo_push_notification(
                             push_tokens=[push_token],
-                            title="Great First Session! 🎉",
-                            body=f"You earned {request.total_xp} XP! Come back tomorrow to build your streak.",
+                            title=notif_title,
+                            body=notif_body,
                             data={
                                 "type": "first_session_welcome",
                                 "session_id": session_id,

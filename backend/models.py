@@ -185,6 +185,9 @@ class UserInDB(UserBase):
     onboarding_level: Optional[str] = None
     onboarding_daily_minutes: Optional[int] = None
 
+    # UI language preference (en/tr/es/fr/de/nl/pt) — drives localised push notifications
+    app_language: Optional[str] = None
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
@@ -243,6 +246,8 @@ class UserUpdate(BaseModel):
     onboarding_goal: Optional[str] = None
     onboarding_level: Optional[str] = None
     onboarding_daily_minutes: Optional[int] = None
+    # UI language for localised push notifications
+    app_language: Optional[str] = None
 
     class Config:
         populate_by_name = True
