@@ -458,10 +458,14 @@ async def start_series(body: StartSeriesRequest, current_user=Depends(get_curren
 
     existing = await progress_collection.find_one({"user_id": user_id, "series_id": body.series_id})
 
-    # single-active guard: block starting a NEW series while another is in_progress.
+    # single-active guard: block starting a NEW series while another is in_progress
+    # FOR THE SAME language+level. Different language or level is always allowed.
     if STORY_SINGLE_ACTIVE_SERIES and (existing is None or existing.get("status") == "not_started"):
         other_active = await progress_collection.find_one(
-            {"user_id": user_id, "status": "in_progress", "series_id": {"$ne": body.series_id}})
+            {"user_id": user_id, "status": "in_progress",
+             "series_id": {"$ne": body.series_id},
+             "language": series.get("language", ""),
+             "level": series.get("level", "")})
         if other_active:
             raise HTTPException(409, "Finish your current story before starting a new one.")
 
@@ -529,12 +533,14 @@ async def scene_complete(body: SceneCompleteRequest, current_user=Depends(get_cu
     # them so a direct API call can't start a 2nd series or play a locked episode.
     existing = await progress_collection.find_one({"user_id": user_id, "series_id": body.series_id})
 
-    # GUARD 1 — single active series: while another series is in_progress, you cannot
-    # start a NEW one. (Continuing the already-active series is fine; a series the
-    # user has previously touched, completed, or this very series are all allowed.)
+    # GUARD 1 — single active series: while another series is in_progress FOR THE SAME
+    # language+level, you cannot start a NEW one. Different language or level is fine.
     if STORY_SINGLE_ACTIVE_SERIES and existing is None:
         other_active = await progress_collection.find_one(
-            {"user_id": user_id, "status": "in_progress", "series_id": {"$ne": body.series_id}})
+            {"user_id": user_id, "status": "in_progress",
+             "series_id": {"$ne": body.series_id},
+             "language": series.get("language", ""),
+             "level": series.get("level", "")})
         if other_active:
             raise HTTPException(409, "Finish your current story before starting a new one.")
 
