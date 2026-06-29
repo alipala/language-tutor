@@ -94,7 +94,7 @@ const SystemStatus: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
+    <div className="min-h-screen pt-20 sm:pt-24" style={{ backgroundColor: '#0A0A0F' }}>
       <div className="bg-gradient-to-r from-brand to-[#3a9e92] text-white py-20">
         <div className="max-w-6xl mx-auto px-6">
           <motion.div

@@ -310,11 +310,12 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
   }, []);
 
   const isLandingGuest = isLandingPage && !user && !isInstitutionUser && !isTutorUser;
-  // Navbar background: transparent dark glass on the landing page, teal elsewhere.
-  // Show teal ONLY once mounted AND we're certain this isn't the landing page —
-  // otherwise (pre-mount, or landing) default to the dark/transparent glass so
-  // guests never see a teal flash on refresh.
-  const useDarkGlass = !mounted || isLandingPage;
+  const isSignedIn = !!user || isInstitutionUser || isTutorUser;
+  // Navbar background: transparent dark glass for guests on every public/marketing
+  // page (landing, /about, /blog, /press, legal pages …), teal only once a real
+  // user/institution/tutor is signed in. Until mounted we don't know the auth
+  // state yet, so default to dark glass so guests never see a teal flash on refresh.
+  const useDarkGlass = !mounted || !isSignedIn;
   let navbarBg: string;
   if (useDarkGlass) {
     navbarBg = isScrolled

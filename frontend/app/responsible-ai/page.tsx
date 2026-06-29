@@ -4,7 +4,7 @@ import { Shield, Eye, Users, Lock, CheckCircle, Brain, Heart, Globe, Award, Book
 
 export default function ResponsibleAIPage() {
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
+    <div className="min-h-screen pt-20 sm:pt-24" style={{ backgroundColor: '#0A0A0F' }}>
       {/* Hero Section */}
       <section className="py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">

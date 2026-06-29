@@ -122,7 +122,7 @@ const Blog: React.FC = () => {
     : posts.filter(post => post.category === selectedCategory);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
+    <div className="min-h-screen pt-20 sm:pt-24" style={{ backgroundColor: '#0A0A0F' }}>
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-brand/20 to-[#3a9e92]/20 border-b border-white/[0.08] py-20">
         <div className="max-w-6xl mx-auto px-6">

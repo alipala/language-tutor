@@ -62,7 +62,7 @@ const PressKit: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
+    <div className="min-h-screen pt-20 sm:pt-24" style={{ backgroundColor: '#0A0A0F' }}>
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-brand/20 to-[#3a9e92]/20 border-b border-white/[0.08] py-20">
         <div className="max-w-6xl mx-auto px-6">
@@ -295,7 +295,7 @@ const PressKit: React.FC = () => {
               <p className="text-white/60 mb-2">Gamze Dede Pala & Ali Pala</p>
               <p className="text-white/60 mb-2">Co-Founders</p>
               <p className="text-brand mb-2 font-medium">hello@mytacoai.com</p>
-              <p className="text-white/60 mb-2">+31 0657126162</p>
+              <p className="text-white/60 mb-2">+31 6 21 18 55 93</p>
               <p className="text-white/40 text-sm">Amsterdam, Netherlands</p>
             </div>
 

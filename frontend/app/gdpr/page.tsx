@@ -60,7 +60,7 @@ const GDPRCompliance: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
+    <div className="min-h-screen pt-20 sm:pt-24" style={{ backgroundColor: '#0A0A0F' }}>
       {/* Header */}
       <div className="bg-gradient-to-r from-brand to-[#3a9e92] text-white py-16">
         <div className="max-w-4xl mx-auto px-6">
@@ -295,8 +295,8 @@ const GDPRCompliance: React.FC = () => {
                 <Phone className="w-5 h-5 text-brand mr-3" />
                 <div>
                   <p className="font-medium text-white">Phone</p>
-                  <a href="tel:+31-0657126162" className="text-brand hover:text-white transition-colors">
-                    +31 0657126162
+                  <a href="tel:+31621185593" className="text-brand hover:text-white transition-colors">
+                    +31 6 21 18 55 93
                   </a>
                 </div>
               </div>

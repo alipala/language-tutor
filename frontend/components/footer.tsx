@@ -7,7 +7,7 @@ import {
   Mail, Phone, MapPin,
   Linkedin, Youtube, Instagram,
   ChevronRight, Heart, Shield,
-  Users, BookOpen, Globe, MessageSquare, Star, Zap,
+  Users, BookOpen, Globe, MessageSquare, Star,
 } from 'lucide-react';
 
 const NAV_SECTIONS = [
@@ -17,7 +17,6 @@ const NAV_SECTIONS = [
       { name: 'About Us',   href: '/about',          icon: Users    },
       { name: 'Press Kit',  href: '/press',           icon: Star     },
       { name: 'Blog',       href: '/blog',            icon: BookOpen },
-      { name: 'Research',   href: '/research',        icon: Zap      },
     ],
   },
   {

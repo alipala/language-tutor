@@ -1,12 +1,13 @@
 'use client';
 
+import Image from "next/image";
 import { Users, Target, Shield, Lightbulb, Heart, Globe, Mail, Phone, MapPin } from "lucide-react";
 
 export default function AboutPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0A0A0F' }}>
       {/* Hero Section */}
-      <section className="py-20 px-4">
+      <section className="pt-28 sm:pt-32 pb-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-5xl font-bold bg-gradient-to-r from-brand via-[#FFD63A] to-[#F75A5A] bg-clip-text text-transparent mb-6">
             About MyTaco AI
@@ -160,29 +161,54 @@ export default function AboutPage() {
 
           {/* Founders */}
           <div className="grid md:grid-cols-2 gap-8 mb-12">
-            {/* Gamze */}
+            {/* Maikel */}
             <div className="bg-gradient-to-br from-brand/5 to-[#FFD63A]/5 rounded-2xl p-8 border border-white/[0.10] hover:shadow-lg hover:shadow-black/20 transition-all duration-300">
               <div className="text-center mb-6">
-                <div className="w-24 h-24 bg-gradient-to-r from-brand to-[#FFD63A] rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <span className="text-white text-2xl font-bold">GP</span>
-                </div>
-                <h3 className="text-xl font-bold text-white">Gamze Dede Pala</h3>
+                <a
+                  href="https://www.linkedin.com/in/maikel-kuppens-32129420/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Maikel Kuppens on LinkedIn"
+                  className="group block w-24 h-24 rounded-full mx-auto mb-4 overflow-hidden bg-gradient-to-r from-brand to-[#FFD63A] ring-2 ring-white/10 hover:ring-brand/60 transition-all duration-300"
+                >
+                  <Image
+                    src="/images/team/maikel-kuppens.jpg"
+                    alt="Maikel Kuppens"
+                    width={96}
+                    height={96}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </a>
+                <h3 className="text-xl font-bold text-white">Maikel Kuppens</h3>
                 <p className="text-brand font-semibold">Co-Founder</p>
               </div>
               <p className="text-white/60 leading-relaxed">
-                Former business analyst and QA Engineer from Turkey, Gamze is the visionary founder of Kolay Gelsin NL
-                application in the Netherlands. She's passionate about making learning accessible for everyone and brings
-                deep expertise in Prompt Engineering and Context Engineering. Her unique perspective as both a tech
-                professional and immigrant parent drives MyTaco AI's user-centric approach.
+                Based in Amsterdam, Maikel is an AI consultant and growth strategist who helps businesses tap into the
+                world of AI—turning emerging technology into real, practical solutions. Through his work with TAP Agency,
+                he supports companies in automating and elevating their operations with AI. With a strong background in
+                sales, business development, and high-ticket partnerships, Maikel drives MyTaco AI's growth and brings a
+                relentless commercial focus on getting our speaking coach into the hands of learners everywhere.
               </p>
             </div>
 
             {/* Ali */}
             <div className="bg-gradient-to-br from-[#F75A5A]/5 to-[#FFA955]/5 rounded-2xl p-8 border border-white/[0.10] hover:shadow-lg hover:shadow-black/20 transition-all duration-300">
               <div className="text-center mb-6">
-                <div className="w-24 h-24 bg-gradient-to-r from-[#F75A5A] to-[#FFA955] rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <span className="text-white text-2xl font-bold">AP</span>
-                </div>
+                <a
+                  href="https://www.linkedin.com/in/alipala/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Ali Pala on LinkedIn"
+                  className="group block w-24 h-24 rounded-full mx-auto mb-4 overflow-hidden bg-gradient-to-r from-[#F75A5A] to-[#FFA955] ring-2 ring-white/10 hover:ring-[#F75A5A]/60 transition-all duration-300"
+                >
+                  <Image
+                    src="/images/team/ali-pala.jpg"
+                    alt="Ali Pala"
+                    width={96}
+                    height={96}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </a>
                 <h3 className="text-xl font-bold text-white">Ali Pala</h3>
                 <p className="text-[#F75A5A] font-semibold">Co-Founder</p>
               </div>
@@ -295,7 +321,7 @@ export default function AboutPage() {
                 <Phone className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-lg font-bold text-white mb-2">Phone</h3>
-              <p className="text-white/60">+31 0657126162</p>
+              <p className="text-white/60">+31 6 21 18 55 93</p>
             </div>
 
             <div className="flex flex-col items-center">
