@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 
@@ -17,9 +18,9 @@ function Reveal({
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 28 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-60px' }}
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true, amount: 0 }}
       transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
     >
       {children}
@@ -84,34 +85,38 @@ export default function StoryWorldsSection() {
               {/* ── Left: cover-art mock ── */}
               <div className="relative">
                 <div
-                  className="relative aspect-[4/3] rounded-2xl overflow-hidden border"
-                  style={{
-                    borderColor: 'rgba(232,76,136,0.30)',
-                    background:
-                      'linear-gradient(160deg, #3a1f2e 0%, #2a1420 55%, #1a0e16 100%)',
-                  }}
+                  className="group relative aspect-[4/3] rounded-2xl overflow-hidden border"
+                  style={{ borderColor: 'rgba(232,76,136,0.30)' }}
                 >
-                  {/* faux illustration: layered glows + skyline */}
+                  {/* real AI-generated cover art */}
+                  <Image
+                    src="/images/story/whispers-in-lisbon.jpg"
+                    alt="Whispers in Lisbon — a noir mystery on a rain-soaked Lisbon street"
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 600px"
+                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+                    priority
+                  />
+                  {/* magenta wash to tie the cover into the Story Worlds theme */}
+                  <div
+                    className="absolute inset-0 mix-blend-soft-light opacity-40"
+                    style={{
+                      background:
+                        'radial-gradient(circle at 75% 55%, rgba(232,76,136,0.55) 0%, transparent 60%)',
+                    }}
+                  />
+                  {/* bottom-to-top scrim so the title/badge stay legible */}
                   <div
                     className="absolute inset-0"
                     style={{
                       background:
-                        'radial-gradient(circle at 30% 30%, rgba(247,90,90,0.35) 0%, transparent 45%), radial-gradient(circle at 75% 60%, rgba(232,76,136,0.40) 0%, transparent 50%)',
+                        'linear-gradient(180deg, rgba(10,6,12,0.45) 0%, transparent 28%, transparent 50%, rgba(10,6,12,0.85) 100%)',
                     }}
                   />
-                  <div className="absolute bottom-0 left-0 right-0 h-1/2 flex items-end justify-center gap-1 px-6 opacity-60">
-                    {[40, 70, 55, 90, 50, 80, 60, 100, 45, 75].map((h, i) => (
-                      <div
-                        key={i}
-                        className="flex-1 rounded-t-sm"
-                        style={{ height: `${h}%`, background: 'rgba(0,0,0,0.55)' }}
-                      />
-                    ))}
-                  </div>
                   {/* episode badge */}
                   <div
-                    className="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider rounded-full px-3 py-1"
-                    style={{ background: 'rgba(0,0,0,0.5)', color: STORY }}
+                    className="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider rounded-full px-3 py-1 backdrop-blur-sm"
+                    style={{ background: 'rgba(0,0,0,0.55)', color: STORY }}
                   >
                     Episode 3 · The Night Market
                   </div>
@@ -120,7 +125,7 @@ export default function StoryWorldsSection() {
                     <div className="text-white font-extrabold text-xl sm:text-2xl leading-tight drop-shadow-lg">
                       Whispers in Lisbon
                     </div>
-                    <div className="text-white/70 text-xs mt-1">A mystery series · B1 · 🇵🇹 Portuguese</div>
+                    <div className="text-white/80 text-xs mt-1">A mystery series · B1 · 🇵🇹 Portuguese</div>
                   </div>
                 </div>
                 <div className="text-center text-[10px] text-ink-faint mt-2">

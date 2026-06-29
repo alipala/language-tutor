@@ -90,9 +90,9 @@ function Reveal({ children, delay = 0, className = '' }: { children: React.React
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 28 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-60px' }}
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true, amount: 0 }}
       transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
     >
       {children}
@@ -179,7 +179,7 @@ export default function SpeakingDNASection() {
                         key={d.key}
                         initial={reduce ? false : { opacity: 0, scale: 0.6 }}
                         whileInView={{ opacity: 1, scale: 1 }}
-                        viewport={{ once: true }}
+                        viewport={{ once: true, amount: 0 }}
                         transition={{ duration: 0.5, delay: 0.15 * i, ease: [0.22, 1, 0.36, 1] }}
                         style={{ transformOrigin: `${CX}px ${y}px`, cursor: 'pointer' }}
                         onMouseEnter={() => setActiveKey(d.key)}
@@ -219,9 +219,9 @@ export default function SpeakingDNASection() {
                       key={d.key}
                       onMouseEnter={() => setActiveKey(d.key)}
                       onMouseLeave={() => setActiveKey(null)}
-                      initial={reduce ? false : { opacity: 0, x: 16 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
+                      initial={reduce ? false : { opacity: 0 }}
+                      whileInView={{ opacity: 1 }}
+                      viewport={{ once: true, amount: 0 }}
                       transition={{ duration: 0.45, delay: 0.1 + 0.08 * i }}
                       className="relative flex items-center gap-3 rounded-2xl border pl-4 pr-4 py-3 overflow-hidden transition-all duration-300 cursor-pointer"
                       style={{
@@ -256,7 +256,7 @@ export default function SpeakingDNASection() {
                               style={{ background: d.color }}
                               initial={reduce ? false : { width: 0 }}
                               whileInView={{ width: `${d.score}%` }}
-                              viewport={{ once: true }}
+                              viewport={{ once: true, amount: 0 }}
                               transition={{ duration: 0.9, delay: 0.25 + 0.08 * i, ease: [0.22, 1, 0.36, 1] }}
                             />
                           </div>
@@ -273,7 +273,7 @@ export default function SpeakingDNASection() {
                   <motion.div
                     key={shown.key}
                     initial={reduce ? false : { opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    animate={{ opacity: 1 }}
                     exit={reduce ? undefined : { opacity: 0, y: -8 }}
                     transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                     className="w-full rounded-2xl border p-5 flex flex-col overflow-hidden"

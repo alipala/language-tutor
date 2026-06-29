@@ -186,9 +186,9 @@ export default function SubscriptionPlans() {
         {/* Header */}
         <motion.div
           className="text-center mb-14"
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-60px' }}
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true, amount: 0 }}
           transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
         >
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-brand mb-4">
@@ -207,7 +207,7 @@ export default function SubscriptionPlans() {
           className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 mb-12"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0 }}
           transition={{ duration: 0.5, delay: 0.15 }}
         >
           <span className={`text-sm font-medium transition-colors ${!isAnnual ? 'text-white' : 'text-white/35'}`}>
@@ -247,8 +247,8 @@ export default function SubscriptionPlans() {
         <AnimatePresence mode="wait">
           <motion.div
             key={isAnnual ? 'annual' : 'monthly'}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.3 }}
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5"
@@ -258,8 +258,8 @@ export default function SubscriptionPlans() {
               return (
                 <motion.div
                   key={`${plan.name}-${isAnnual ? 'annual' : 'monthly'}`}
-                  initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ duration: 0.4, delay: index * 0.08 }}
                   className={`relative flex flex-col rounded-3xl border ${accent.border} overflow-hidden transition-all duration-300 hover:-translate-y-1 ${
                     plan.popular ? 'lg:scale-[1.04]' : ''
@@ -374,7 +374,7 @@ export default function SubscriptionPlans() {
           style={{ backgroundColor: '#13131F' }}
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
           <div className="flex items-center gap-3">

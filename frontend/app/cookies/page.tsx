@@ -57,7 +57,7 @@ const CookiePolicy: React.FC = () => {
   return (
     <div className="min-h-screen pt-20 sm:pt-24" style={{ backgroundColor: '#0A0A0F' }}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-brand to-[#3a9e92] text-white py-16">
+      <div className="py-16 px-4">
         <div className="max-w-4xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -66,13 +66,17 @@ const CookiePolicy: React.FC = () => {
             className="text-center"
           >
             <div className="flex items-center justify-center mb-6">
-              <Cookie className="w-12 h-12 mr-4" />
-              <h1 className="text-4xl font-bold">Cookie Policy</h1>
+              <div className="w-14 h-14 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center mr-4">
+                <Cookie className="w-8 h-8 text-brand" />
+              </div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-brand to-[#FFD63A] bg-clip-text text-transparent">
+                Cookie Policy
+              </h1>
             </div>
-            <p className="text-xl text-white/90 mb-4">
+            <p className="text-xl text-white/60 mb-4">
               Learn about how we use cookies and similar technologies on our platform.
             </p>
-            <p className="text-white/80">
+            <p className="text-white/40">
               Last updated: {lastUpdated}
             </p>
           </motion.div>

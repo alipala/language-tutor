@@ -25,7 +25,6 @@ const NAV_SECTIONS = [
       { name: 'For Schools',    href: '/institution/login', icon: Users   },
       { name: 'Responsible AI', href: '/responsible-ai',    icon: Shield  },
       { name: 'Help Center',    href: '/help',              icon: MessageSquare },
-      { name: 'System Status',  href: '/status',            icon: Globe   },
     ],
   },
   {

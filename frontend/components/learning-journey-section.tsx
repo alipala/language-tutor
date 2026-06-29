@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { useRef, useState, useLayoutEffect } from 'react';
+import { motion } from 'framer-motion';
 
 /* ─────────────────────────────────────────────────────────────
  *  LAYOUT:  Each row is  [ dot-column | card ]
@@ -13,42 +13,71 @@ import { motion, useScroll, useTransform } from 'framer-motion';
  *  No coordinate mismatch possible.
  * ─────────────────────────────────────────────────────────────*/
 
-/* ─── Spine — 2px line down the left column ──────────────── */
-function JourneySpine({ containerRef }: { containerRef: React.RefObject<HTMLDivElement | null> }) {
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ['start 80%', 'end 40%'],
-  });
-  const scaleY = useTransform(scrollYProgress, [0, 1], [0, 1]);
+/* ─── Spine — 2px line down the left column ──────────────────────
+   Its height is measured to end exactly at the centre of the LAST dot,
+   so the line never hangs past the final node. Re-measures on resize. ── */
+function JourneySpine({
+  containerRef,
+  lastDotRef,
+}: {
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  lastDotRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const [height, setHeight] = useState(0);
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const c = containerRef.current;
+      const d = lastDotRef.current;
+      if (!c || !d) return;
+      const cTop = c.getBoundingClientRect().top;
+      const dRect = d.getBoundingClientRect();
+      // distance from container top to the vertical centre of the last dot
+      setHeight(dRect.top - cTop + dRect.height / 2);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (containerRef.current) ro.observe(containerRef.current);
+    window.addEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [containerRef, lastDotRef]);
 
   return (
     /* Centered in the 40px dot-column: left = (40/2) - 1 = 19px */
     <div
-      className="absolute top-0 bottom-0 w-[2px] pointer-events-none z-0"
-      style={{ left: 19 }}
+      className="absolute w-[2px] pointer-events-none z-0"
+      style={{ left: 19, top: 0, height: height || '100%' }}
       aria-hidden
     >
       {/* Faint static track always visible */}
       <div className="absolute inset-0 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }} />
-      {/* Scroll-driven gradient fill */}
+      {/* Gradient fill — fills once top-to-bottom when in view, then stays.
+          Not scroll-linked, so it always reaches the final node. */}
       <motion.div
         className="absolute inset-x-0 top-0 origin-top rounded-full"
         style={{
-          scaleY,
           height: '100%',
           background: 'linear-gradient(to bottom, #4ECFBF 0%, #7C3AED 40%, #4ECFBF 75%, #10B981 100%)',
           boxShadow: '0 0 10px 3px rgba(78,207,191,0.45)',
         }}
+        initial={{ scaleY: 0 }}
+        whileInView={{ scaleY: 1 }}
+        viewport={{ once: true, amount: 0 }}
+        transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
       />
     </div>
   );
 }
 
 /* ─── Dot — centred in the 40px dot-column ───────────────── */
-function SpineNode({ color = '#4ECFBF', delay = 0 }: { color?: string; delay?: number }) {
+function SpineNode({ color = '#4ECFBF', delay = 0, innerRef }: { color?: string; delay?: number; innerRef?: React.Ref<HTMLDivElement> }) {
   /*  dot is 28px.  column is 40px.  left = (40 - 28) / 2 = 6px  */
   return (
     <motion.div
+      ref={innerRef}
       className="flex items-center justify-center rounded-full flex-shrink-0 z-10 relative"
       style={{
         width: 28,
@@ -82,18 +111,20 @@ function JourneyRow({
   accent,
   dotDelay,
   cardDelay,
+  dotRef,
   children,
 }: {
   accent: string;
   dotDelay: number;
   cardDelay: number;
+  dotRef?: React.Ref<HTMLDivElement>;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex items-start gap-0">
       {/* Left column: fixed 40px, dot centred, spine runs behind */}
       <div className="flex-shrink-0 flex flex-col items-center" style={{ width: 40 }}>
-        <SpineNode color={accent} delay={dotDelay} />
+        <SpineNode color={accent} delay={dotDelay} innerRef={dotRef} />
       </div>
 
       {/* Right column: card */}
@@ -286,6 +317,7 @@ function AssessmentBranch() {
 /* ─── MAIN EXPORT ─────────────────────────────────────────── */
 export default function LearningJourneySection({ scrollTo, locale: _locale }: { scrollTo: (id: string) => void; locale?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastDotRef = useRef<HTMLDivElement>(null);
 
   return (
     <section
@@ -326,7 +358,7 @@ export default function LearningJourneySection({ scrollTo, locale: _locale }: { 
 
         {/* Timeline — spine + rows in same ref container */}
         <div ref={containerRef} className="relative">
-          <JourneySpine containerRef={containerRef} />
+          <JourneySpine containerRef={containerRef} lastDotRef={lastDotRef} />
 
           <div className="space-y-4">
 
@@ -396,7 +428,7 @@ export default function LearningJourneySection({ scrollTo, locale: _locale }: { 
               </JourneyCard>
             </JourneyRow>
 
-            <JourneyRow accent="#10B981" dotDelay={0.50} cardDelay={0.40}>
+            <JourneyRow accent="#10B981" dotDelay={0.50} cardDelay={0.40} dotRef={lastDotRef}>
               <JourneyCard step="Plan end" icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>} accent="#10B981"
                 title="Final Assessment"
                 subtitle="At the end of your plan, a full speaking assessment determines whether you advance to the next CEFR level."

@@ -103,8 +103,8 @@ function StatChip({ value, label, delay = 0 }: { value: string; label: string; d
   return (
     <motion.div
       className="inline-flex items-center gap-2 bg-white/[0.07] backdrop-blur-md border border-white/10 rounded-full px-4 py-2"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ delay, duration: 0.5 }}
     >
       <span className="text-brand font-bold text-xs sm:text-sm">{value}</span>
@@ -126,9 +126,9 @@ function Reveal({
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 32 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-60px' }}
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true, amount: 0 }}
       transition={{ duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] }}
     >
       {children}
@@ -209,8 +209,8 @@ export default function Home() {
             {/* Eyebrow badge */}
             <motion.div
               className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-brand"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               transition={{ duration: 0.5 }}
             >
               <span className="relative flex h-2 w-2">
@@ -224,8 +224,8 @@ export default function Home() {
               <motion.div
                 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-center mb-4 sm:mb-6"
                 style={{ lineHeight: 1.08 }}
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ duration: 0.7, delay: 0.1 }}
               >
                 {/* Line 1 — static */}
@@ -248,8 +248,8 @@ export default function Home() {
                       <motion.span
                         key={WORDS[wordIndex]}
                         className="col-start-1 row-start-1 flex items-center justify-center font-extrabold will-change-[opacity,transform]"
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         exit={{ opacity: 0, y: -6 }}
                         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                       >
@@ -277,8 +277,8 @@ export default function Home() {
               {!isInstitutionUser && !isTutorUser && (
                 <motion.div
                   className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ delay: 0.55, duration: 0.6 }}
                 >
                   <a
@@ -326,8 +326,8 @@ export default function Home() {
             {/* Hero waveform visual */}
             <motion.div
               className="relative w-full max-w-3xl mx-auto"
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               transition={{ delay: 0.6, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             >
               {/* Hero UI card — solid elevated */}
@@ -615,10 +615,10 @@ export default function Home() {
                               ? 'bg-brand/10 border border-brand/20 text-white/75'
                               : 'bg-white/[0.06] border border-white/[0.08] text-ink-muted ml-4'
                             }`}
-                            initial={{ opacity: 0, x: msg.teal ? -8 : 8 }}
-                            whileInView={{ opacity: 1, x: 0 }}
+                            initial={{ opacity: 0 }}
+                            whileInView={{ opacity: 1 }}
                             transition={{ delay: 0.15 * i, duration: 0.4 }}
-                            viewport={{ once: true }}
+                            viewport={{ once: true, amount: 0 }}
                           >
                             <span className="font-semibold text-[10px] block mb-0.5" style={{ color: msg.teal ? '#4ECFBF' : 'rgba(255,255,255,0.4)' }}>{msg.from}</span>
                             {msg.text}
