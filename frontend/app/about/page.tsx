@@ -180,7 +180,8 @@ export default function AboutPage() {
                   />
                 </a>
                 <h3 className="text-xl font-bold text-white">Maikel Kuppens</h3>
-                <p className="text-brand font-semibold">Co-Founder</p>
+                <p className="text-brand font-semibold">Co-Founder &amp; Growth</p>
+                <p className="text-white/40 text-xs mt-0.5">AI Consulting &amp; Business Development</p>
               </div>
               <p className="text-white/60 leading-relaxed">
                 Based in Amsterdam, Maikel is an AI consultant and growth strategist who helps businesses tap into the
@@ -210,13 +211,17 @@ export default function AboutPage() {
                   />
                 </a>
                 <h3 className="text-xl font-bold text-white">Ali Pala</h3>
-                <p className="text-[#F75A5A] font-semibold">Co-Founder</p>
+                <p className="text-[#F75A5A] font-semibold">Co-Founder &amp; CTO</p>
+                <p className="text-white/40 text-xs mt-0.5">Voice AI &amp; Backend Engineering</p>
               </div>
               <p className="text-white/60 leading-relaxed">
-                Currently working as a Backend QA Engineer, Ali brings 15+ years of software development experience
-                to MyTaco AI. He's an active GenAI contributor to various communities both within and outside his
-                corporate role. His passion for AI Agents, real-time voice chat, guardrails, and self-healing systems
-                shapes the technical excellence of our platform.
+                Ali is the technical co-founder behind MyTaco AI, with 15+ years building backend and AI systems.
+                He architects the real-time voice stack — OpenAI&apos;s Realtime API, Azure Speech Services, and the
+                speech-to-text / text-to-speech pipelines that let learners hold a natural conversation with sub-second
+                latency. His focus is on making agentic, voice-first AI genuinely reliable in production: orchestrating
+                LLM agents and tool use, hardening them with guardrails, and designing self-healing, observable services
+                that stay fast and dependable at scale. An active GenAI contributor who cares less about demos and more
+                about how these systems actually behave under real load, Ali sets the engineering bar for the platform.
               </p>
             </div>
           </div>
@@ -226,8 +231,14 @@ export default function AboutPage() {
             {/* Educational Psychologist AI */}
             <div className="bg-gradient-to-br from-brand/10 to-brand/5 rounded-2xl p-8 border border-brand/20">
               <div className="text-center mb-6">
-                <div className="w-20 h-20 bg-brand rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <span className="text-white text-lg font-bold">EP</span>
+                <div className="w-20 h-20 rounded-full mx-auto mb-4 overflow-hidden bg-brand/20 ring-2 ring-brand/40">
+                  <Image
+                    src="/images/team/dr-elena.png"
+                    alt="Dr. Elena Psyche"
+                    width={80}
+                    height={80}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <h3 className="text-lg font-bold text-white">Dr. Elena Psyche</h3>
                 <p className="text-brand font-semibold">Educational Psychologist AI Agent</p>
@@ -244,8 +255,14 @@ export default function AboutPage() {
             {/* Adaptive Learning Expert AI */}
             <div className="bg-gradient-to-br from-[#FFD63A]/10 to-[#FFD63A]/5 rounded-2xl p-8 border border-[#FFD63A]/20">
               <div className="text-center mb-6">
-                <div className="w-20 h-20 bg-[#FFD63A] rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <span className="text-white text-lg font-bold">AL</span>
+                <div className="w-20 h-20 rounded-full mx-auto mb-4 overflow-hidden bg-[#FFD63A]/20 ring-2 ring-[#FFD63A]/40">
+                  <Image
+                    src="/images/team/prof-adam.png"
+                    alt="Prof. Adam Learning"
+                    width={80}
+                    height={80}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <h3 className="text-lg font-bold text-white">Prof. Adam Learning</h3>
                 <p className="text-[#FFD63A] font-semibold">Adaptive Learning Expert AI Agent</p>
