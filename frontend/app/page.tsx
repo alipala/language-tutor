@@ -165,6 +165,26 @@ export default function Home() {
     setIsLoading(false);
   }, [authLoading, user]);
 
+  // When arriving from another page via /#section (e.g. nav links on /about),
+  // scroll to that section once the page has rendered. Native hash scrolling is
+  // unreliable here because the content mounts after this client component loads.
+  useEffect(() => {
+    if (isLoading || typeof window === 'undefined') return;
+    const id = window.location.hash.slice(1);
+    if (!id) return;
+    // Retry briefly: in-view sections may still be mounting on first paint.
+    let tries = 0;
+    const tick = () => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      } else if (tries++ < 20) {
+        setTimeout(tick, 100);
+      }
+    };
+    tick();
+  }, [isLoading]);
+
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };

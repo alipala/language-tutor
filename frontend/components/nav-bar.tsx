@@ -298,14 +298,19 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
     }
   };
 
-  // Scroll to section on landing page
+  // Navigate to a landing-page section. On the landing page itself we smooth-scroll
+  // in place; from any other page (e.g. /about, /research, legal pages) we send the
+  // user to the home page anchored at that section (`/#id`) — so the nav works
+  // everywhere instead of silently doing nothing off the landing page.
   const scrollToSection = useCallback((sectionId: string) => {
-    if (typeof window !== 'undefined') {
-      const section = document.getElementById(sectionId);
-      if (section) {
-        section.scrollIntoView({ behavior: 'smooth' });
-        setIsMenuOpen(false);
-      }
+    if (typeof window === 'undefined') return;
+    setIsMenuOpen(false);
+    const section = document.getElementById(sectionId);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      // Section isn't on this page → go home and land on it.
+      window.location.href = `/#${sectionId}`;
     }
   }, []);
 
@@ -367,8 +372,9 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
 
         {/* Navigation Links */}
         <div className="hidden md:flex items-center space-x-6">
-          {/* Landing page navigation items - only show when not logged in */}
-          {isLandingPage && !user && (
+          {/* Landing nav — shown for ALL guests (every public page), not just home.
+              On sub-pages the links route to /#section so the nav never disappears. */}
+          {!isSignedIn && (
             <div className="flex items-center space-x-1 mr-4">
               {[
                 { label: 'Features', id: 'bento-features' },
@@ -621,8 +627,8 @@ export default function NavBar({ activeSection = '' }: { activeSection?: string 
             ? 'bg-surface-sunken/95 border-white/[0.08]'
             : 'bg-white/10 border-white/20'
         }`}>
-          {/* Landing page menu items on mobile - only show when not logged in */}
-          {isLandingPage && !user ? (
+          {/* Landing nav on mobile — shown for ALL guests; routes to /#section off-home */}
+          {!isSignedIn ? (
             <>
               <button
                 onClick={() => scrollToSection('bento-features')}
