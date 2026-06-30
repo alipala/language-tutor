@@ -7,7 +7,7 @@ import {
   Mail, Phone, MapPin,
   Linkedin, Youtube, Instagram,
   ChevronRight, Heart, Shield,
-  Users, BookOpen, Globe, MessageSquare, Star,
+  Users, BookOpen, Globe, MessageSquare, Star, FlaskConical,
 } from 'lucide-react';
 
 const NAV_SECTIONS = [
@@ -24,6 +24,7 @@ const NAV_SECTIONS = [
     links: [
       { name: 'For Schools',    href: '/institution/login', icon: Users   },
       { name: 'Responsible AI', href: '/responsible-ai',    icon: Shield  },
+      { name: 'How We Build It', href: '/research',         icon: FlaskConical },
       { name: 'Help Center',    href: '/help',              icon: MessageSquare },
     ],
   },
