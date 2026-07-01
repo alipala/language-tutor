@@ -912,6 +912,30 @@ Using ALL the information above, provide:
             "voice_checks_completed": []
         }
 
+        # ── ONE ACTIVE PLAN PER LANGUAGE ───────────────────────────────────
+        # A user may hold at most one active learning plan per language. If a
+        # non-archived plan already exists for this language, block creating a
+        # second one — the user must delete (archive) the existing plan first.
+        # Other languages are unaffected. Archived plans don't count, so after
+        # a delete the user can create a fresh plan for the same language.
+        if current_user:
+            plan_lang = (plan_request.language or "").lower()
+            existing_active = await learning_plans_collection.find_one({
+                "user_id": str(current_user.id),
+                "language": plan_lang,
+                "status": {"$ne": "archived"},
+            })
+            if existing_active:
+                print(f"[CREATE_PLAN] ⛔ Active {plan_lang} plan already exists for user {current_user.id}")
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "active_plan_exists",
+                        "language": plan_lang,
+                        "message": f"You already have an active {plan_lang} plan. Delete it to start a new one.",
+                    },
+                )
+
         # ATOMIC SAVE: Use the safe learning plan service with duplicate prevention
         if current_user and plan_request.assessment_data:
             print(f"[ATOMIC_SAVE] 🔄 Starting atomic save of assessment + learning plan")
