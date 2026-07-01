@@ -1224,15 +1224,20 @@ async def get_user_learning_plans(
     logger.info(f"Fetching learning plans for user ID: {user_id}")
     
     try:
-        # Try to find plans with the string user ID
-        plans = await learning_plans_collection.find({"user_id": user_id}).to_list(100)
-        
+        # Exclude user-archived plans ("delete my plan") from the user-facing
+        # list. $ne also matches docs with no status field (legacy plans).
+        plans = await learning_plans_collection.find(
+            {"user_id": user_id, "status": {"$ne": "archived"}}
+        ).to_list(100)
+
         if not plans:
             # If no plans found, try with ObjectId (in case it was stored that way)
             try:
                 from bson import ObjectId
                 object_id = ObjectId(user_id)
-                plans = await learning_plans_collection.find({"user_id": object_id}).to_list(100)
+                plans = await learning_plans_collection.find(
+                    {"user_id": object_id, "status": {"$ne": "archived"}}
+                ).to_list(100)
                 
                 # If plans are found with ObjectId, log this for debugging
                 if plans:
@@ -2110,6 +2115,36 @@ async def skip_voice_check(
             status_code=500,
             detail=f"Error skipping voice check: {str(e)}"
         )
+
+
+@router.patch("/plan/{plan_id}/archive")
+async def archive_learning_plan(
+    plan_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    User-facing "delete my plan" — soft-archives the plan the user owns.
+
+    The plan and all its data stay in the DB (status → "archived"); every
+    user-facing read filters archived plans out, so it vanishes from the hero
+    card, Today's Path, plan list and challenge language-source for that
+    language. Already-earned XP / streaks are untouched. Idempotent.
+    """
+    try:
+        from learning_plan_service import LearningPlanService
+        archived = await LearningPlanService.archive_learning_plan_safe(plan_id, current_user)
+        if not archived:
+            raise HTTPException(status_code=404, detail="Learning plan not found")
+        return {"success": True, "plan_id": plan_id, "status": "archived"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Ownership failures surface as 403; everything else 500.
+        msg = str(e)
+        if "permission" in msg.lower():
+            raise HTTPException(status_code=403, detail="You don't have permission to delete this learning plan")
+        print(f"[ARCHIVE_PLAN] ❌ {plan_id}: {msg}")
+        raise HTTPException(status_code=500, detail="Failed to delete learning plan")
 
 
 @router.patch("/plan/{plan_id}/add-spoken-time")

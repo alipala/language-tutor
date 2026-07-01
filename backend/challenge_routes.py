@@ -73,9 +73,9 @@ async def get_user_active_language(user_id: str) -> str:
             # Ensure lowercase for consistency
             return language.lower()
 
-        # Fallback: get most recent plan
+        # Fallback: get most recent non-archived plan
         recent_plan = await learning_plans_collection.find_one(
-            {"user_id": user_id},
+            {"user_id": user_id, "status": {"$ne": "archived"}},
             sort=[("created_at", -1)]
         )
 
@@ -180,10 +180,11 @@ async def get_user_weakness_tags(user_id: str) -> List[str]:
             tags = card.get("tags", [])
             weakness_tags.extend(tags)
 
-        # 2. Check learning plan for recent struggles
+        # 2. Check learning plan for recent struggles (skip user-archived plans)
         learning_plans_collection = database.learning_plans
         learning_plan = await learning_plans_collection.find_one({
-            "user_id": user_id
+            "user_id": user_id,
+            "status": {"$ne": "archived"}
         }, sort=[("updated_at", -1)])
 
         if learning_plan:
@@ -1082,10 +1083,11 @@ async def get_available_languages(
         # All supported languages
         all_languages = ["english", "spanish", "dutch", "german", "french", "portuguese"]
 
-        # Get user's learning plans
+        # Get user's learning plans (skip user-archived plans)
         learning_plans_collection = database.learning_plans
         user_plans = await learning_plans_collection.find({
-            "user_id": user_id
+            "user_id": user_id,
+            "status": {"$ne": "archived"}
         }).to_list(length=10)
 
         # Build language status map

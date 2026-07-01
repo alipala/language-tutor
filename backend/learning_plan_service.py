@@ -242,7 +242,64 @@ class LearningPlanService:
         except Exception as e:
             logger.error(f"[LEARNING_PLAN_SERVICE] Error deleting plan {plan_id}: {str(e)}")
             raise Exception(f"Failed to delete learning plan: {str(e)}")
-    
+
+    @staticmethod
+    async def archive_learning_plan_safe(
+        plan_id: str,
+        current_user: Optional[UserResponse] = None
+    ) -> bool:
+        """
+        Soft-delete ("archive") a learning plan the user owns.
+
+        The plan and ALL its associated data stay in the DB untouched — we only
+        flip `status` to "archived" and stamp `archived_at`. This is what powers
+        the user-facing "delete my plan" action: the plan (and its Today's Path
+        missions, hero card, challenge language source) disappears from every
+        user-facing read (each filters `status != "archived"`), while admin /
+        export / analytics reads still see the full history. Archiving never
+        touches already-earned XP or streaks (those live on daily_stats / the
+        user doc, not the plan) — archive is not undo.
+
+        Returns True if archived, False if not found. Raises on permission
+        denial (mirrors delete_learning_plan_safe's ownership check).
+        """
+        try:
+            plan = await learning_plans_collection.find_one({"id": plan_id})
+            if not plan:
+                logger.info(f"[LEARNING_PLAN_SERVICE] Plan not found for archive: {plan_id}")
+                return False
+
+            if current_user and plan.get("user_id"):
+                if plan.get("user_id") != str(current_user.id):
+                    logger.error(f"[LEARNING_PLAN_SERVICE] Permission denied for plan archive {plan_id}")
+                    raise Exception("You don't have permission to delete this learning plan")
+
+            # Already archived → idempotent success.
+            if plan.get("status") == "archived":
+                return True
+
+            result = await learning_plans_collection.update_one(
+                {"id": plan_id},
+                {"$set": {
+                    "status": "archived",
+                    "archived_at": datetime.utcnow(),
+                    # Preserve the pre-archive status so support/analytics can
+                    # see where the user left off, and a future "restore"
+                    # feature could revert to it.
+                    "status_before_archive": plan.get("status"),
+                    "is_active": False,
+                    "updated_at": datetime.utcnow(),
+                }},
+            )
+            if result.modified_count > 0:
+                logger.info(f"[LEARNING_PLAN_SERVICE] ✅ Archived plan {plan_id}")
+                return True
+            logger.warning(f"[LEARNING_PLAN_SERVICE] No plan archived for {plan_id}")
+            return False
+        except Exception as e:
+            logger.error(f"[LEARNING_PLAN_SERVICE] Error archiving plan {plan_id}: {str(e)}")
+            raise Exception(f"Failed to archive learning plan: {str(e)}")
+
     @staticmethod
     def calculate_total_sessions_from_schedule(weekly_schedule: List[Dict[str, Any]]) -> int:
         """Calculate total sessions from the weekly schedule structure"""

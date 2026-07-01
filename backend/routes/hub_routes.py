@@ -125,7 +125,12 @@ async def _get_learning_plans(user_id: str) -> List[Dict]:
     # `/voice-check-status`, `/progress`) look up by `{"id": plan_id}`, so the
     # IDs returned here must match that field.
     cursor = learning_plans_collection.find(
-        {"user_id": user_id},
+        # Exclude user-archived plans ("delete my plan"). This is the single
+        # source for the hub: active-plan resolution, missions, plan_session,
+        # planDay all derive from this list, so filtering here hides an
+        # archived plan from the hero card + Today's Path everywhere at once.
+        # $ne also matches docs with no status field (legacy plans stay visible).
+        {"user_id": user_id, "status": {"$ne": "archived"}},
         {
             "_id": 1,  # kept only as a fallback for legacy plans missing `id`
             "id": 1, "language": 1, "proficiency_level": 1, "status": 1,
