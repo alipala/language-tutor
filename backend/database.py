@@ -233,6 +233,16 @@ async def init_db():
         await recent_performance_collection.create_index([("user_id", 1), ("expires_at", 1)])
         await recent_performance_collection.create_index("expires_at", expireAfterSeconds=0)  # TTL index
 
+        # User achievements / You-tab badges: this collection now stores BOTH
+        # the 4 legacy challenge achievements and the persisted You-tab badge
+        # ids (badge sync). Compound index speeds the per-user fetch and the
+        # (user_id, achievement_id) upsert filter. NOT unique — creating a
+        # unique index would crash startup if any historical duplicates exist,
+        # and the sync endpoint already guarantees idempotency via its upsert
+        # filter. Safe to add on top of existing data.
+        if user_achievements_collection is not None:
+            await user_achievements_collection.create_index([("user_id", 1), ("achievement_id", 1)])
+
         # NEWS FEATURE: Create indexes for news collections
         # News batches: unique date index
         await news_batches_collection.create_index("date", unique=True)

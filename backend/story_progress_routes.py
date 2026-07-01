@@ -691,14 +691,33 @@ async def scene_complete(body: SceneCompleteRequest, current_user=Depends(get_cu
 
     # Feed the SAME buckets the Games-tab level reads (xp_by_source.challenges +
     # daily challenge_xp). Gated on the atomic lifetime-credit flag so it fires once.
+    #
+    # Badge counters ride the SAME gated call so they inherit its exact
+    # once-per-first-clear guarantee (replays credit ZERO — see the persistent
+    # xp_credited_* sets above). We only ever bump a counter on the request that
+    # also newly credits the matching bonus:
+    #   - story_episodes_completed → the first time THIS episode completes
+    #   - story_series_completed   → the first time the FINAL episode completes
+    # `bonus_token` is None unless an episode just completed with a fresh bonus,
+    # so gating the counters on it keeps them aligned to real first-clears.
     if credit_now and games_xp_delta > 0:
         tz = getattr(current_user, "timezone", None) or "UTC"
+
+        badge_inc: Dict[str, int] = {}
+        if bonus_xp > 0 and bonus_token:
+            # Every episode first-clear bumps the episode counter…
+            badge_inc["stats.lifetime.story_episodes_completed"] = 1
+            # …and a finale first-clear additionally bumps the series counter.
+            if series_just_completed:
+                badge_inc["stats.lifetime.story_series_completed"] = 1
+
         await credit_games_xp(
             user_id,
             series.get("language", ""),
             games_xp_delta,
             user_timezone=tz,
             source_type="story_worlds",
+            extra_lifetime_inc=badge_inc or None,
         )
 
     # next episode's daily-drip unlock instant (ISO) so the client can show

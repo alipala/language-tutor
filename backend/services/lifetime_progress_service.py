@@ -232,6 +232,12 @@ def calculate_lifetime_summary(user: Dict[str, Any], stats: Dict[str, Any], life
         # Conversation-only session count — `total_sessions` also counts
         # challenge sessions, which inflated the speaking badge family.
         'conversation_sessions': int(lifetime.get('conversation_sessions', 0) or 0),
+        # Story Worlds counters — incremented only on real first-clears via the
+        # atomic credit gate in story_progress_routes.scene_complete. Drive the
+        # Story badge family (First Episode / Series Complete / Binge etc.).
+        # Optional — absent (0) for users who never opened Story Worlds.
+        'story_episodes_completed': int(lifetime.get('story_episodes_completed', 0) or 0),
+        'story_series_completed': int(lifetime.get('story_series_completed', 0) or 0),
         # Time-window counters: a session counts toward Early Bird when
         # it was started before 8am local time, and toward Late Night
         # Talker when started at 10pm or later. Honest signal vs. the

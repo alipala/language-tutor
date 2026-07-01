@@ -9,6 +9,7 @@ Endpoints:
 
 from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.exceptions import RequestValidationError
+from pydantic import BaseModel
 import json
 from typing import List
 from datetime import datetime
@@ -465,3 +466,145 @@ async def get_available_achievements():
         "achievements": list(ACHIEVEMENTS.values()),
         "total_count": len(ACHIEVEMENTS)
     }
+
+
+# ============================================================================
+# YOU-TAB BADGE SYNC (server-authoritative "earned forever" store)
+# ============================================================================
+#
+# The mobile "You" tab derives 180+ badges live from the user's own stats
+# (deriveBadges(ctx)). Historically the "once earned, stays earned" flag lived
+# ONLY in the device's AsyncStorage — so a badge could vanish on reinstall,
+# differ across devices, or (worse) show badges the backend data no longer
+# supports (a stale device store outliving a data reset). These endpoints move
+# that earned-flag into the DB so it is device-independent and reconcilable.
+#
+# Storage: we REUSE the existing `user_achievements` collection. A You-tab
+# badge is just a row whose `achievement_id` is the badge id (e.g. "streak_7")
+# or a scope-suffixed id ("confidence_fluent@dutch"). This coexists with the
+# 4 legacy challenge achievements (perfect_session, …) in the same collection
+# WITHOUT collision — the id spaces are disjoint.
+#
+# CRITICAL RULE — renewable badges are NEVER persisted here. Their mobile
+# earned-key embeds a period stamp ("daily_check_in@2026-07-01",
+# "on_the_rise@2026-W27", "monthly_sprint@2026-07"). Persisting them would
+# add unbounded rows per user and, worse, force-earn a badge whose window has
+# closed. We detect and reject any id whose suffix matches a period stamp so a
+# buggy/old client can never write one. Renewables stay live-derived only.
+
+import re as _re
+
+# Matches the period-stamp suffixes produced by badgeEarnedStore.periodStamp:
+#   daily  -> @YYYY-MM-DD   weekly -> @YYYY-Www   monthly -> @YYYY-MM
+# A plain scoped suffix like "@dutch" (a language) does NOT match, so scoped
+# DNA/CEFR badges persist correctly while renewables are filtered out.
+_RENEWABLE_SUFFIX = _re.compile(r"@\d{4}-(\d{2}-\d{2}|W\d{2}|\d{2})$")
+
+
+def _is_renewable_key(badge_id: str) -> bool:
+    return bool(_RENEWABLE_SUFFIX.search(badge_id or ""))
+
+
+class BadgeSyncRequest(BaseModel):
+    """Client posts the full set of PERMANENT earned badge ids it currently
+    holds. The server upserts any it hasn't recorded yet (idempotent). We do
+    NOT delete rows the client omits — a badge, once earned, stays earned; the
+    client simply may not have re-derived it this session."""
+    earned: List[str]
+
+
+@router.post("/api/badges/sync")
+async def sync_badges(
+    request: BadgeSyncRequest,
+    current_user: UserInDB = Depends(get_current_user),
+):
+    """Idempotently persist the user's earned You-tab badges to the DB.
+
+    - Renewable (period-stamped) ids are silently skipped — never stored.
+    - Empty / duplicate ids are ignored.
+    - Uses upsert on (user_id, achievement_id) so repeated syncs are no-ops.
+    """
+    try:
+        # Sanitize: drop blanks, renewables, and de-dupe while preserving that
+        # a legacy challenge achievement re-synced here is harmless (same row).
+        seen = set()
+        to_write = []
+        skipped_renewable = 0
+        for raw in request.earned:
+            bid = (raw or "").strip()
+            if not bid or bid in seen:
+                continue
+            seen.add(bid)
+            if _is_renewable_key(bid):
+                skipped_renewable += 1
+                continue
+            to_write.append(bid)
+
+        now = datetime.utcnow()
+        written = 0
+        for bid in to_write:
+            # Upsert: insert only if this (user, badge) pair is new. $setOnInsert
+            # preserves the ORIGINAL unlocked_at on repeat syncs.
+            result = await user_achievements_collection.update_one(
+                {"user_id": current_user.id, "achievement_id": bid},
+                {"$setOnInsert": {
+                    "user_id": current_user.id,
+                    "achievement_id": bid,
+                    "unlocked_at": now,
+                    "session_id": None,
+                }},
+                upsert=True,
+            )
+            if result.upserted_id is not None:
+                written += 1
+
+        return {
+            "success": True,
+            "written": written,
+            "skipped_renewable": skipped_renewable,
+            "received": len(request.earned),
+        }
+    except Exception as e:
+        print(f"❌ Error syncing badges: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error syncing badges: {str(e)}",
+        )
+
+
+@router.get("/api/badges")
+async def get_earned_badges(
+    current_user: UserInDB = Depends(get_current_user),
+):
+    """Return the flat list of earned badge ids for the current user.
+
+    This is the device-independent source of truth the You tab hydrates from
+    (falling back to its local AsyncStorage cache only when this call fails).
+    Returns BOTH the legacy 4 challenge achievements and the You-tab badge ids
+    — the client's earned-store keys on the same id space, so it just works.
+    Renewable ids are never present here (they're never written)."""
+    try:
+        cursor = user_achievements_collection.find(
+            {"user_id": current_user.id},
+            {"achievement_id": 1, "unlocked_at": 1, "_id": 0},
+        )
+        rows = await cursor.to_list(length=None)
+        earned = {}
+        for r in rows:
+            bid = r.get("achievement_id")
+            if not bid:
+                continue
+            ua = r.get("unlocked_at")
+            earned[bid] = ua.isoformat() if hasattr(ua, "isoformat") else ua
+        return {
+            "success": True,
+            "earned": list(earned.keys()),
+            "earned_at": earned,  # {id: iso-date} — lets the client seed its cache
+            "total": len(earned),
+        }
+    except Exception as e:
+        print(f"❌ Error fetching earned badges: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching earned badges: {str(e)}",
+        )

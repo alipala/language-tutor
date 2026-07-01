@@ -148,6 +148,7 @@ async def credit_games_xp(
     *,
     user_timezone: str = "UTC",
     source_type: str = "story_worlds",
+    extra_lifetime_inc: Optional[Dict[str, int]] = None,
 ) -> None:
     """
     Credit standalone games XP into the EXACT same buckets the Games-tab level
@@ -163,10 +164,21 @@ async def credit_games_xp(
       - lifetime: total_xp, xp_by_source.challenges, by_language.{lang}.total_xp,
                   and recomputes stats.lifetime.level
 
+    `extra_lifetime_inc` — OPTIONAL extra `$inc` fields merged into the SAME
+    lifetime update (e.g. Story Worlds badge counters like
+    `stats.lifetime.story_episodes_completed`). Keys are full dotted paths.
+    Because it rides the same call the caller has already gated atomically
+    (credit_now), these counters inherit the exact once-per-first-clear
+    guarantee — no separate anti-farm gate needed. A badge counter must ONLY
+    be passed on the request that also credits fresh XP, never on replays.
+
     Idempotency/anti-farm is the CALLER's responsibility — only call this with the
     first-clear delta, gated atomically (see story_progress_routes scene-complete).
     """
-    if xp <= 0:
+    # Note: xp may legitimately be 0 when the caller only wants to bump badge
+    # counters (e.g. a re-credited episode-complete that still counts toward the
+    # "episodes completed" badge). Bail only when there is genuinely nothing to do.
+    if xp <= 0 and not extra_lifetime_inc:
         return
 
     language = (language or "").lower()
@@ -174,23 +186,26 @@ async def credit_games_xp(
 
     # Daily — challenge_xp is the slice /progression?source=games reads; total_xp
     # is the unified bucket. Mirrors update_daily_stats field names exactly.
-    daily_inc = {
-        "total_xp": xp,
-        "challenge_xp": xp,
-    }
-    if language:
-        daily_inc[f"by_language.{language}.xp"] = xp
-    daily_inc[f"by_type.{source_type}.xp"] = xp
+    # Skipped entirely when xp == 0 (badge-counter-only credit): a zero $inc
+    # would still upsert an empty daily doc for no reason.
+    if xp > 0:
+        daily_inc = {
+            "total_xp": xp,
+            "challenge_xp": xp,
+        }
+        if language:
+            daily_inc[f"by_language.{language}.xp"] = xp
+        daily_inc[f"by_type.{source_type}.xp"] = xp
 
-    await daily_stats_collection.update_one(
-        {"user_id": user_id, "local_date": local_date},
-        {
-            "$inc": daily_inc,
-            "$set": {"user_timezone": user_timezone, "updated_at": datetime.utcnow()},
-            "$setOnInsert": {"created_at": datetime.utcnow(), "is_streak_day": True},
-        },
-        upsert=True,
-    )
+        await daily_stats_collection.update_one(
+            {"user_id": user_id, "local_date": local_date},
+            {
+                "$inc": daily_inc,
+                "$set": {"user_timezone": user_timezone, "updated_at": datetime.utcnow()},
+                "$setOnInsert": {"created_at": datetime.utcnow(), "is_streak_day": True},
+            },
+            upsert=True,
+        )
 
     # Lifetime — xp_by_source.challenges is what the Games level is derived from.
     # Read prev total then recompute level (same one-event-lag race as the
@@ -199,26 +214,32 @@ async def credit_games_xp(
     prev_total = int(
         (user or {}).get("stats", {}).get("lifetime", {}).get("total_xp", 0) or 0
     )
-    life_inc = {
-        "stats.lifetime.total_xp": xp,
-        "stats.lifetime.xp_by_source.challenges": xp,
-    }
-    if language:
-        life_inc[f"stats.lifetime.by_language.{language}.total_xp"] = xp
+    life_inc: Dict[str, int] = {}
+    life_set: Dict[str, Any] = {"stats.last_calculated": datetime.utcnow()}
+    if xp > 0:
+        life_inc["stats.lifetime.total_xp"] = xp
+        life_inc["stats.lifetime.xp_by_source.challenges"] = xp
+        if language:
+            life_inc[f"stats.lifetime.by_language.{language}.total_xp"] = xp
+        life_set["stats.lifetime.level"] = compute_level(prev_total + xp)
 
-    await users_collection.update_one(
-        {"_id": ObjectId(user_id)},
-        {
-            "$inc": life_inc,
-            "$set": {
-                "stats.lifetime.level": compute_level(prev_total + xp),
-                "stats.last_calculated": datetime.utcnow(),
-            },
-        },
-    )
+    # Merge caller-supplied badge counters (e.g. story_episodes_completed).
+    if extra_lifetime_inc:
+        for k, v in extra_lifetime_inc.items():
+            if v:
+                life_inc[k] = life_inc.get(k, 0) + int(v)
+
+    update_doc: Dict[str, Any] = {"$set": life_set}
+    if life_inc:
+        update_doc["$inc"] = life_inc
+
+    await users_collection.update_one({"_id": ObjectId(user_id)}, update_doc)
 
     await invalidate_recent_performance_cache(user_id)
-    print(f"[STATS_SERVICE] ✅ Credited {xp} games XP ({source_type}) to user {user_id}")
+    print(
+        f"[STATS_SERVICE] ✅ Credited {xp} games XP ({source_type}) to user {user_id}"
+        + (f" + counters {list((extra_lifetime_inc or {}).keys())}" if extra_lifetime_inc else "")
+    )
 
 
 async def recalculate_daily_accuracy(user_id: str, local_date: str) -> None:
