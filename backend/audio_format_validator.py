@@ -105,11 +105,18 @@ class AudioFormatValidator:
                 "extension": ".mp3"
             }
         
-        # M4A/AAC format
-        if data[4:8] == b'ftyp' and (b'M4A ' in data[8:16] or b'mp42' in data[8:16]):
+        # M4A / MP4-audio (AAC) format — detected by the ISO-BMFF 'ftyp' box.
+        # We accept ANY ftyp brand, not just 'M4A '/'mp42'. Android's
+        # MediaRecorder (MPEG_4 + AAC, the expo-av HIGH_QUALITY default) stamps
+        # brands like 'isom', 'mp41', 'mp42', 'iso2', 'iso5', 'M4A ' or 'mp4a'.
+        # The previous check only matched 'M4A '/'mp42', so every Android
+        # recording fell through to "unknown" → got a .wav temp extension →
+        # OpenAI rejected it → "Failed to transcribe audio". iOS sends WAV and
+        # is unaffected. Naming the temp file .m4a lets OpenAI decode it.
+        if data[4:8] == b'ftyp':
             return {
-                "format": "m4a", 
-                "mime_type": "audio/mp4", 
+                "format": "m4a",
+                "mime_type": "audio/mp4",
                 "is_supported": True,
                 "extension": ".m4a"
             }
