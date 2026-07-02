@@ -44,24 +44,30 @@ class SentenceAssessmentResponse(BaseModel):
 # Helper function for speech recognition using OpenAI's audio transcription.
 #
 # This is the FILE-BASED (non-realtime) path: the full audio clip is sent to
-# /audio/transcriptions. Unlike the Realtime path, file transcription does NOT
-# suffer the wrong-language / garbled-output bug, so the only reason to migrate
-# here is the 2026-06-01 retirement of gpt-4o-transcribe / whisper-1 /
-# gpt-4o-mini-transcribe. gpt-4o-transcribe-diarize is GA until 2027-04-16 and is
-# the retirement-safe replacement.
+# /audio/transcriptions.
 #
-# NOTE: gpt-4o-transcribe-diarize does NOT support the `prompt` parameter and
-# REQUIRES `chunking_strategy`. We use it in plain "text" mode (no speaker labels)
-# and pass `language` to lock the target language. Override the model via
-# FILE_TRANSCRIBE_MODEL to roll back to gpt-4o-transcribe if needed.
+# MODEL CHOICE — whisper-1 (2026-07-02):
+# We default to whisper-1 because gpt-4o-transcribe-diarize (and the whole
+# gpt-4o-transcribe family) rejects some real-world mobile recordings with
+# "This model does not support the format you provided" (unsupported_format,
+# param: 'messages'). This hit EVERY Android assessment: expo-av records m4a
+# (MPEG_4/AAC) on Android, and diarize rejected that specific m4a container
+# while accepting iOS WAV — so iOS worked and Android always failed. It is a
+# known, still-open OpenAI bug (openai-python#2477); the confirmed fix there
+# is that whisper-1 transcribes the same files fine. whisper-1 is NOT retired
+# (verified against OpenAI's 2026 deprecations page) and accepts mp3/mp4/m4a/
+# wav/webm, so it fixes Android without changing the working iOS path.
+#
+# whisper-1 supports `language` (no `prompt` steering, no `chunking_strategy`).
+# Override via FILE_TRANSCRIBE_MODEL if a future model is preferred.
 async def recognize_speech(audio_base64: str, language: str) -> str:
     # Import the audio format validator
     from audio_format_validator import AudioFormatValidator
 
     # 🎛️ Configuration: primary + fallback transcription model via env vars.
-    # Default to the retirement-safe gpt-4o-transcribe-diarize.
-    PRIMARY_MODEL = os.getenv("FILE_TRANSCRIBE_MODEL", "gpt-4o-transcribe-diarize")
-    FALLBACK_MODEL = os.getenv("FILE_TRANSCRIBE_FALLBACK_MODEL", "gpt-4o-transcribe-diarize")
+    # Default to whisper-1 (tolerant of Android m4a; see note above).
+    PRIMARY_MODEL = os.getenv("FILE_TRANSCRIBE_MODEL", "whisper-1")
+    FALLBACK_MODEL = os.getenv("FILE_TRANSCRIBE_FALLBACK_MODEL", "whisper-1")
 
     # Map language codes
     language_map = {
