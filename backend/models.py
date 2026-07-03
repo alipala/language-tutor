@@ -405,6 +405,11 @@ class SaveConversationRequest(BaseModel):
     # so the speaking buff can rise alongside the base table.
     correction_bonus_xp: Optional[int] = 0
     user_timezone: Optional[str] = 'UTC'
+    # For news sessions only: the article's category (ai/business/gaming/…),
+    # sent by the client from the article it opened. Powers per-category
+    # interest tracking (stats.lifetime.news_by_category) so smart reminders
+    # can nudge users with fresh news in categories they actually practice.
+    news_category: Optional[str] = None
 
 class ConversationStats(BaseModel):
     total_sessions: int
@@ -611,6 +616,8 @@ class NotificationPreferencesBase(BaseModel):
     achievement_alerts_enabled: bool = True   # Default ON
     learning_plan_updates_enabled: bool = True  # Default ON
     product_updates_enabled: bool = True  # Default ON
+    news_reminders_enabled: bool = True  # Default ON - fresh/interest-based news
+    story_reminders_enabled: bool = True  # Default ON - Story Worlds nudges
 
     # Timing preferences
     preferred_notification_time: Optional[int] = 10  # Hour of day (0-23), default 10 AM
@@ -655,6 +662,8 @@ class NotificationPreferencesUpdate(BaseModel):
     achievement_alerts_enabled: Optional[bool] = None
     learning_plan_updates_enabled: Optional[bool] = None
     product_updates_enabled: Optional[bool] = None
+    news_reminders_enabled: Optional[bool] = None
+    story_reminders_enabled: Optional[bool] = None
     preferred_notification_time: Optional[int] = None
     timezone: Optional[str] = None
     quiet_hours_enabled: Optional[bool] = None

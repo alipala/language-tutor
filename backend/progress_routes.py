@@ -1133,6 +1133,13 @@ async def save_conversation(
                     # Per-language news bucket — Polyglot Reader badge needs
                     # to know news activity per language, not just the total.
                     lifetime_inc[f'stats.lifetime.news_by_language.{(request.language or "unknown").lower()}'] = 1
+                    # Per-category interest bucket — powers category-targeted
+                    # smart reminders ("fresh Technology news is ready"). The
+                    # client sends the article's category on news sessions;
+                    # skip silently when absent (older clients / missing data).
+                    _news_cat = (getattr(request, 'news_category', None) or '').strip().lower()
+                    if _news_cat:
+                        lifetime_inc[f'stats.lifetime.news_by_category.{_news_cat}'] = 1
                 # Time-window counters for Early Bird (<8am) and Late
                 # Night Talker (≥10pm). Read against the user's own
                 # timezone so the badges fire on the time they
@@ -1145,9 +1152,17 @@ async def save_conversation(
                     lifetime_inc['stats.lifetime.early_bird_sessions'] = 1
                 if _local_hour >= 22:
                     lifetime_inc['stats.lifetime.late_night_sessions'] = 1
+                # Recency stamps for smart reminders: "hasn't done a news
+                # session in N days" needs a timestamp, not just a counter.
+                lifetime_set = {}
+                if conversation_type == 'news':
+                    lifetime_set['stats.lifetime.last_news_session_at'] = datetime.utcnow()
+                _update_doc = {'$inc': lifetime_inc}
+                if lifetime_set:
+                    _update_doc['$set'] = lifetime_set
                 await users_collection.update_one(
                     {'_id': ObjectId(current_user.id)},
-                    {'$inc': lifetime_inc}
+                    _update_doc
                 )
                 print(f"[PROGRESS] ✅ XP applied (existing session): daily_stats +{xp_earned_total} XP, lifetime +{xp_earned_total} XP (base {session_xp_pre} + bonus {bonus_xp_pre}), local_hour={_local_hour}")
 
@@ -1400,6 +1415,10 @@ async def save_conversation(
                     # Per-language news bucket — mirrors the existing-session
                     # branch above for the Polyglot Reader badge.
                     lifetime_inc[f'stats.lifetime.news_by_language.{(request.language or "unknown").lower()}'] = 1
+                    # Per-category interest bucket (see existing-session branch).
+                    _news_cat = (getattr(request, 'news_category', None) or '').strip().lower()
+                    if _news_cat:
+                        lifetime_inc[f'stats.lifetime.news_by_category.{_news_cat}'] = 1
                 # Same time-window logic as the existing-session branch.
                 from services.timezone_utils import get_user_timezone_obj
                 _local_hour = datetime.now(get_user_timezone_obj(
@@ -1409,9 +1428,15 @@ async def save_conversation(
                     lifetime_inc['stats.lifetime.early_bird_sessions'] = 1
                 if _local_hour >= 22:
                     lifetime_inc['stats.lifetime.late_night_sessions'] = 1
+                lifetime_set = {}
+                if conversation_type == 'news':
+                    lifetime_set['stats.lifetime.last_news_session_at'] = datetime.utcnow()
+                _update_doc = {'$inc': lifetime_inc}
+                if lifetime_set:
+                    _update_doc['$set'] = lifetime_set
                 await users_collection.update_one(
                     {'_id': ObjectId(current_user.id)},
-                    {'$inc': lifetime_inc}
+                    _update_doc
                 )
                 print(f"[PROGRESS] ✅ XP applied (new session): daily_stats +{xp_earned_total} XP, lifetime +{xp_earned_total} XP (base {session_xp_pre} + bonus {bonus_xp_pre}), local_hour={_local_hour}")
 
