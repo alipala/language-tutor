@@ -96,23 +96,40 @@ def can_send_more_this_week(prefs: Dict[str, Any],
     return count < max_per_week
 
 
+def _coerce_dt(v: Any) -> Optional[datetime]:
+    """Coerce a stored value (datetime or ISO-ish string) to a datetime, or None."""
+    if v is None:
+        return None
+    # Real datetime OR any datetime subclass (isinstance covers subclasses).
+    if isinstance(v, datetime):
+        return v
+    s = str(v).replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(s)
+    except Exception:
+        # Last resort: take the leading YYYY-MM-DD if present.
+        head = s[:10]
+        try:
+            return datetime.strptime(head, "%Y-%m-%d")
+        except Exception:
+            return None
+
+
 def already_sent_today(prefs: Dict[str, Any], kind: str,
                        local_time: Optional[datetime] = None) -> bool:
     """
     Per-kind daily anti-spam. Compares against the user's LOCAL date so a
-    reminder fires at most once per local day per kind. Falls back to the
-    legacy shared last_notification_sent_at only for kind == 'practice' to
-    stay compatible with the existing practice trigger's bookkeeping.
+    reminder fires at most once per local day per kind. Robust to stamps stored
+    as datetime OR string (space- or T-separated), so malformed persistence
+    never silently defeats the dedup.
     """
     local_time = local_time or local_time_for(prefs)
     local_date = local_time.strftime("%Y-%m-%d")
 
     by_kind = (prefs.get("last_sent_by_kind") or {})
-    last = by_kind.get(kind)
-    if last:
-        last_date = last.strftime("%Y-%m-%d") if isinstance(last, datetime) else str(last).split("T")[0]
-        if last_date == local_date:
-            return True
+    last_dt = _coerce_dt(by_kind.get(kind))
+    if last_dt is not None and last_dt.strftime("%Y-%m-%d") == local_date:
+        return True
     return False
 
 

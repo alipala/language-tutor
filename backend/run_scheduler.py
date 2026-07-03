@@ -35,6 +35,9 @@ from enum import Enum
 # Job imports
 from notification_triggers import run_heart_refill_check
 from practice_reminder_trigger import run_practice_reminder_check
+from story_reminder_trigger import run_story_reminder_check
+from news_reminder_trigger import run_news_reminder_check
+from learning_plan_reminder_trigger import run_plan_reminder_check
 from cron_jobs.reset_free_user_usage import reset_expired_free_user_periods
 
 
@@ -109,6 +112,30 @@ def practice_reminder_job_wrapper() -> None:
 
     event_loop = get_or_create_event_loop()
     event_loop.run_until_complete(run_practice_reminder_check())
+
+
+def story_reminder_job_wrapper() -> None:
+    """Wrapper: Story Worlds reminders (resume / unlock / discover)."""
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"\n[SCHEDULER] 📖 Story Reminder Check Triggered at {timestamp}")
+    event_loop = get_or_create_event_loop()
+    event_loop.run_until_complete(run_story_reminder_check())
+
+
+def news_reminder_job_wrapper() -> None:
+    """Wrapper: morning news reminders (generic / category-personalized)."""
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"\n[SCHEDULER] 📰 News Reminder Check Triggered at {timestamp}")
+    event_loop = get_or_create_event_loop()
+    event_loop.run_until_complete(run_news_reminder_check())
+
+
+def plan_reminder_job_wrapper() -> None:
+    """Wrapper: learning-plan continue reminders."""
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"\n[SCHEDULER] 🎯 Learning Plan Reminder Check Triggered at {timestamp}")
+    event_loop = get_or_create_event_loop()
+    event_loop.run_until_complete(run_plan_reminder_check())
 
 
 def free_user_reset_job_wrapper() -> None:
@@ -263,6 +290,9 @@ def run_scheduler() -> None:
     print("\n[SCHEDULER] 📋 Active Jobs:")
     print(f"  🔔 Heart refill notifications: Every 30 minutes")
     print(f"  📚 Practice reminders: Every hour")
+    print(f"  📖 Story reminders: Every hour (local-time gated)")
+    print(f"  📰 News reminders: Every hour (local-time gated)")
+    print(f"  🎯 Learning plan reminders: Every hour (local-time gated)")
     print(f"  🆓 Free user monthly reset: Daily at 02:30 AM UTC")
     print(f"  📖 Reference generation: {reference_freq} at 03:00 AM UTC")
 
@@ -297,6 +327,18 @@ def run_scheduler() -> None:
     # 4. Practice reminders (every hour)
     # Drives user retention
     schedule.every().hour.do(practice_reminder_job_wrapper)
+
+    # 4b. Smart reminders (every hour) — each trigger internally gates on the
+    # user's local morning/evening window, quiet hours, the shared weekly cap,
+    # and its own preference flag, so hourly ticking is cheap and safe. A single
+    # kill-switch (SMART_REMINDERS_ENABLED=0) disables all three for rollback.
+    if os.getenv("SMART_REMINDERS_ENABLED", "1") != "0":
+        schedule.every().hour.do(story_reminder_job_wrapper)
+        schedule.every().hour.do(news_reminder_job_wrapper)
+        schedule.every().hour.do(plan_reminder_job_wrapper)
+        print("[SCHEDULER] ✅ Smart reminders (story/news/plan) scheduled hourly")
+    else:
+        print("[SCHEDULER] ⏸️ Smart reminders DISABLED (SMART_REMINDERS_ENABLED=0)")
 
     # 5. [DEPRECATED] User pool replenishment
     # Only schedule if explicitly not disabled (for migration period)
