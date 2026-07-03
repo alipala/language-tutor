@@ -118,9 +118,13 @@ class LearningPlanReminderTrigger:
                         body = (f"Your {lang} plan is waiting — "
                                 f"start your next session today.").replace("  ", " ")
 
+                    # Learning plans live on the Dashboard (DailyHub) tab inside
+                    # the "Main" tab navigator — there is no root "LearningPlan"
+                    # route. App.js taps navigate(data.screen, data.params).
                     data = {
                         "type": "learning_plan_reminder",
-                        "screen": "LearningPlan",
+                        "screen": "Main",
+                        "params": {"screen": "Dashboard"},
                         "plan_id": str(plan.get("_id") or plan.get("id") or ""),
                         "user_id": user_id,
                     }

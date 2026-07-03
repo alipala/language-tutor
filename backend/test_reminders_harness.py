@@ -492,6 +492,9 @@ def scenario_news_personalized():
           SENT and SENT[0]["data"].get("category") == "technology")
     check("NEWS personalized: names Technology in body",
           SENT and "Technology" in SENT[0]["body"])
+    check("NEWS: deep-link -> Main/News",
+          SENT and SENT[0]["data"].get("screen") == "Main"
+          and SENT[0]["data"].get("params", {}).get("screen") == "News")
 
 
 def scenario_news_generic():
@@ -583,7 +586,9 @@ def scenario_plan_stale_active():
     run(prt.run_plan_reminder_check())
     check("PLAN: stale active plan sends", len(SENT) == 1)
     check("PLAN: body has percent", SENT and "40%" in SENT[0]["body"])
-    check("PLAN: deep-link screen", SENT and SENT[0]["data"].get("screen") == "LearningPlan")
+    check("PLAN: deep-link -> Main/Dashboard",
+          SENT and SENT[0]["data"].get("screen") == "Main"
+          and SENT[0]["data"].get("params", {}).get("screen") == "Dashboard")
 
 
 def scenario_plan_fresh():

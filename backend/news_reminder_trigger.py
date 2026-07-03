@@ -222,7 +222,10 @@ class NewsReminderTrigger:
 
     def _compose(self, user_id: str, user: Dict[str, Any]):
         cat = _top_category(user)
-        data = {"type": "news_reminder", "screen": "News", "user_id": user_id}
+        # News is a TAB inside the "Main" tab navigator, not a root Stack route.
+        # App.js taps do navigate(data.screen, data.params), so target Main->News.
+        data = {"type": "news_reminder", "screen": "Main",
+                "params": {"screen": "News"}, "user_id": user_id}
         if cat:
             label = _CATEGORY_LABELS.get(cat, cat.title())
             data["category"] = cat
