@@ -47,11 +47,25 @@ class FakeCursor:
         return gen()
 
 
+_MISSING = object()
+
+
 def _matches(doc, query):
     for k, v in query.items():
-        if isinstance(v, dict) and "$gte" in v:
-            if doc.get(k) is None or doc.get(k) < v["$gte"]:
-                return False
+        if isinstance(v, dict) and ("$gte" in v or "$ne" in v or "$exists" in v):
+            actual = doc.get(k, _MISSING)
+            if "$gte" in v:
+                if actual is _MISSING or actual is None or actual < v["$gte"]:
+                    return False
+            if "$ne" in v:
+                # Mongo semantics: field absent OR value != operand => match.
+                cur = None if actual is _MISSING else actual
+                if cur == v["$ne"]:
+                    return False
+            if "$exists" in v:
+                present = actual is not _MISSING
+                if present != v["$exists"]:
+                    return False
         else:
             if doc.get(k) != v:
                 return False
@@ -689,6 +703,41 @@ def scenario_precedence_one_push():
           SENT and SENT[0]["data"].get("tier") == "unlock")
 
 
+def scenario_legacy_prefs_field_missing():
+    """Old prefs doc predates news/story flags -> $ne:False must still match."""
+    reset()
+    set_utc(2026, 7, 3, 22, 0)  # 18:00 NY preferred (resume window)
+    legacy = mk_prefs(preferred_hour=18)
+    # Simulate a legacy doc: strip the new fields entirely.
+    legacy.pop("news_reminders_enabled", None)
+    legacy.pop("story_reminders_enabled", None)
+    prefs.docs.append(legacy)
+    users.docs.append(mk_user())
+    story_progress.docs.append({
+        "_id": "u1:s1", "user_id": "u1", "series_id": "s1", "status": "in_progress",
+        "current": {"episode_number": 1},
+        "last_played_at": datetime(2026, 6, 28, 20, 0, tzinfo=timezone.utc),
+    })
+    run(srt.run_story_reminder_check())
+    check("LEGACY: field-missing prefs still receive (default-ON via $ne:False)",
+          len(SENT) == 1)
+
+
+def scenario_explicit_optout_still_respected():
+    """After loosening to $ne:False, an EXPLICIT False must still suppress."""
+    reset()
+    set_utc(2026, 7, 3, 22, 0)
+    prefs.docs.append(mk_prefs(preferred_hour=18, story=False))  # explicit opt-out
+    users.docs.append(mk_user())
+    story_progress.docs.append({
+        "_id": "u1:s1", "user_id": "u1", "series_id": "s1", "status": "in_progress",
+        "current": {"episode_number": 1},
+        "last_played_at": datetime(2026, 6, 28, 20, 0, tzinfo=timezone.utc),
+    })
+    run(srt.run_story_reminder_check())
+    check("OPT-OUT: explicit False still suppressed under $ne:False", len(SENT) == 0)
+
+
 def scenario_multiuser_resilience():
     reset()
     set_utc(2026, 7, 3, 22, 0)  # 18:00 NY preferred
@@ -740,6 +789,8 @@ def scenario_failed_push_no_budget_burn():
 
 def main():
     scenarios = [
+        scenario_legacy_prefs_field_missing,
+        scenario_explicit_optout_still_respected,
         scenario_multiuser_resilience,
         scenario_failed_push_no_budget_burn,
         scenario_story_unlock_happy,

@@ -80,8 +80,11 @@ class StoryReminderTrigger:
         print(f"\n📖 [STORY REMINDER] Start {now_utc.strftime('%Y-%m-%d %H:%M:%S')} UTC")
 
         try:
+            # Default-ON semantics: match unless EXPLICITLY disabled. Older prefs
+            # docs predate this field ("field missing" != opted-out), so $ne:False
+            # includes them the same as a fresh doc where the default is True.
             prefs_cursor = notification_preferences_collection.find({
-                "story_reminders_enabled": True
+                "story_reminders_enabled": {"$ne": False}
             })
 
             async for prefs in prefs_cursor:

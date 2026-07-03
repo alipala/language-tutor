@@ -129,8 +129,10 @@ class NewsReminderTrigger:
         print(f"\n📰 [NEWS REMINDER] Start {now_utc.strftime('%Y-%m-%d %H:%M:%S')} UTC")
 
         try:
+            # Default-ON semantics: match unless EXPLICITLY disabled (older docs
+            # lack this field — "missing" != opted-out).
             prefs_cursor = notification_preferences_collection.find({
-                "news_reminders_enabled": True
+                "news_reminders_enabled": {"$ne": False}
             })
 
             async for prefs in prefs_cursor:

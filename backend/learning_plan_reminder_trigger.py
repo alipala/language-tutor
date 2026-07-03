@@ -66,8 +66,9 @@ class LearningPlanReminderTrigger:
         print(f"\n🎯 [PLAN REMINDER] Start {now_utc.strftime('%Y-%m-%d %H:%M:%S')} UTC")
 
         try:
+            # Default-ON semantics: match unless EXPLICITLY disabled.
             prefs_cursor = notification_preferences_collection.find({
-                "learning_plan_updates_enabled": True
+                "learning_plan_updates_enabled": {"$ne": False}
             })
 
             async for prefs in prefs_cursor:
