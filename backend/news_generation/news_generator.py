@@ -770,16 +770,43 @@ Return as JSON:
                 }
             ],
             temperature=0.7,
+            # Give the model enough room to finish the JSON. Truncation (the
+            # response getting cut mid-array) is a likely cause of the
+            # vocabulary/discussion_questions bleed — a summary + 10 vocab
+            # dicts + 5 questions + instructions comfortably fits in 2000.
+            max_tokens=2000,
             response_format={"type": "json_object"}
         )
 
         result = json.loads(response.choices[0].message.content)
 
+        # SANITIZE at the source. gpt-4o-mini (even with response_format
+        # json_object) occasionally emits a malformed vocabulary list where
+        # non-dict junk — most often leaked discussion_questions strings —
+        # ends up as string elements. Persisting that made the /content
+        # endpoint 500 with "argument after ** must be a mapping, not str"
+        # (~11% of articles had at least one bad element). We keep only
+        # well-formed vocab dicts here so bad data never reaches the DB.
+        raw_vocab = result.get("vocabulary", [])
+        clean_vocab = [
+            v for v in raw_vocab
+            if isinstance(v, dict) and isinstance(v.get("word"), str) and v.get("word")
+        ]
+        if len(clean_vocab) != len(raw_vocab):
+            logger.warning(
+                f"[NEWS_GEN] Dropped {len(raw_vocab) - len(clean_vocab)} malformed "
+                f"vocab item(s) for {language}/{level} '{title[:40]}'"
+            )
+
+        # Discussion questions: keep only non-empty strings.
+        raw_qs = result.get("discussion_questions", [])
+        clean_qs = [q for q in raw_qs if isinstance(q, str) and q.strip()]
+
         return {
             "summary": result.get("summary", f"{title}. {summary}"),
             "word_count": len(result.get("summary", "").split()),
-            "vocabulary": result.get("vocabulary", []),
-            "discussion_questions": result.get("discussion_questions", []),
+            "vocabulary": clean_vocab,
+            "discussion_questions": clean_qs,
             "ai_instructions": result.get("ai_instructions", f"Discuss this {level} level news article.")
         }
 

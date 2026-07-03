@@ -259,13 +259,35 @@ async def get_news_content(
 
         logger.info(f"[NEWS] Content fetched successfully")
 
+        # Build vocabulary defensively. The news generator occasionally emits
+        # a malformed variation where non-dict junk (e.g. leaked
+        # discussion_questions strings) ends up in the vocabulary list. A raw
+        # `VocabularyItem(**vocab)` then throws "argument after ** must be a
+        # mapping, not str" and 500s the WHOLE article for that language/level.
+        # We instead skip any element that isn't a well-formed dict, so a bad
+        # word never takes down the article — the user just sees fewer words.
+        vocabulary_items = []
+        for vocab in (variation.get("vocabulary") or []):
+            if not isinstance(vocab, dict):
+                logger.warning(
+                    f"[NEWS] Skipping malformed vocab item in {news_id} {language}/{level}: "
+                    f"{type(vocab).__name__} {str(vocab)[:60]!r}"
+                )
+                continue
+            try:
+                vocabulary_items.append(VocabularyItem(**vocab))
+            except Exception as ve:
+                logger.warning(
+                    f"[NEWS] Skipping unparseable vocab item in {news_id} {language}/{level}: {ve}"
+                )
+
         return NewsContent(
             news_id=news_id,
             language=language,
             level=level,
             original=article["original"],
             summary=variation["summary"],
-            vocabulary=[VocabularyItem(**vocab) for vocab in variation["vocabulary"]],
+            vocabulary=vocabulary_items,
             discussion_questions=variation["discussion_questions"],
             ai_instructions=variation["ai_instructions"],
             word_count=variation.get("word_count", 0)
