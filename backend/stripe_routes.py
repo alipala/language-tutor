@@ -203,25 +203,19 @@ async def create_checkout_session(
                 payment_methods.append("ideal")
                 logger.info(f"[AUTH_CHECKOUT] iDEAL payment method enabled")
 
-            # Determine if user should get trial
-            # Only NEW customers get trial (no current/previous subscription)
-            user_plan = getattr(current_user, 'subscription_plan', 'try_learn')
-            is_new_customer = user_plan in ['try_learn', 'free', None]
-
-            # Build subscription data
+            # Build subscription data.
+            # NOTE: free trials are DISABLED platform-wide. Every checkout charges
+            # immediately (B2C) or resolves to €0 via a 100%-off school promo code
+            # (B2B) — no trial_period_days is ever set. If trials are ever
+            # reintroduced, ALSO check the Stripe Price "Free trial" setting in the
+            # Dashboard, which can grant a trial independently of this code.
             subscription_data = {
                 "metadata": {
                     "user_id": str(current_user.id),
                     "user_email": current_user.email
                 }
             }
-
-            # Add 3-day trial ONLY for new customers
-            if is_new_customer:
-                subscription_data["trial_period_days"] = 3
-                logger.info(f"[AUTH_CHECKOUT] New customer - adding 3-day free trial")
-            else:
-                logger.info(f"[AUTH_CHECKOUT] Existing customer ({user_plan}) - NO trial, immediate charge")
+            logger.info(f"[AUTH_CHECKOUT] Trials disabled — immediate charge (or €0 with a 100%-off promo)")
 
             checkout_session_data = {
                 "customer": customer_id,
@@ -530,6 +524,25 @@ async def cancel_subscription(
             raise HTTPException(status_code=400, detail="No subscription found")
 
         subscription = subscriptions.data[0]
+
+        # 🏫 B2B GUARD: a student on a school-sponsored plan (redeemed a school's
+        # promo code) must NOT self-cancel — the seat belongs to the school, not
+        # the student. The school manages it (cancel the coupon / end the
+        # contract). Block here so the API can't be used to bypass the hidden UI.
+        try:
+            from bson import ObjectId as _OID
+            _u = await database["users"].find_one(
+                {"_id": _OID(current_user.id)}, {"institution_promo": 1}
+            )
+            if _u and (_u.get("institution_promo") or {}).get("code"):
+                raise HTTPException(
+                    status_code=403,
+                    detail="This premium is provided by your school and can't be cancelled here. Please contact your institution.",
+                )
+        except HTTPException:
+            raise
+        except Exception as _guard_err:
+            logger.warning(f"[CANCEL] institution guard check failed (allowing cancel): {_guard_err}")
 
         # Handle trial cancellation differently
         if subscription.status == "trialing":
