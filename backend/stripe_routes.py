@@ -1066,7 +1066,20 @@ async def handle_subscription_created(subscription):
             "google_play_order_id": 1,
             "google_play_is_trial": 1,
             "google_play_auto_renewing": 1,
+            # Clear any prior sponsorship-ended / payment-failure markers — this
+            # is a fresh active subscription (B2C card OR a re-redeemed school
+            # code), so the old "your school premium ended" state no longer holds.
+            "sponsorship_ended_at": 1,
+            "sponsorship_ended_reason": 1,
+            "payment_failed_at": 1,
+            "last_payment_failure_reason": 1,
+            "payment_retry_count": 1,
         }
+        # If this new subscription has NO promo (a normal B2C card checkout),
+        # make sure no stale institution_promo lingers — the user is now a
+        # self-serve B2C subscriber and must NOT appear on any school's list.
+        if not update_data.get("institution_promo"):
+            unset_data["institution_promo"] = 1
 
         # Update user in MongoDB
         await database["users"].update_one(
@@ -1887,6 +1900,172 @@ async def handle_payment_intent_succeeded(payment_intent):
     except Exception as e:
         logger.error(f"[PAYMENT_INTENT] Error handling payment_intent.succeeded: {str(e)}")
 
+async def _end_institution_sponsorship(user, subscription_id, reason: str = "sponsorship_ended"):
+    """
+    Cleanly end a school-sponsored (B2B) premium and drop the student to the free
+    tier — no 'past_due' limbo.
+
+    This is the RIGHT behaviour when a 100%-off school coupon runs out (e.g. a
+    3-month 'repeating' coupon): the student has NO card on file (the €0 checkout
+    never collected one), so Stripe can never charge them. Leaving them 'past_due'
+    for a week would falsely read as "your payment failed". Instead we cancel the
+    Stripe sub immediately and reset to free — same end-state as
+    handle_subscription_deleted, minus the wait — then notify them so they can
+    re-enter the school code (extension) or start a normal paid plan (B2C).
+
+    Returns True if it handled the user (caller should stop), False otherwise.
+    """
+    try:
+        from datetime import datetime, timezone
+        promo = user.get("institution_promo") or {}
+        if not promo.get("code"):
+            return False  # not a sponsored user — let normal flow handle it
+
+        old_plan = user.get("subscription_plan", "try_learn")
+        school_name = None
+        # Best-effort school name for the notification.
+        try:
+            import re as _re
+            code = str(promo.get("code")).strip()
+            inst = await database["institutions"].find_one(
+                {"promo_code": {"$regex": f"^{_re.escape(code)}$", "$options": "i"}}, {"name": 1}
+            )
+            school_name = (inst or {}).get("name")
+        except Exception:
+            pass
+
+        # Cancel the Stripe subscription immediately (best-effort).
+        if subscription_id:
+            try:
+                stripe.Subscription.cancel(subscription_id)
+                logger.info(f"[SPONSORSHIP_END] Cancelled Stripe sub {subscription_id} for {user.get('email')}")
+            except Exception as e:
+                logger.warning(f"[SPONSORSHIP_END] Could not cancel sub {subscription_id}: {e}")
+
+        now = datetime.now(timezone.utc)
+        period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        period_end = (period_start.replace(year=period_start.year + 1, month=1)
+                      if period_start.month == 12
+                      else period_start.replace(month=period_start.month + 1))
+
+        await database["users"].update_one(
+            {"_id": user["_id"]},
+            {
+                "$set": {
+                    "subscription_status": "free",
+                    "subscription_plan": "try_learn",
+                    "is_in_trial": False,
+                    "cancel_at_period_end": False,
+                    "practice_minutes_used": 0.0,
+                    "practice_sessions_used": 0,
+                    "assessments_used": 0,
+                    "current_period_start": period_start,
+                    "current_period_end": period_end,
+                    "sponsorship_ended_at": now,
+                    "sponsorship_ended_reason": reason,
+                },
+                "$unset": {
+                    "stripe_subscription_id": 1,
+                    "subscription_price_id": 1,
+                    "subscription_period": 1,
+                    "subscription_expires_at": 1,
+                    "subscription_started_at": 1,
+                    "trial_end_date": 1,
+                    "cancellation_date": 1,
+                    "payment_failed_at": 1,
+                    "last_payment_failure_reason": 1,
+                    "payment_retry_count": 1,
+                    # Drop attribution → student leaves the school's seat list.
+                    "institution_promo": 1,
+                },
+            },
+        )
+        logger.info(f"[SPONSORSHIP_END] {user.get('email')} reset to free (was {old_plan}); reason={reason}")
+
+        # Reset hearts to free tier.
+        try:
+            from services.heart_service import HeartService
+            await HeartService().update_hearts_on_subscription_change(
+                user_id=str(user["_id"]), old_plan=old_plan, new_plan="try_learn"
+            )
+        except Exception as e:
+            logger.warning(f"[SPONSORSHIP_END] heart reset failed: {e}")
+
+        # Notify the student (push) so they can re-enter the code or go B2C.
+        try:
+            await _notify_sponsorship_ended(user, school_name)
+        except Exception as e:
+            logger.warning(f"[SPONSORSHIP_END] notification failed: {e}")
+
+        return True
+    except Exception as e:
+        logger.error(f"[SPONSORSHIP_END] error: {e}")
+        return False
+
+
+async def _notify_sponsorship_ended(user, school_name):
+    """
+    Push-notify a student whose school sponsorship just ended, inviting them to
+    re-enter their school code (extension) or pick a plan (B2C). Best-effort:
+    writes an in-app notification row AND sends an Expo push if a token exists.
+    """
+    school = school_name or "your school"
+    title = "Your school premium has ended"
+    body = f"Your premium from {school} has ended. Re-enter your school code to extend, or choose a plan to continue."
+    user_id = str(user["_id"])
+
+    # In-app bell notification — SAME two-collection pattern the tutor
+    # send-recommendation + admin notifications use (notifications holds the
+    # content, user_notifications links it to the user), so it renders in the
+    # mobile bell + notification list regardless of push delivery.
+    try:
+        from datetime import datetime, timezone
+        from bson import ObjectId
+        now = datetime.now(timezone.utc)
+        notification_id = str(ObjectId())
+        await database.notifications.insert_one({
+            "_id": notification_id,
+            "title": title,
+            "content": body,
+            "notification_type": "Information",  # uses existing mobile rendering
+            "created_by": "system:sponsorship",
+            "created_at": now,
+            "sent_at": now,
+            "is_sent": True,
+        })
+        await database.user_notifications.insert_one({
+            "_id": str(ObjectId()),
+            "user_id": user_id,
+            "notification_id": notification_id,
+            "is_read": False,
+            "read_at": None,
+            "deleted_at": None,
+            "created_at": now,
+        })
+        try:
+            from cache_helpers import invalidate_notif_poll_cache
+            await invalidate_notif_poll_cache(user_id)
+        except Exception:
+            pass
+    except Exception as e:
+        logger.warning(f"[SPONSORSHIP_END] could not write notification row: {e}")
+
+    # Best-effort Expo push. Canonical token field on users = push_token.
+    try:
+        token = user.get("push_token") or user.get("expo_push_token")
+        if token:
+            from notification_service import send_push_notification  # best-effort import
+            await send_push_notification(
+                token,
+                title,
+                body,
+                data={"type": "sponsorship_ended", "action": "resubscribe"},
+                user_id=user_id,
+            )
+    except Exception as e:
+        logger.warning(f"[SPONSORSHIP_END] push failed: {e}")
+
+
 async def handle_invoice_payment_failed(invoice):
     """
     Handle invoice.payment_failed event
@@ -1938,6 +2117,20 @@ async def handle_invoice_payment_failed(invoice):
         if not user:
             logger.warning(f"[PAYMENT_FAILED] No user found for customer {customer_id}")
             return
+
+        # 🏫 B2B SPONSORSHIP END: if this is a school-sponsored student, a failed
+        # invoice almost always means their 100%-off coupon just ran out and they
+        # have NO card on file (the €0 checkout never collected one). Don't park
+        # them in 'past_due' for a week — cleanly drop to free now and notify them
+        # to re-enter the code (extension) or go B2C. Only for sponsored users;
+        # normal B2C payment failures fall through to the retry/grace flow below.
+        if (user.get("institution_promo") or {}).get("code"):
+            handled = await _end_institution_sponsorship(
+                user, subscription_id, reason="coupon_ended_no_card"
+            )
+            if handled:
+                logger.info(f"[PAYMENT_FAILED] Sponsored user {user.get('email')} cleanly ended → free tier")
+                return
 
         # 🔥 CRITICAL: Check if user still has premium access despite payment failure
         user_plan = user.get("subscription_plan", "try_learn")
