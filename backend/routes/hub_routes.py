@@ -219,6 +219,9 @@ async def _get_subscription(user_id: str) -> Dict:
             "limits":             status.limits.dict() if getattr(status, "limits", None) else None,
             "is_in_trial":        getattr(status, "is_in_trial", False),
             "trial_days_remaining": getattr(status, "trial_days_remaining", None),
+            # 🏫 B2B sponsorship — powers the teal Premium badge + "sponsored by
+            # <school>" in the Hub plan modal. None for B2C users.
+            "institution":        getattr(status, "institution", None),
         }
     except Exception:
         return {

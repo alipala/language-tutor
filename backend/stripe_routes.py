@@ -332,6 +332,9 @@ async def get_subscription_status(
             # active-subscription expiry (so the benefits modal can show "renews/ends in N days")
             "expires_at": status.expires_at.isoformat() if status.expires_at else None,
             "days_until_expiry": status.days_until_expiry,
+            # 🏫 B2B: sponsoring school when the plan came from a school's promo
+            # code ({sponsored, name, promo_code}); None for normal B2C users.
+            "institution": getattr(status, "institution", None),
         }
         
         logger.info(f"[SUBSCRIPTION_STATUS] ✅ Response served for user {current_user.id}")

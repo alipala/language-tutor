@@ -477,6 +477,10 @@ class SubscriptionStatus(BaseModel):
     is_in_trial: bool = False
     trial_end_date: Optional[datetime] = None
     trial_days_remaining: Optional[int] = None
+    # 🏫 Institution sponsorship (B2B): present only when the user redeemed a
+    # school's Stripe promo code. {sponsored, name, promo_code}. None for normal
+    # B2C subscribers, so clients can treat "institution is None" as "self-serve".
+    institution: Optional[Dict[str, Any]] = None
 
 class UsageTrackingRequest(BaseModel):
     user_id: Optional[str] = None  # Will be set automatically from authenticated user

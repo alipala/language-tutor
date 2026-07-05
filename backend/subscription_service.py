@@ -442,7 +442,12 @@ class SubscriptionService:
             # 🎁 GRACE PERIOD: Include payment_pending_grace in active status check
             if expires_at and subscription_status in ["active", "canceling", "payment_pending_grace"] and not is_in_trial:
                 days_until_expiry = (expires_at - now).days
-            
+
+            # 🏫 B2B sponsorship: if this user redeemed a school's Stripe promo
+            # code, surface the sponsoring school so the app can show "sponsored
+            # by <School>". None for normal B2C subscribers.
+            institution = await cls._resolve_institution_sponsorship(user)
+
             return SubscriptionStatus(
                 status=subscription_status,
                 plan=plan_id,
@@ -456,13 +461,53 @@ class SubscriptionService:
                 days_until_expiry=days_until_expiry,
                 is_in_trial=is_in_trial,
                 trial_end_date=trial_end_date,
-                trial_days_remaining=trial_days_remaining
+                trial_days_remaining=trial_days_remaining,
+                institution=institution,
             )
             
         except Exception as e:
             logger.error(f"Error getting subscription status for user {user_id}: {str(e)}")
             return SubscriptionStatus()
-    
+
+    @classmethod
+    async def _resolve_institution_sponsorship(cls, user: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        If the user's subscription was sponsored by a school's Stripe promo code
+        (users.institution_promo stamped by the Stripe webhook), resolve the
+        sponsoring school's display name and return {sponsored, name, promo_code}.
+
+        The promo doc holds only the code (no institution_id), so we match it to
+        the school via institutions.promo_code (case-insensitive). Best-effort:
+        any failure — or no promo at all — returns None so B2C users are
+        unaffected and this never breaks the subscription-status response.
+        """
+        try:
+            promo = user.get("institution_promo") or {}
+            code = (promo.get("code") or "").strip()
+            if not code:
+                return None
+
+            institution_name = None
+            try:
+                import re
+                inst = await database["institutions"].find_one(
+                    {"promo_code": {"$regex": f"^{re.escape(code)}$", "$options": "i"}},
+                    {"name": 1},
+                )
+                if inst:
+                    institution_name = inst.get("name")
+            except Exception:
+                institution_name = None
+
+            return {
+                "sponsored": True,
+                "name": institution_name,          # may be None if the school later cleared its code
+                "promo_code": code.upper(),
+            }
+        except Exception as e:
+            logger.warning(f"[INSTITUTION_SPONSORSHIP] Could not resolve: {e}")
+            return None
+
     @classmethod
     async def _calculate_subscription_limits(
         cls, 
