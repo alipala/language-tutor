@@ -7,6 +7,8 @@ import AuthProviderWrapper from '@/components/auth-provider-wrapper'
 import { NavigationProvider } from '@/lib/navigation'
 import NavBar from '@/components/nav-bar'
 import ConditionalFooter from '@/components/conditional-footer'
+import LandingChromeGuard from '@/components/landing-chrome-guard'
+import RootBackground from '@/components/root-background'
 import { PlanModalProvider } from '@/components/modals/plan-modal-context'
 import { ConnectivityErrorBoundary, ConnectivityIndicator } from '@/components/connectivity-error-boundary'
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext'
@@ -137,14 +139,18 @@ export default function RootLayout({
               <SubscriptionProvider>
                 <LearningPlansProvider>
                   <PlanModalProvider>
-                  <div className="app-background min-h-screen w-full" style={{ backgroundColor: '#0A0A0F' }}>
-                    <NavBar />
+                  <RootBackground>
+                    <LandingChromeGuard>
+                      <NavBar />
+                    </LandingChromeGuard>
                     <main id="main-content" tabIndex={-1} className="outline-none">
                       {children}
                     </main>
-                    <ConditionalFooter />
+                    <LandingChromeGuard>
+                      <ConditionalFooter />
+                    </LandingChromeGuard>
                     <ConnectivityIndicator />
-                  </div>
+                  </RootBackground>
                   </PlanModalProvider>
                 </LearningPlansProvider>
               </SubscriptionProvider>

@@ -149,6 +149,7 @@ class InstitutionService:
             "institution_id": str(institution["_id"]),
             "institution_name": institution["name"],
             "admin_email": institution["admin_email"],
+            "admin_name": institution.get("admin_name") or "",
             "subscription_plan": institution["subscription_plan"]
         }
 

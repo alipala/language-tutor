@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 import uuid
-from fastapi import APIRouter, HTTPException, Depends, status, Request
+from fastapi import APIRouter, HTTPException, Depends, status, Request, Body
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, EmailStr
 
@@ -1220,6 +1220,10 @@ async def get_institution_detail(
         "tutor_count": tutor_count,
         "activation_code": act_code.get("activation_code") if act_code else None,
         "activation_code_status": act_code.get("status") if act_code else None,
+        # Stripe promotion code the platform assigns to this school; students
+        # redeem it at checkout for sponsored premium.
+        "promo_code": inst.get("promo_code") or "",
+        "promo_code": inst.get("promo_code") or "",
         "tutors": [
             {
                 "id": str(t["_id"]),
@@ -1229,6 +1233,38 @@ async def get_institution_detail(
             } for t in tutors
         ]
     }
+
+
+@router.put("/institutions/{institution_id}/promo-code")
+async def set_institution_promo_code(
+    institution_id: str,
+    body: Dict[str, Any] = Body(...),
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """
+    Platform-admin-only: assign (or clear) the Stripe promotion code a school
+    hands to its students. Stored upper-cased to match how the Learners tab and
+    the webhook attribution compare it. Send {"promo_code": ""} to clear.
+    """
+    from bson import ObjectId
+    raw = body.get("promo_code", "")
+    if not isinstance(raw, str):
+        raise HTTPException(status_code=400, detail="promo_code must be a string")
+    promo = raw.strip().upper()
+
+    try:
+        oid = ObjectId(institution_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid institution ID")
+
+    result = await database.institutions.update_one(
+        {"_id": oid},
+        {"$set": {"promo_code": promo, "updated_at": datetime.utcnow()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Institution not found")
+
+    return {"message": "Promo code updated", "promo_code": promo}
 
 
 @router.get("/institutions/{institution_id}/learners")

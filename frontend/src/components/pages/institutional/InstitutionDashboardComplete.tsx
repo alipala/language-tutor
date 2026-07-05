@@ -49,6 +49,7 @@ function TableSkeleton({ rows = 4 }: { rows?: number }) {
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { B2BAppBar } from '@/src/components/b2b/B2BAppBar';
 import { FlagIcon, FlagOrText } from '../../ui/FlagIcon';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
@@ -87,6 +88,7 @@ interface Tutor {
   learners: Learner[];
   permissions: string[];
   is_active: boolean;
+  pending_activation?: boolean;
 }
 
 interface Learner {
@@ -385,6 +387,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
     name: '', institution_type: 'school', website: '', phone: '',
     address: '', logo_url: '', admin_language: 'en',
     timezone: 'UTC', semester_start: '', semester_end: '',
+    promo_code: '',  // read-only here; assigned by the platform (master admin)
   });
 
   // ── Admin state ────────────────────────────────────────────────────────────
@@ -505,6 +508,35 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ institutionId, token, 
       {/* ── INSTITUTION PROFILE ─────────────────────────────────────────────── */}
       {section === 'profile' && (
         <div className="space-y-6">
+          {/* Student premium code — read-only (assigned by the platform) */}
+          <div className={cardCls}>
+            <h3 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-brand" /> Student Premium Code
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Share this code with your students. In the MyTaco AI app they go to Plans → checkout and
+              enter it to unlock premium sponsored by your school.
+            </p>
+            {profile.promo_code ? (
+              <div className="flex items-center gap-2">
+                <code className="flex-1 rounded-lg bg-gray-50 px-4 py-3 font-mono text-base font-semibold tracking-wide text-gray-900 ring-1 ring-gray-200">
+                  {profile.promo_code}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard?.writeText(profile.promo_code)}
+                  className="rounded-lg bg-brand px-4 py-3 text-sm font-medium text-white hover:bg-[#3a9e92]"
+                >
+                  Copy
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                No code assigned yet. Contact your MyTaco AI representative to set up student premium for your school.
+              </div>
+            )}
+          </div>
+
           {/* Basic info */}
           <div className={cardCls}>
             <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
@@ -759,7 +791,9 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [institutionId, setInstitutionId] = useState('');
   const [institutionName, setInstitutionName] = useState('');
-  
+  const [adminName, setAdminName] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+
   // Analytics data
   const [languageDistribution, setLanguageDistribution] = useState<LanguageDistribution[]>([]);
   const [levelDistribution, setLevelDistribution] = useState<LevelDistribution[]>([]);
@@ -768,11 +802,48 @@ export const InstitutionDashboardComplete: React.FC = () => {
   const [tutors, setTutors] = useState<Tutor[]>([]);
   const [learners, setLearners] = useState<Learner[]>([]);
   const [filteredLearners, setFilteredLearners] = useState<Learner[]>([]);
+  // Sponsored (promo-redeemed) learners — read-only, sourced from Stripe.
+  const [sponsored, setSponsored] = useState<{
+    promo_code: string;
+    seats_used: number;
+    max_learners: number;
+    learners: Array<{
+      id: string; name: string; email: string; plan: string | null;
+      status: string | null; period: string | null;
+      expires_at: string | null; redeemed_at: string | null;
+    }>;
+  }>({ promo_code: '', seats_used: 0, max_learners: 0, learners: [] });
+  const [sponsoredSearch, setSponsoredSearch] = useState('');
   const [filteredTutors, setFilteredTutors] = useState<Tutor[]>([]);
   
   // UI State
   const [activeTab, setActiveTab] = useState<'overview' | 'tutors' | 'learners'>('overview');
   const [showAddTutorModal, setShowAddTutorModal] = useState(false);
+  // Holds the one-time temporary credentials to show the admin after creating
+  // tutor(s), so they can be shared. Null when hidden. `single` for one tutor,
+  // `list` for a bulk import.
+  const [tutorCredentials, setTutorCredentials] = useState<
+    | { mode: 'single'; name: string; email: string; password: string }
+    | { mode: 'bulk'; items: Array<{ name: string; email: string; temporary_password: string }> }
+    | null
+  >(null);
+  // Open tutor action menu: which row + where to anchor the fixed dropdown.
+  // Fixed positioning (computed from the trigger's rect) keeps the menu above
+  // the table's overflow containers so it is never clipped.
+  const [openTutorMenu, setOpenTutorMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+
+  // Close the fixed action menu on scroll/resize so it never floats detached
+  // from its trigger.
+  useEffect(() => {
+    if (!openTutorMenu) return;
+    const close = () => setOpenTutorMenu(null);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [openTutorMenu]);
   const [showAddLearnerModal, setShowAddLearnerModal] = useState(false);
   const [showImportCSVModal, setShowImportCSVModal] = useState(false);
   const [selectedTutor, setSelectedTutor] = useState<Tutor | null>(null);
@@ -863,8 +934,13 @@ export const InstitutionDashboardComplete: React.FC = () => {
     setIsAuthenticated(true);
     setInstitutionId(instId);
     setInstitutionName(instName || 'Your Institution');
+    setAdminName(localStorage.getItem('institution_admin_name') || '');
+    setAdminEmail(localStorage.getItem('institution_admin_email') || '');
     setIsLoading(false);
   }, [router]);
+
+  // Logout (with confirmation + full auth-state wipe + back-button guard) is
+  // handled by <B2BLogoutButton> inside <B2BAppBar>.
 
   // Load all data when authenticated
   useEffect(() => {
@@ -967,11 +1043,12 @@ export const InstitutionDashboardComplete: React.FC = () => {
       };
 
       // Load analytics
-      const [langRes, levelRes, tutorsRes, learnersRes] = await Promise.all([
+      const [langRes, levelRes, tutorsRes, learnersRes, sponsoredRes] = await Promise.all([
         fetch(`${backendUrl}/institution/dashboard/${institutionId}/analytics/language-distribution`, { headers }),
         fetch(`${backendUrl}/institution/dashboard/${institutionId}/analytics/level-distribution`, { headers }),
         fetch(`${backendUrl}/institution/dashboard/${institutionId}/tutors`, { headers }),
-        fetch(`${backendUrl}/institution/dashboard/${institutionId}/learners`, { headers })
+        fetch(`${backendUrl}/institution/dashboard/${institutionId}/learners`, { headers }),
+        fetch(`${backendUrl}/institution/dashboard/${institutionId}/sponsored-learners`, { headers })
       ]);
 
       if (langRes.ok) {
@@ -995,6 +1072,16 @@ export const InstitutionDashboardComplete: React.FC = () => {
         setLearners(data.learners || []);
         setFilteredLearners(data.learners || []);
       }
+
+      if (sponsoredRes.ok) {
+        const data = await sponsoredRes.json();
+        setSponsored({
+          promo_code: data.promo_code || '',
+          seats_used: data.seats_used || 0,
+          max_learners: data.max_learners || 0,
+          learners: data.learners || [],
+        });
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
@@ -1013,22 +1100,26 @@ export const InstitutionDashboardComplete: React.FC = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          name: tutorForm.name,
-          email: tutorForm.email,
-          bio: tutorForm.bio,
-          specializations: tutorForm.specializations.split(',').map(s => s.trim()),
-          permissions: tutorForm.permissions
+          name: tutorForm.name.trim(),
+          email: tutorForm.email.trim(),
+          languages: tutorForm.languages,
         })
       });
 
       if (response.ok) {
-        setNotification({
-          show: true,
-          type: 'success',
-          title: 'Success!',
-          message: 'Tutor added successfully!'
-        });
+        const data = await response.json();
         setShowAddTutorModal(false);
+        // Show the one-time temporary password so the admin can pass it on.
+        if (data.temporary_password) {
+          setTutorCredentials({
+            mode: 'single',
+            name: tutorForm.name,
+            email: tutorForm.email,
+            password: data.temporary_password,
+          });
+        } else {
+          setNotification({ show: true, type: 'success', title: 'Success!', message: 'Tutor added successfully!' });
+        }
         setTutorForm({ name: '', email: '', bio: '', languages: [], specializations: '', permissions: ['view_learners', 'assign_tasks'] });
         loadAllData();
       } else {
@@ -1093,6 +1184,47 @@ export const InstitutionDashboardComplete: React.FC = () => {
             title: 'Error',
             message: 'Failed to reactivate tutor'
           });
+        }
+      }
+    });
+  };
+
+  const handleResetTutorPassword = async (tutorId: string) => {
+    const tutor = tutors.find(t => t.id === tutorId);
+
+    setConfirmation({
+      show: true,
+      title: 'Reset Tutor Password?',
+      message: `Generate a new temporary password for ${tutor?.name || 'this tutor'}? Any previous password stops working immediately, and the tutor must set a new one on next login. You'll get the new temporary password to share.`,
+      confirmText: 'Yes, Reset Password',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        try {
+          const token = localStorage.getItem('institution_token');
+          const backendUrl = getApiBaseUrl();
+          const response = await fetch(`${backendUrl}/institution/dashboard/${institutionId}/tutors/${tutorId}/reset-password`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.temporary_password) {
+              setTutorCredentials({
+                mode: 'single',
+                name: tutor?.name || data.tutor?.name || 'Tutor',
+                email: tutor?.email || data.tutor?.email || '',
+                password: data.temporary_password,
+              });
+            }
+            loadAllData();
+          } else {
+            const err = await response.json().catch(() => ({}));
+            setNotification({ show: true, type: 'error', title: 'Error', message: err.detail || 'Failed to reset password' });
+          }
+        } catch (error) {
+          console.error('Error resetting tutor password:', error);
+          setNotification({ show: true, type: 'error', title: 'Error', message: 'Failed to reset password' });
         }
       }
     });
@@ -1440,14 +1572,19 @@ export const InstitutionDashboardComplete: React.FC = () => {
       });
       if (response.ok) {
         const result = await response.json();
-        setNotification({
-          show: true,
-          type: 'success',
-          title: 'Import Completed!',
-          message: `Successfully imported ${result.success_count} tutors. ${result.failed_count > 0 ? `${result.failed_count} failed.` : ''}`
-        });
         setShowImportTutorCSVModal(false);
         loadAllData();
+        // Show generated temp credentials so the admin can distribute them.
+        if (Array.isArray(result.credentials) && result.credentials.length > 0) {
+          setTutorCredentials({ mode: 'bulk', items: result.credentials });
+        } else {
+          setNotification({
+            show: true,
+            type: 'success',
+            title: 'Import Completed!',
+            message: `Imported ${result.success_count} tutors.${result.skipped_count ? ` ${result.skipped_count} skipped.` : ''}${result.failed_count ? ` ${result.failed_count} failed.` : ''}`
+          });
+        }
       } else {
         const err = await response.json().catch(() => ({}));
         setNotification({ show: true, type: 'error', title: 'Import Failed', message: err.detail || 'Failed to import CSV file. Please check the format.' });
@@ -1637,7 +1774,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20 font-nunito">
+    <div className="min-h-screen bg-gray-50 font-nunito">
+      <B2BAppBar portal="institution" name={adminName || institutionName} email={adminEmail || undefined} />
       {/* Tabs */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4">
@@ -1658,7 +1796,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
               onClick={() => setActiveTab('learners')}
               className={`py-4 border-b-2 flex items-center whitespace-nowrap ${activeTab === 'learners' ? 'border-brand text-brand' : 'border-transparent text-gray-500'}`}
             >
-              <GraduationCap className="w-4 h-4 mr-1.5 inline-block" /> Learners ({learners.length})
+              <GraduationCap className="w-4 h-4 mr-1.5 inline-block" /> Learners ({sponsored.seats_used})
             </button>
           </nav>
         </div>
@@ -1818,90 +1956,165 @@ export const InstitutionDashboardComplete: React.FC = () => {
               )}
             </div>
 
-            <div className="bg-white rounded-xl shadow overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tutor Info</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bio & Specializations</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Learners</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50/70">
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Tutor</th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Specializations</th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Learners</th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
+                    <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y">
-                  {paginatedTutors.map(tutor => (
-                    <tr key={tutor.id} className={!tutor.is_active ? 'bg-gray-100 border-l-4 border-gray-400' : ''}>
+                <tbody className="divide-y divide-gray-100">
+                  {paginatedTutors.map(tutor => {
+                    const initials = (tutor.name || '?')
+                      .split(' ')
+                      .map(w => w[0])
+                      .filter(Boolean)
+                      .slice(0, 2)
+                      .join('')
+                      .toUpperCase();
+                    return (
+                    <tr key={tutor.id} className={`transition-colors hover:bg-gray-50/60 ${!tutor.is_active ? 'bg-gray-50' : ''}`}>
+                      {/* Tutor identity */}
                       <td className="px-6 py-4">
-                        <div>
-                          <p className={`font-medium ${!tutor.is_active ? 'text-gray-500' : 'text-gray-900'}`}>
-                            {tutor.name}
-                          </p>
-                          <p className="text-sm text-gray-500">{tutor.email}</p>
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${tutor.is_active ? 'bg-[#4ECFBF]/15 text-[#3A9E92]' : 'bg-gray-200 text-gray-500'}`}>
+                            {initials}
+                          </div>
+                          <div className="min-w-0">
+                            <p className={`truncate font-medium ${!tutor.is_active ? 'text-gray-500' : 'text-gray-900'}`}>{tutor.name}</p>
+                            <p className="truncate text-sm text-gray-500">{tutor.email}</p>
+                          </div>
                         </div>
                       </td>
+
+                      {/* Specializations */}
                       <td className="px-6 py-4">
-                        <div className="space-y-2">
-                          {tutor.bio && (
-                            <p className="text-sm text-gray-700">{tutor.bio}</p>
-                          )}
-                          {tutor.specializations && tutor.specializations.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {tutor.specializations.map((spec, idx) => (
-                                <span 
-                                  key={idx}
-                                  className="inline-block px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700"
-                                >
-                                  {spec}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {tutor.learner_count === 0 ? (
-                          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-100">
-                            <span className="text-sm text-gray-500"><span className="text-gray-400">—</span> No learners</span>
+                        {tutor.specializations && tutor.specializations.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {tutor.specializations.slice(0, 3).map((spec, idx) => (
+                              <span key={idx} className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                                {spec}
+                              </span>
+                            ))}
+                            {tutor.specializations.length > 3 && (
+                              <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                                +{tutor.specializations.length - 3}
+                              </span>
+                            )}
                           </div>
                         ) : (
-                          <button
-                            onClick={() => {
-                              setSelectedTutor(tutor);
-                              setShowTutorLearnersModal(true);
-                            }}
-                            className="inline-block px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-[#3a9e92] transition-all whitespace-nowrap"
-                          >
-                            View {tutor.learner_count} {tutor.learner_count === 1 ? 'Learner' : 'Learners'}
-                          </button>
+                          <span className="text-sm text-gray-400">—</span>
                         )}
                       </td>
+
+                      {/* Learners — clean numeric */}
                       <td className="px-6 py-4">
-                        {tutor.is_active ? (
+                        {tutor.learner_count > 0 ? (
                           <button
-                            onClick={() => handleDeactivateTutor(tutor.id)}
-                            className="inline-flex items-center px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 hover:text-red-700 transition-all border border-red-200"
+                            onClick={() => { setSelectedTutor(tutor); setShowTutorLearnersModal(true); }}
+                            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-[#3A9E92] hover:bg-[#4ECFBF]/10"
                           >
-                            <UserMinus className="w-4 h-4 mr-1.5" /> Deactivate
+                            <Users className="h-4 w-4" />
+                            {tutor.learner_count}
                           </button>
                         ) : (
-                          <button
-                            onClick={() => handleReactivateTutor(tutor.id)}
-                            className="inline-flex items-center px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 hover:text-green-700 transition-all border border-green-200"
-                          >
-                            <RefreshCw className="w-4 h-4 mr-1.5" /> Reactivate
-                          </button>
+                          <span className="inline-flex items-center gap-1.5 text-sm text-gray-400">
+                            <Users className="h-4 w-4" /> 0
+                          </span>
                         )}
                       </td>
+
+                      {/* Status */}
+                      <td className="px-6 py-4">
+                        {!tutor.is_active ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                            <span className="h-1.5 w-1.5 rounded-full bg-gray-400" /> Inactive
+                          </span>
+                        ) : tutor.pending_activation ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200/60">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Pending
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700 ring-1 ring-green-200/60">
+                            <span className="h-1.5 w-1.5 rounded-full bg-green-500" /> Active
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Actions — single kebab trigger (menu rendered via fixed overlay below) */}
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={(e) => {
+                            if (openTutorMenu?.id === tutor.id) {
+                              setOpenTutorMenu(null);
+                            } else {
+                              const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                              // Anchor the menu's top-right just below the trigger.
+                              setOpenTutorMenu({ id: tutor.id, x: r.right, y: r.bottom + 6 });
+                            }
+                          }}
+                          className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                            openTutorMenu?.id === tutor.id ? 'bg-gray-100 text-gray-700' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'
+                          }`}
+                          aria-label="Tutor actions"
+                        >
+                          <MoreHorizontal className="h-5 w-5" />
+                        </button>
+                      </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
               </div>
 
+              {/* Fixed action menu — rendered outside the table so overflow never clips it */}
+              {openTutorMenu && (() => {
+                const tutor = tutors.find(t => t.id === openTutorMenu.id);
+                if (!tutor) return null;
+                return (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setOpenTutorMenu(null)} />
+                    <div
+                      className="fixed z-50 w-52 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-xl"
+                      style={{ top: openTutorMenu.y, left: openTutorMenu.x, transform: 'translateX(-100%)' }}
+                    >
+                      {tutor.is_active && (
+                        <button
+                          onClick={() => { setOpenTutorMenu(null); handleResetTutorPassword(tutor.id); }}
+                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <KeyRound className="h-4 w-4 text-gray-400" /> Reset Password
+                        </button>
+                      )}
+                      {tutor.is_active ? (
+                        <button
+                          onClick={() => { setOpenTutorMenu(null); handleDeactivateTutor(tutor.id); }}
+                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50"
+                        >
+                          <UserMinus className="h-4 w-4" /> Deactivate
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => { setOpenTutorMenu(null); handleReactivateTutor(tutor.id); }}
+                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-green-600 hover:bg-green-50"
+                        >
+                          <RefreshCw className="h-4 w-4" /> Reactivate
+                        </button>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+
               {/* Pagination for Tutors */}
               {totalTutorPages > 1 && (
-                <Pagination 
+                <Pagination
                   currentPage={tutorsPage}
                   totalPages={totalTutorPages}
                   totalItems={filteredTutors.length}
@@ -1915,367 +2128,228 @@ export const InstitutionDashboardComplete: React.FC = () => {
         {activeTab === 'learners' && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <h2 className="text-2xl font-bold text-gray-900">Learner Management</h2>
-              <div className="flex gap-3 flex-wrap">
-                <button
-                  onClick={() => setShowImportCSVModal(true)}
-                  className="px-5 py-2.5 border-2 border-brand text-brand rounded-lg hover:bg-brand hover:text-white transition-colors flex items-center text-sm font-medium"
-                >
-                  <Upload className="w-4 h-4 mr-1.5" /> Import
-                </button>
-                <button
-                  onClick={handleExportLearners}
-                  disabled={isExporting}
-                  className={`px-5 py-2.5 border-2 border-brand rounded-lg transition-all flex items-center text-sm font-medium ${isExporting ? 'bg-brand text-white cursor-wait' : 'text-brand hover:bg-brand hover:text-white'}`}
-                >
-                  {isExporting
-                    ? <><svg className="animate-spin h-4 w-4 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>Exporting...</>
-                    : <><Download className="w-4 h-4 mr-1.5" />Export</>
-                  }
-                </button>
-                <button
-                  onClick={() => setShowAddLearnerModal(true)}
-                  className="px-5 py-2.5 bg-brand text-white rounded-lg hover:bg-[#3a9e92] flex items-center text-sm font-medium"
-                >
-                  <UserPlus className="w-4 h-4 mr-1.5" /> Add Learner
-                </button>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Sponsored Learners</h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Students who redeemed your school's premium code in the MyTaco AI app.
+                </p>
               </div>
-            </div>
-
-            {/* Filters */}
-            <div className="bg-white p-4 rounded-xl shadow grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-              <input
-                type="text"
-                placeholder="Search learners..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500 col-span-1 sm:col-span-2 lg:col-span-1"
-              />
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-4 py-2 border rounded-lg text-gray-900 font-medium focus:ring-2 focus:ring-brand focus:border-brand"
-              >
-                <option value="active">Active Only</option>
-                <option value="inactive">Inactive Only</option>
-                <option value="all">All Statuses</option>
-              </select>
-              <select
-                value={filterLanguage}
-                onChange={(e) => setFilterLanguage(e.target.value)}
-                className="px-4 py-2 border rounded-lg text-gray-900"
-              >
-                <option value="all">All Languages</option>
-                {Array.from(new Set(learners.map(l => l.language).filter(Boolean))).map(lang => (
-                  <option key={lang} value={lang!}>{lang}</option>
-                ))}
-              </select>
-              <select
-                value={filterLevel}
-                onChange={(e) => setFilterLevel(e.target.value)}
-                className="px-4 py-2 border rounded-lg text-gray-900"
-              >
-                <option value="all">All Levels</option>
-                {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map(level => (
-                  <option key={level} value={level}>{level}</option>
-                ))}
-              </select>
-              <select
-                value={filterProgress}
-                onChange={(e) => setFilterProgress(e.target.value)}
-                className="px-4 py-2 border rounded-lg text-gray-900"
-              >
-                <option value="all">All Progress</option>
-                <option value="Just Started">Just Started</option>
-                <option value="Early Progress">Early Progress</option>
-                <option value="Intermediate">Intermediate</option>
-                <option value="Advanced">Advanced</option>
-                <option value="Nearly Complete">Nearly Complete</option>
-                <option value="none">No Progress Data</option>
-              </select>
-              <select
-                value={filterTutor}
-                onChange={(e) => setFilterTutor(e.target.value)}
-                className="px-4 py-2 border rounded-lg text-gray-900"
-              >
-                <option value="all">All Tutors</option>
-                {tutors.map(tutor => (
-                  <option key={tutor.id} value={tutor.id}>{tutor.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Learners Table */}
-            <div className="bg-white rounded-xl shadow overflow-hidden relative">
-              {isLoadingData && learners.length === 0 && <TableSkeleton rows={4} />}
-              <div className="overflow-x-auto">
-              <table className={`w-full ${isLoadingData && learners.length === 0 ? 'hidden' : ''}`}>
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Language</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Level</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tutor</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {paginatedLearners.map(learner => (
-                    <tr key={learner.id} className={!learner.is_active ? 'bg-gray-100 border-l-4 border-gray-400' : ''}>
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className={`font-medium ${!learner.is_active ? 'text-gray-500' : 'text-gray-900'}`}>
-                            {learner.name}
-                          </p>
-                          <p className="text-sm text-gray-500">{learner.email}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-gray-700"><div className="flex items-center gap-1.5"><FlagOrText language={learner.language ?? ''} size={16} />{learner.language ? learner.language.charAt(0).toUpperCase()+learner.language.slice(1) : 'Not set'}</div></td>
-                      <td className="px-6 py-4 text-gray-700">{learner.level || 'Not set'}</td>
-                      <td className="px-6 py-4">
-                        {learner.progress ? (
-                          <div className="space-y-2">
-                            {/* Progress Bar */}
-                            <div className="flex items-center space-x-3">
-                              <div className="flex-1">
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div 
-                                    className={`h-2 rounded-full ${
-                                      learner.progress.color === 'green' ? 'bg-green-500' :
-                                      learner.progress.color === 'blue' ? 'bg-blue-500' :
-                                      learner.progress.color === 'yellow' ? 'bg-yellow-500' :
-                                      learner.progress.color === 'orange' ? 'bg-orange-500' :
-                                      'bg-red-500'
-                                    }`}
-                                    style={{ width: `${learner.progress.percentage}%` }}
-                                  ></div>
-                                </div>
-                              </div>
-                              <span className="text-sm font-medium text-gray-700 min-w-[45px]">
-                                {learner.progress.percentage}%
-                              </span>
-                            </div>
-                            {/* Session Count and Badge */}
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-gray-600">
-                                {learner.progress.completed_sessions}/{learner.progress.total_sessions} sessions
-                              </span>
-                              <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 flex items-center">
-                                <span className={`inline-block w-2.5 h-2.5 rounded-full mr-1.5 ${
-                                  learner.progress.category === 'Just Started' ? 'bg-emerald-500' :
-                                  learner.progress.category === 'Early Progress' ? 'bg-blue-500' :
-                                  learner.progress.category === 'Intermediate' ? 'bg-yellow-400' :
-                                  learner.progress.category === 'Advanced' ? 'bg-orange-500' :
-                                  'bg-rose-500'
-                                }`} />
-                                <span>{learner.progress.category}</span>
-                              </span>
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-500">No progress data</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <select
-                          value={learner.tutor?.id || ''}
-                          onChange={(e) => {
-                            const newTutorId = e.target.value;
-                            const newTutor = tutors.find(t => t.id === newTutorId);
-                            const currentTutorName = learner.tutor?.name || null;
-                            const newTutorName = newTutor?.name || null;
-                            
-                            handleAssignLearnerToTutor(
-                              learner.id, 
-                              newTutorId, 
-                              learner.name,
-                              currentTutorName,
-                              newTutorName
-                            );
-                            
-                            // Reset dropdown to current value (will update after confirmation)
-                            e.target.value = learner.tutor?.id || '';
-                          }}
-                          className="px-3 py-1 border rounded text-sm text-gray-900 bg-white cursor-pointer hover:border-brand focus:ring-2 focus:ring-brand focus:border-brand transition-all"
-                        >
-                          <option value="">Unassigned</option>
-                          {tutors.map(tutor => (
-                            <option key={tutor.id} value={tutor.id}>{tutor.name}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
-                          {learner.consent_given ? (
-                            <button
-                              onClick={() => handleViewLearnerDetails(learner)}
-                              disabled={!learner.is_active}
-                              className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm ${
-                                learner.is_active
-                                  ? 'bg-brand text-white hover:bg-[#3a9e92] hover:shadow-md'
-                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                              }`}
-                              title={learner.is_active ? "Full access - consent given" : "Learner is inactive"}
-                            >
-                              <Eye className="w-4 h-4 mr-1.5" />
-                              View Details
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleViewLearnerDetails(learner)}
-                              disabled={!learner.is_active}
-                              className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                learner.is_active
-                                  ? 'bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 hover:from-orange-200 hover:to-amber-200 border-2 border-orange-300'
-                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed border-2 border-gray-400'
-                              }`}
-                              title={learner.is_active ? "Limited access - consent required" : "Learner is inactive"}
-                            >
-                              <Eye className="w-4 h-4 mr-1.5" />
-                              View Details
-                            </button>
-                          )}
-                          {learner.is_active ? (
-                            <button
-                              onClick={() => handleDeactivateLearner(learner.id)}
-                              className="inline-flex items-center px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 hover:text-red-700 transition-all border border-red-200"
-                            >
-                              <UserMinus className="w-4 h-4 mr-1.5" /> Deactivate
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleReactivateLearner(learner.id)}
-                              className="inline-flex items-center px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 hover:text-green-700 transition-all border border-green-200"
-                            >
-                              <RefreshCw className="w-4 h-4 mr-1.5" /> Reactivate
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              </div>
-
-              {/* Pagination for Learners */}
-              {totalLearnerPages > 1 && (
-                <Pagination 
-                  currentPage={learnersPage}
-                  totalPages={totalLearnerPages}
-                  totalItems={filteredLearners.length}
-                  onPageChange={setLearnersPage}
-                />
+              {sponsored.promo_code && (
+                <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-2.5">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-gray-400">Premium Code</p>
+                    <code className="font-mono text-sm font-semibold text-gray-900">{sponsored.promo_code}</code>
+                  </div>
+                  <div className="h-8 w-px bg-gray-200" />
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-gray-400">Seats</p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {sponsored.seats_used}
+                      {sponsored.max_learners ? <span className="font-normal text-gray-400"> / {sponsored.max_learners}</span> : null}
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
+
+            {/* No promo code yet → guidance */}
+            {!sponsored.promo_code ? (
+              <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
+                <KeyRound className="mx-auto mb-3 h-8 w-8 text-gray-300" />
+                <h3 className="text-lg font-semibold text-gray-900">No premium code assigned yet</h3>
+                <p className="mx-auto mt-1 max-w-md text-sm text-gray-500">
+                  Once your MyTaco AI representative assigns a premium code to your school, students who
+                  redeem it will appear here automatically. You can view your code under Settings.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Search */}
+                <div className="rounded-xl bg-white p-4 shadow-sm">
+                  <input
+                    type="text"
+                    placeholder="Search by name or email..."
+                    value={sponsoredSearch}
+                    onChange={(e) => setSponsoredSearch(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]"
+                  />
+                </div>
+
+                {/* Read-only table */}
+                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-200 bg-gray-50/70">
+                          <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Learner</th>
+                          <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Plan</th>
+                          <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
+                          <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Renews / Expires</th>
+                          <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Redeemed</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {sponsored.learners
+                          .filter(l => {
+                            const q = sponsoredSearch.trim().toLowerCase();
+                            if (!q) return true;
+                            return (l.name || '').toLowerCase().includes(q) || (l.email || '').toLowerCase().includes(q);
+                          })
+                          .map(l => {
+                            const initials = (l.name || l.email || '?')
+                              .split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+                            const active = l.status === 'active' || l.status === 'trialing';
+                            return (
+                              <tr key={l.id} className="transition-colors hover:bg-gray-50/60">
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#4ECFBF]/15 text-xs font-semibold text-[#3A9E92]">
+                                      {initials}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="truncate font-medium text-gray-900">{l.name || '—'}</p>
+                                      <p className="truncate text-sm text-gray-500">{l.email}</p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className="text-sm capitalize text-gray-700">
+                                    {l.plan ? l.plan.replace(/_/g, ' ') : '—'}
+                                    {l.period ? <span className="text-gray-400"> · {l.period}</span> : null}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+                                    active ? 'bg-green-50 text-green-700 ring-1 ring-green-200/60'
+                                           : 'bg-gray-100 text-gray-600'
+                                  }`}>
+                                    <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-green-500' : 'bg-gray-400'}`} />
+                                    {l.status || 'free'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-600">
+                                  {l.expires_at ? new Date(l.expires_at).toLocaleDateString() : '—'}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-500">
+                                  {l.redeemed_at ? new Date(l.redeemed_at).toLocaleDateString() : '—'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        {sponsored.learners.length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-400">
+                              No students have redeemed your code yet.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </main>
 
-      {/* Add Tutor Modal */}
+      {/* Add Tutor Modal — name + email only. The tutor fills in their own
+          bio / specializations / languages later from their profile. */}
       {showAddTutorModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white p-8 rounded-xl max-w-md w-full mx-4 sm:mx-auto">
-            <h3 className="text-xl font-bold mb-4 text-gray-900">Add New Tutor</h3>
-            <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Name"
-                value={tutorForm.name}
-                onChange={(e) => setTutorForm({...tutorForm, name: e.target.value})}
-                className="w-full px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500"
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={tutorForm.email}
-                onChange={(e) => setTutorForm({...tutorForm, email: e.target.value})}
-                className="w-full px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500"
-              />
-              <textarea
-                placeholder="Bio"
-                value={tutorForm.bio}
-                onChange={(e) => setTutorForm({...tutorForm, bio: e.target.value})}
-                className="w-full px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500"
-                rows={3}
-              />
-              
-              {/* Language Selection with Flags */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowAddTutorModal(false)}>
+          <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-3 border-b border-gray-100 px-6 pt-6 pb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#4ECFBF]/10">
+                <Users className="h-5 w-5 text-[#3A9E92]" />
+              </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Languages</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                  {availableLanguages.map((lang) => (
-                    <button
-                      key={lang.code}
-                      type="button"
-                      onClick={() => {
-                        const isSelected = tutorForm.languages.includes(lang.code);
-                        setTutorForm({
-                          ...tutorForm,
-                          languages: isSelected
-                            ? tutorForm.languages.filter(l => l !== lang.code)
-                            : [...tutorForm.languages, lang.code]
-                        });
-                      }}
-                      className={`flex items-center space-x-2 px-4 py-3 border-2 rounded-lg transition-all ${
-                        tutorForm.languages.includes(lang.code)
-                          ? 'border-brand bg-brand/10 text-brand'
-                          : 'border-gray-200 hover:border-brand/50'
-                      }`}
-                    >
-                      <FlagIcon language={lang.code} size={24} />
-                      <span className="font-medium text-gray-900">{lang.name}</span>
-                      {tutorForm.languages.includes(lang.code) && (
-                        <svg className="w-5 h-5 ml-auto" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                <h3 className="text-lg font-bold text-gray-900">Add New Tutor</h3>
+                <p className="text-sm text-gray-500">
+                  We'll generate a temporary password to share. The tutor completes their profile after
+                  first login.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 overflow-y-auto px-6 py-5">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Full Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Sarah Johnson"
+                  value={tutorForm.name}
+                  onChange={(e) => setTutorForm({ ...tutorForm, name: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Email *</label>
+                <input
+                  type="email"
+                  placeholder="tutor@institution.edu"
+                  value={tutorForm.email}
+                  onChange={(e) => setTutorForm({ ...tutorForm, email: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]"
+                />
               </div>
 
-              <input
-                type="text"
-                placeholder="Specializations (comma-separated)"
-                value={tutorForm.specializations}
-                onChange={(e) => setTutorForm({...tutorForm, specializations: e.target.value})}
-                className="w-full px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500"
-              />
-              <div className="flex gap-3">
-                <button
-                  onClick={handleAddTutor}
-                  className="flex-1 px-4 py-2 bg-brand text-white rounded-lg hover:bg-[#3a9e92]"
-                >
-                  Add Tutor
-                </button>
-                <button
-                  onClick={() => setShowAddTutorModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-900 rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
+              {/* Languages taught — optional; admin can leave blank and the tutor sets it later */}
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Languages taught <span className="font-normal text-gray-400">(optional)</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {availableLanguages.map((lang) => {
+                    const selected = tutorForm.languages.includes(lang.code);
+                    return (
+                      <button
+                        key={lang.code}
+                        type="button"
+                        onClick={() =>
+                          setTutorForm({
+                            ...tutorForm,
+                            languages: selected
+                              ? tutorForm.languages.filter((l) => l !== lang.code)
+                              : [...tutorForm.languages, lang.code],
+                          })
+                        }
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all ${
+                          selected
+                            ? 'border-[#4ECFBF] bg-[#4ECFBF]/10 text-[#3A9E92]'
+                            : 'border-gray-200 text-gray-700 hover:border-[#4ECFBF]/50'
+                        }`}
+                      >
+                        <FlagIcon language={lang.code} size={18} />
+                        <span className="font-medium">{lang.name}</span>
+                        {selected && (
+                          <svg className="ml-auto h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+            </div>
+
+            <div className="flex gap-3 border-t border-gray-100 px-6 py-4">
+              <button
+                onClick={handleAddTutor}
+                disabled={!tutorForm.name.trim() || !tutorForm.email.trim()}
+                className="flex-1 rounded-lg bg-[#4ECFBF] px-4 py-2.5 font-medium text-white transition-colors hover:bg-[#3A9E92] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Add Tutor
+              </button>
+              <button
+                onClick={() => setShowAddTutorModal(false)}
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
-      )}
-
-      {/* ── Import Modal — Learners ─────────────────────────────────────── */}
-      {showImportCSVModal && (
-        <ImportModal
-          title="Import Learners"
-          requiredCols={['name', 'email']}
-          optionalCols={['language', 'level', 'tutor_email']}
-          colHints={[
-            { col: 'name', hint: 'or split into first_name + last_name' },
-            { col: 'tutor_email', hint: 'must match an existing tutor in this institution' },
-            { col: 'level', hint: 'A1 · A2 · B1 · B2 · C1 · C2' },
-          ]}
-          onClose={() => setShowImportCSVModal(false)}
-          onImport={handleImportCSV}
-        />
       )}
 
       {/* ── Import Modal — Tutors ───────────────────────────────────────── */}
@@ -2283,15 +2357,100 @@ export const InstitutionDashboardComplete: React.FC = () => {
         <ImportModal
           title="Import Tutors"
           requiredCols={['name', 'email']}
-          optionalCols={['bio', 'qualifications', 'specializations']}
+          optionalCols={['languages']}
           colHints={[
             { col: 'name', hint: 'or split into first_name + last_name' },
-            { col: 'specializations', hint: 'comma-separated, e.g. Dutch,English' },
+            { col: 'languages', hint: 'comma-separated, e.g. Dutch,English' },
           ]}
-          warning="Imported tutors receive a temporary password and must reset it on first login."
+          warning="Each imported tutor gets a temporary password (shown once after import) and must change it on first login."
           onClose={() => setShowImportTutorCSVModal(false)}
           onImport={handleImportTutorCSV}
         />
+      )}
+
+      {/* ── Temporary credentials modal (shown once after creating tutors) ── */}
+      {tutorCredentials && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setTutorCredentials(null)}>
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-3 border-b border-gray-100 px-6 pt-6 pb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#4ECFBF]/10">
+                <svg className="h-5 w-5 text-[#3A9E92]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">
+                  {tutorCredentials.mode === 'single' ? 'Tutor Added' : 'Tutors Imported'}
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Share these temporary passwords now — they won't be shown again. Each tutor must
+                  change theirs on first login.
+                </p>
+              </div>
+            </div>
+
+            <div className="max-h-[50vh] overflow-y-auto px-6 py-4">
+              {tutorCredentials.mode === 'single' ? (
+                <div className="rounded-xl border border-gray-200 p-4">
+                  <p className="text-sm font-semibold text-gray-900">{tutorCredentials.name}</p>
+                  <p className="text-xs text-gray-500">{tutorCredentials.email}</p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <code className="flex-1 rounded-md bg-gray-50 px-3 py-2 font-mono text-sm text-gray-900 ring-1 ring-gray-200">
+                      {tutorCredentials.password}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard?.writeText(tutorCredentials.password)}
+                      className="rounded-lg bg-[#4ECFBF] px-3 py-2 text-sm font-medium text-white hover:bg-[#3A9E92]"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="mb-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const text = tutorCredentials.items
+                          .map((i) => `${i.name},${i.email},${i.temporary_password}`)
+                          .join('\n');
+                        navigator.clipboard?.writeText(`name,email,temporary_password\n${text}`);
+                      }}
+                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      Copy all (CSV)
+                    </button>
+                  </div>
+                  {tutorCredentials.items.map((it, idx) => (
+                    <div key={idx} className="rounded-lg border border-gray-200 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-gray-900">{it.name}</p>
+                          <p className="truncate text-xs text-gray-500">{it.email}</p>
+                        </div>
+                        <code className="shrink-0 rounded-md bg-gray-50 px-2 py-1 font-mono text-xs text-gray-900 ring-1 ring-gray-200">
+                          {it.temporary_password}
+                        </code>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setTutorCredentials(null)}
+                className="rounded-lg bg-[#4ECFBF] px-4 py-2 text-sm font-medium text-white hover:bg-[#3A9E92]"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modern Notification Modal */}

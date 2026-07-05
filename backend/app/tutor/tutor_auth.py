@@ -251,11 +251,15 @@ async def verify_tutor_access(tutor_id: str, current_tutor: dict = Depends(get_c
 
 
 async def update_tutor_password(tutor_id: str, new_password: str) -> bool:
-    """Update tutor password and clear first_login flag"""
+    """
+    Update tutor password and clear BOTH onboarding flags (first_login and
+    must_reset_password) so the change-password gate is not re-triggered on the
+    next login regardless of which flag the tutor was created with.
+    """
     try:
         # Hash new password
         hashed_password = get_password_hash(new_password)
-        
+
         # Update tutor
         result = await database.tutors.update_one(
             {"_id": ObjectId(tutor_id)},
@@ -263,11 +267,12 @@ async def update_tutor_password(tutor_id: str, new_password: str) -> bool:
                 "$set": {
                     "hashed_password": hashed_password,
                     "first_login": False,
+                    "must_reset_password": False,
                     "password_changed_at": datetime.utcnow()
                 }
             }
         )
-        
+
         return result.modified_count > 0
     except Exception as e:
         print(f"[TUTOR_AUTH] Error updating password: {str(e)}")

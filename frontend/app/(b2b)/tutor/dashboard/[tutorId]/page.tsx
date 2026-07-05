@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { B2BAppBar } from '@/src/components/b2b/B2BAppBar';
 import { Spinner, ModalSpinner, TableLoadingSkeleton, CardLoadingSkeleton } from '@/src/components/ui/Spinner';
 import {
   BarChart2, Users, AlertTriangle, TrendingUp, Globe, BookOpen,
@@ -1600,6 +1601,10 @@ export default function TutorDashboardPage() {
     fetchData(token);
   }, [tutorId, router]); // fetchData intentionally omitted — stable after mount
 
+  // Logout: blocklist token best-effort, clear local state, return to login.
+  // Logout (with confirmation + full auth-state wipe + back-button guard) is
+  // handled by <B2BLogoutButton> inside <B2BAppBar>.
+
   // Re-fetch when filters change, debounced
   useEffect(() => {
     const token = localStorage.getItem('tutorToken');
@@ -1635,8 +1640,14 @@ export default function TutorDashboardPage() {
   }, {} as Record<string, number>);
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-20 font-nunito">
-      {/* Tab Bar — flush under global teal navbar, same style as institution dashboard */}
+    <div className="min-h-screen bg-slate-50 font-nunito">
+      <B2BAppBar
+        portal="tutor"
+        name={tutorName}
+        email={typeof window !== 'undefined' ? (localStorage.getItem('tutorEmail') || undefined) : undefined}
+        homeHref={`/tutor/dashboard/${tutorId}`}
+      />
+      {/* Tab Bar — flush under the B2B app bar, same style as institution dashboard */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <nav className="flex overflow-x-auto">

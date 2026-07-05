@@ -9,11 +9,38 @@ from datetime import datetime
 from bson import ObjectId
 from io import StringIO, BytesIO
 import csv
+import secrets
+import string
 
 from app.config.feature_flags import feature_flags
 from database import database
 from auth import create_access_token, SECRET_KEY, ALGORITHM
 from redis_client import blocklist_token, is_token_blocklisted
+
+
+def _generate_temp_password(length: int = 12) -> str:
+    """
+    Generate a strong, human-shareable temporary password for a newly created
+    tutor. Guarantees at least one lower, one upper and one digit so it always
+    passes validate_password_strength() (which the tutor must satisfy when they
+    change it too). Excludes ambiguous chars (O/0, l/1/I) for legibility.
+    """
+    lowers = "abcdefghjkmnpqrstuvwxyz"
+    uppers = "ABCDEFGHJKMNPQRSTUVWXYZ"
+    digits = "23456789"
+    pool = lowers + uppers + digits
+    # Guarantee category coverage, then fill the rest, then shuffle.
+    chars = [
+        secrets.choice(lowers),
+        secrets.choice(uppers),
+        secrets.choice(digits),
+    ]
+    chars += [secrets.choice(pool) for _ in range(max(0, length - len(chars)))]
+    # Fisher–Yates shuffle with secrets for unbiased ordering.
+    for i in range(len(chars) - 1, 0, -1):
+        j = secrets.randbelow(i + 1)
+        chars[i], chars[j] = chars[j], chars[i]
+    return "".join(chars)
 
 # ---------------------------------------------------------------------------
 # SHARED IMPORT HELPER
@@ -50,13 +77,9 @@ _TUTOR_ALIASES: Dict[str, str] = {
     # email
     "email": "email", "e-mail": "email", "email address": "email",
     "tutor email": "email", "teacher email": "email",
-    # optional
-    "bio": "bio", "biography": "bio", "description": "bio", "about": "bio",
-    "qualifications": "qualifications", "qualification": "qualifications",
-    "credentials": "qualifications", "degree": "qualifications",
-    "specializations": "specializations", "specialization": "specializations",
-    "subjects": "specializations", "languages": "specializations",
-    "expertise": "specializations",
+    # languages taught (comma-separated) — the only optional column for tutors
+    "languages": "languages", "language": "languages", "languages taught": "languages",
+    "teaches": "languages", "teaching languages": "languages",
 }
 
 
@@ -387,6 +410,8 @@ async def get_tutors(institution_id: str) -> Dict[str, Any]:
                 "learner_count": len(learner_details),
                 "learners": learner_details,
                 "is_active": tutor.get("is_active", True),  # Include is_active field
+                # Pending activation = created but hasn't set their own password yet.
+                "pending_activation": bool(tutor.get("first_login", False) or tutor.get("must_reset_password", False)),
                 "created_at": tutor.get("created_at")
             })
         
@@ -403,55 +428,62 @@ async def get_tutors(institution_id: str) -> Dict[str, Any]:
              dependencies=[Depends(check_feature_enabled)])
 async def add_tutor(institution_id: str, tutor_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Add a new tutor to the institution
-    NEW: Now includes password field for tutor login
+    Add a single tutor to the institution.
+
+    The system generates a strong temporary password (the admin does NOT choose
+    one). It is returned ONCE in the response so the admin can pass it to the
+    tutor; the tutor is forced to change it on first login (first_login +
+    must_reset_password both True — kept in sync so login and the reset gate
+    agree regardless of which flag downstream code reads).
     """
     try:
-        # Import password hashing function
-        from app.tutor.tutor_auth import get_password_hash, validate_password_strength
-        
+        from app.tutor.tutor_auth import get_password_hash
+
         # Validate required fields
-        if not tutor_data.get("name") or not tutor_data.get("email"):
-            raise HTTPException(status_code=400, detail="Name and email are required")
-        
-        # NEW: Validate password if provided
-        password = tutor_data.get("password", "")
-        if not password:
-            raise HTTPException(status_code=400, detail="Password is required for tutor account")
-        
-        # Validate password strength
-        is_valid, message = validate_password_strength(password)
-        if not is_valid:
-            raise HTTPException(status_code=400, detail=message)
-        
-        # Check if tutor email already exists
-        existing = await database.tutors.find_one({"email": tutor_data["email"]})
+        if not tutor_data.get("name") or not str(tutor_data.get("name")).strip():
+            raise HTTPException(status_code=400, detail="Name is required")
+        if not tutor_data.get("email") or not str(tutor_data.get("email")).strip():
+            raise HTTPException(status_code=400, detail="Email is required")
+
+        name = str(tutor_data["name"]).strip()
+        email = str(tutor_data["email"]).strip().lower()
+
+        # Check if tutor email already exists (global uniqueness on tutors.email)
+        existing = await database.tutors.find_one({"email": email})
         if existing:
-            raise HTTPException(status_code=400, detail="Tutor with this email already exists")
-        
-        # Hash the password
-        hashed_password = get_password_hash(password)
-        
-        # Create tutor document
+            raise HTTPException(status_code=400, detail="A tutor with this email already exists")
+
+        # System-generated temporary password (shown once to the admin).
+        temp_password = _generate_temp_password()
+        hashed_password = get_password_hash(temp_password)
+
+        now = datetime.utcnow()
         tutor = {
-            "name": tutor_data["name"],
-            "email": tutor_data["email"],
-            "hashed_password": hashed_password,  # NEW: Store hashed password
-            "first_login": True,  # NEW: Flag for password change requirement
+            "name": name,
+            "email": email,
+            "hashed_password": hashed_password,
+            "first_login": True,          # must change on first login
+            "must_reset_password": True,  # kept in sync with first_login
             "institution_id": institution_id,
-            "bio": tutor_data.get("bio", ""),
-            "specializations": tutor_data.get("specializations", []),
+            "bio": tutor_data.get("bio", "") or "",
+            "qualifications": tutor_data.get("qualifications") or None,
+            "specializations": tutor_data.get("specializations", []) or [],
+            "languages": tutor_data.get("languages", []) or [],  # languages the tutor teaches (optional)
             "permissions": tutor_data.get("permissions", ["view_learners", "assign_tasks"]),
+            "assigned_learners": [],
             "is_active": True,
-            "created_at": datetime.utcnow()
+            "enrollment_method": "manual_add",
+            "created_at": now,
+            "updated_at": now,
         }
-        
+
         result = await database.tutors.insert_one(tutor)
-        
-        # Convert ObjectId to string for JSON serialization
-        tutor_response = {
-            "message": "Tutor added successfully. Initial password has been set.",
+
+        return {
+            "message": "Tutor added successfully.",
             "tutor_id": str(result.inserted_id),
+            # Returned ONCE — the admin shares it with the tutor.
+            "temporary_password": temp_password,
             "tutor": {
                 "id": str(result.inserted_id),
                 "name": tutor["name"],
@@ -460,12 +492,10 @@ async def add_tutor(institution_id: str, tutor_data: Dict[str, Any]) -> Dict[str
                 "specializations": tutor["specializations"],
                 "permissions": tutor["permissions"],
                 "first_login": True,
-                "created_at": tutor["created_at"].isoformat() if tutor.get("created_at") else None
-            }
+                "created_at": now.isoformat(),
+            },
         }
-        
-        return tutor_response
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -483,14 +513,12 @@ async def bulk_import_tutors(
     Required columns : name (or first_name + last_name), email
     Optional columns : bio, qualifications, specializations (comma-separated)
     Column headers are matched case-insensitively with common aliases.
-    Tutors receive a random temporary password; must_reset_password is set True.
+    Tutors receive a system-generated temporary password and must change it on
+    first login (first_login + must_reset_password both True). The generated
+    credentials (email + temp password) are returned so the admin can distribute
+    them — they cannot be recovered later.
     """
-    import secrets, string
     from app.tutor.tutor_auth import get_password_hash
-
-    def _temp_password() -> str:
-        chars = string.ascii_letters + string.digits
-        return ''.join(secrets.choice(chars) for _ in range(16))
 
     try:
         rows = await _parse_import_file(file, _TUTOR_ALIASES)
@@ -503,6 +531,7 @@ async def bulk_import_tutors(
     skipped_count = 0
     failed_count  = 0
     errors: List[str] = []
+    credentials: List[Dict[str, str]] = []  # email + temp password per created tutor
 
     for row_num, row in enumerate(rows, start=2):
         try:
@@ -514,23 +543,27 @@ async def bulk_import_tutors(
                 failed_count += 1
                 continue
 
-            # Skip duplicates within the same institution
-            if await database.tutors.find_one({"email": email, "institution_id": institution_id}):
+            # Skip duplicates — tutors.email is globally unique, so check globally
+            # (matches the single-add path) to avoid an insert that would fail.
+            if await database.tutors.find_one({"email": email}):
                 skipped_count += 1
                 continue
 
-            raw_specs = row.get("specializations", "")
-            specializations = [s.strip() for s in raw_specs.split(",") if s.strip()]
+            raw_langs = row.get("languages", "")
+            languages = [s.strip() for s in raw_langs.split(",") if s.strip()]
+
+            temp_password = _generate_temp_password()
 
             await database.tutors.insert_one({
                 "name": name,
                 "email": email,
-                "bio": row.get("bio") or None,
-                "qualifications": row.get("qualifications") or None,
-                "specializations": specializations,
+                "languages": languages,       # languages the tutor teaches (optional)
+                "specializations": [],
                 "institution_id": institution_id,
-                "hashed_password": get_password_hash(_temp_password()),
+                "hashed_password": get_password_hash(temp_password),
+                "first_login": True,
                 "must_reset_password": True,
+                "permissions": ["view_learners", "assign_tasks"],
                 "assigned_learners": [],
                 "is_active": True,
                 "enrollment_method": "bulk_import",
@@ -538,6 +571,7 @@ async def bulk_import_tutors(
                 "updated_at": datetime.utcnow(),
             })
             success_count += 1
+            credentials.append({"name": name, "email": email, "temporary_password": temp_password})
 
         except Exception as exc:
             errors.append(f"Row {row_num}: unexpected error — {exc}")
@@ -549,6 +583,7 @@ async def bulk_import_tutors(
         "skipped_count": skipped_count,
         "failed_count": failed_count,
         "errors": errors[:20],
+        "credentials": credentials,
     }
 
 
@@ -701,6 +736,55 @@ async def reactivate_tutor(institution_id: str, tutor_id: str) -> Dict[str, Any]
         raise HTTPException(status_code=500, detail=f"Failed to reactivate tutor: {str(e)}")
 
 
+@router.post("/{institution_id}/tutors/{tutor_id}/reset-password",
+             dependencies=[Depends(check_feature_enabled)])
+async def reset_tutor_password(institution_id: str, tutor_id: str) -> Dict[str, Any]:
+    """
+    Admin-initiated tutor password reset.
+
+    Generates a fresh temporary password (invalidating any previous one),
+    re-arms the first-login gate (first_login + must_reset_password) and returns
+    the new temp password ONCE so the admin can pass it to the tutor. Used when
+    the tutor never received / forgot their initial credentials — we never store
+    or re-show a plaintext password, we always mint a new one.
+    """
+    try:
+        from app.tutor.tutor_auth import get_password_hash
+
+        tutor = await database.tutors.find_one(
+            {"_id": ObjectId(tutor_id), "institution_id": institution_id}
+        )
+        if not tutor:
+            raise HTTPException(status_code=404, detail="Tutor not found")
+
+        temp_password = _generate_temp_password()
+        await database.tutors.update_one(
+            {"_id": ObjectId(tutor_id), "institution_id": institution_id},
+            {"$set": {
+                "hashed_password": get_password_hash(temp_password),
+                "first_login": True,
+                "must_reset_password": True,
+                "password_reset_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            }},
+        )
+
+        return {
+            "message": "Password reset successfully.",
+            "temporary_password": temp_password,
+            "tutor": {
+                "id": str(tutor["_id"]),
+                "name": tutor.get("name", ""),
+                "email": tutor.get("email", ""),
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reset tutor password: {str(e)}")
+
+
 @router.put("/{institution_id}/tutors/{tutor_id}/permissions",
             dependencies=[Depends(check_feature_enabled)])
 async def update_tutor_permissions(
@@ -731,6 +815,65 @@ async def update_tutor_permissions(
 # ============================================================================
 # LEARNER MANAGEMENT APIs
 # ============================================================================
+
+@router.get("/{institution_id}/sponsored-learners",
+            dependencies=[Depends(check_feature_enabled)])
+async def get_sponsored_learners(institution_id: str) -> Dict[str, Any]:
+    """
+    Read-only list of students who redeemed THIS school's Stripe promo code.
+
+    The school sets its promo code (e.g. "AMSTERDAMTAAL") in Settings; students
+    redeem it in the mobile app at checkout, which Stripe attributes to the
+    subscription. The webhook stamps `institution_promo.code` onto the user, and
+    here we surface everyone whose active subscription carries that code. No
+    enrollment records are created — the source of truth is Stripe.
+    """
+    from bson import ObjectId as OID
+    try:
+        inst = await database.institutions.find_one({"_id": OID(institution_id)})
+        if not inst:
+            raise HTTPException(status_code=404, detail="Institution not found")
+
+        promo_code = (inst.get("promo_code") or "").strip().upper()
+        max_learners = int(inst.get("max_learners", 0) or 0)
+
+        learners: List[Dict[str, Any]] = []
+        if promo_code:
+            # Case-insensitive match on the stored redemption code.
+            cursor = database.users.find(
+                {"institution_promo.code": {"$regex": f"^{promo_code}$", "$options": "i"}},
+                {
+                    "name": 1, "email": 1, "subscription_plan": 1,
+                    "subscription_status": 1, "subscription_period": 1,
+                    "subscription_expires_at": 1, "institution_promo": 1,
+                },
+            )
+            async for u in cursor:
+                promo = u.get("institution_promo") or {}
+                learners.append({
+                    "id": str(u["_id"]),
+                    "name": u.get("name", ""),
+                    "email": u.get("email", ""),
+                    "plan": u.get("subscription_plan"),
+                    "status": u.get("subscription_status"),
+                    "period": u.get("subscription_period"),
+                    "expires_at": u.get("subscription_expires_at").isoformat()
+                        if u.get("subscription_expires_at") else None,
+                    "redeemed_at": promo.get("applied_at").isoformat()
+                        if promo.get("applied_at") else None,
+                })
+
+        return {
+            "promo_code": promo_code,
+            "seats_used": len(learners),
+            "max_learners": max_learners,
+            "learners": learners,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/{institution_id}/learners",
             dependencies=[Depends(check_feature_enabled)])
@@ -1498,6 +1641,9 @@ async def get_profile_settings(institution_id: str) -> Dict[str, Any]:
             "timezone":         inst.get("timezone") or "UTC",
             "semester_start":   inst.get("semester_start") or "",
             "semester_end":     inst.get("semester_end") or "",
+            # Stripe promotion code (e.g. "AMSTERDAMTAAL") the school hands to its
+            # students; the Learners tab lists everyone who redeemed it.
+            "promo_code":       inst.get("promo_code") or "",
         }
     except HTTPException:
         raise
@@ -1517,14 +1663,19 @@ async def update_profile_settings(
     ALLOWED = {
         "name", "institution_type", "website", "phone",
         "address", "logo_url", "admin_language", "timezone",
-        "semester_start", "semester_end",
+        "semester_start", "semester_end", "promo_code",
     }
     INSTITUTION_TYPES = {"school", "university", "language_center", "corporate"}
 
     update: Dict[str, Any] = {}
     for field in ALLOWED:
         if field in body:
-            update[field] = body[field]
+            # Normalise the promo code: Stripe promotion codes are matched
+            # case-insensitively at checkout, but we store a canonical upper form.
+            if field == "promo_code" and isinstance(body[field], str):
+                update[field] = body[field].strip().upper()
+            else:
+                update[field] = body[field]
 
     if not update:
         raise HTTPException(status_code=400, detail="No valid fields to update")

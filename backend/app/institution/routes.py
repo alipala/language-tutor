@@ -1,6 +1,7 @@
 """
 Institution API endpoints
 """
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, Any
 from app.institution.service import InstitutionService
@@ -8,7 +9,8 @@ from app.institution.schemas import (
     InstitutionSignupRequest,
     InstitutionSignupResponse,
     InstitutionLoginRequest,
-    InstitutionLoginResponse
+    InstitutionLoginResponse,
+    ActivationCodePreviewResponse
 )
 from app.config.feature_flags import feature_flags
 from database import database
@@ -23,6 +25,43 @@ def check_feature_enabled():
             status_code=403,
             detail="Institutional features are not enabled"
         )
+
+
+@router.get("/activation-code/{code}/preview",
+            response_model=ActivationCodePreviewResponse,
+            dependencies=[Depends(check_feature_enabled)])
+async def preview_activation_code(code: str):
+    """
+    PUBLIC (no auth) preview of an activation code, used to pre-fill the
+    school-admin activation/signup page. Returns ONLY non-sensitive institution
+    metadata that the master admin already entered when generating the code —
+    so the invited admin only has to confirm and set a password.
+
+    Mirrors the same validity rules as create_institution(): the code must exist,
+    not already be consumed, and not be expired.
+    """
+    code_doc = await database.activation_codes.find_one({"activation_code": code})
+    if not code_doc:
+        raise HTTPException(status_code=404, detail="Invalid activation code")
+
+    if code_doc.get("status") in ("used", "active_trial", "active_paid"):
+        raise HTTPException(status_code=409, detail="This activation code has already been used")
+
+    expires_at = code_doc.get("code_expires_at")
+    if expires_at and expires_at < datetime.utcnow():
+        raise HTTPException(status_code=410, detail="This activation code has expired")
+    if code_doc.get("status") == "expired":
+        raise HTTPException(status_code=410, detail="This activation code has expired")
+
+    return ActivationCodePreviewResponse(
+        institution_name=code_doc.get("institution_name", ""),
+        institution_email=code_doc.get("institution_email", ""),
+        institution_type=code_doc.get("institution_type", "school"),
+        subscription_plan=code_doc.get("target_plan", "starter"),
+        is_trial=bool(code_doc.get("is_trial", True)),
+        max_tutors=int(code_doc.get("max_tutors", 0) or 0),
+        max_learners=int(code_doc.get("max_learners", 0) or 0),
+    )
 
 @router.post("/signup",
             response_model=InstitutionSignupResponse,

@@ -237,6 +237,12 @@ async def create_checkout_session(
                 "cancel_url": cancel_url,
                 # 🔥 PROMO CODE FIX: Enable promotion codes (simplified config)
                 "allow_promotion_codes": True,
+                # 🏫 INSTITUTION / 100%-OFF SUPPORT: only collect a payment method
+                # when the amount due is actually > 0. A 100%-off school coupon
+                # (or a full-discount promo) then requires NO card at all, so the
+                # student checks out for €0. Paid checkouts are unaffected — the
+                # amount is > 0 so Stripe still collects a card as before.
+                "payment_method_collection": "if_required",
                 # Add metadata for tracking
                 "metadata": {
                     "user_id": str(current_user.id),
@@ -906,6 +912,56 @@ async def stripe_webhook(
         logger.error(f"Error processing webhook: {str(e)}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+def _extract_promo_from_subscription(subscription) -> Optional[dict]:
+    """
+    Best-effort read of the coupon / promotion code applied to a Stripe
+    subscription, so we can attribute a student to a school's promo code.
+
+    Handles both the legacy single `discount` object and the newer `discounts`
+    array, and both dict-shaped (webhook JSON) and object-shaped (SDK) payloads.
+    Returns {code, coupon_id, coupon_name, percent_off, applied_at} or None.
+    Never raises — attribution is a nice-to-have, not a correctness requirement.
+    """
+    def _get(obj, key):
+        if obj is None:
+            return None
+        if isinstance(obj, dict):
+            return obj.get(key)
+        return getattr(obj, key, None)
+
+    # Normalise to a single "discount" object.
+    discount = _get(subscription, "discount")
+    if not discount:
+        discounts = _get(subscription, "discounts")
+        if isinstance(discounts, (list, tuple)) and discounts:
+            discount = discounts[0]
+    if not discount:
+        return None
+
+    coupon = _get(discount, "coupon") or {}
+    promotion_code = _get(discount, "promotion_code")
+
+    # promotion_code may be an id string; try to resolve its human-readable code.
+    code_str = None
+    if isinstance(promotion_code, str) and promotion_code:
+        try:
+            pc = stripe.PromotionCode.retrieve(promotion_code)
+            code_str = _get(pc, "code")
+        except Exception:
+            code_str = promotion_code  # fall back to the id
+    elif promotion_code:
+        code_str = _get(promotion_code, "code")
+
+    from datetime import datetime, timezone
+    return {
+        "code": code_str,
+        "coupon_id": _get(coupon, "id"),
+        "coupon_name": _get(coupon, "name"),
+        "percent_off": _get(coupon, "percent_off"),
+        "applied_at": datetime.now(timezone.utc),
+    }
+
+
 async def handle_subscription_created(subscription):
     """Handle subscription created event"""
     try:
@@ -969,6 +1025,17 @@ async def handle_subscription_created(subscription):
                 # Determine if monthly or annual
                 if price.get("recurring") and price.get("recurring").get("interval"):
                     update_data["subscription_period"] = "monthly" if price.get("recurring").get("interval") == "month" else "annual"
+
+        # 🏫 INSTITUTION SPONSORSHIP: record which promo/coupon (if any) was
+        # applied, so the school dashboard can list who redeemed its code. A
+        # 100%-off school coupon (e.g. "AMSTERDAMTAAL") shows up here as a
+        # discount on the subscription. Safe no-op for normal paid subs.
+        try:
+            promo_info = _extract_promo_from_subscription(subscription)
+            if promo_info:
+                update_data["institution_promo"] = promo_info
+        except Exception as promo_err:
+            logger.warning(f"[SUB_CREATED] Could not read promo info: {promo_err}")
 
         # 🔥 REMOVE old provider data on Stripe subscription
         unset_data = {
@@ -1272,6 +1339,9 @@ async def handle_subscription_deleted(subscription):
             "subscription_started_at": 1,
             "trial_end_date": 1,
             "cancellation_date": 1,
+            # 🏫 Drop school-promo attribution when the sponsored sub ends, so the
+            # student no longer appears as an active seat in the school dashboard.
+            "institution_promo": 1,
         }
 
         # Update user in MongoDB
