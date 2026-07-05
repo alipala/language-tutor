@@ -233,6 +233,63 @@ def _minutes_quota(user: dict) -> dict:
     return {"minutes_used": used, "minutes_limit": limit, "minutes_remaining": remaining}
 
 
+async def _build_promo_code_to_school() -> Dict[str, str]:
+    """
+    One-shot map of upper-cased Stripe promo_code → institution name, so the
+    admin user views can label B2B (school-sponsored) users WITHOUT an N+1 query
+    per user. Only schools that actually have a promo_code are included.
+    """
+    mapping: Dict[str, str] = {}
+    try:
+        async for inst in database.institutions.find(
+            {"promo_code": {"$exists": True, "$ne": ""}}, {"name": 1, "promo_code": 1}
+        ):
+            code = (inst.get("promo_code") or "").strip().upper()
+            if code:
+                mapping[code] = inst.get("name") or ""
+    except Exception:
+        pass
+    return mapping
+
+
+def _institution_for_user(user: Dict[str, Any], school_map: Dict[str, str]) -> Optional[Dict[str, Any]]:
+    """
+    Build the B2B sponsorship block for an admin user view, or None for a normal
+    B2C user. Resolves the school name from the pre-built promo_code→name map and
+    computes how much of the sponsored membership is left.
+    """
+    promo = user.get("institution_promo") or {}
+    code = (promo.get("code") or "").strip()
+    if not code:
+        return None
+
+    school_name = school_map.get(code.upper())
+    # Days/months remaining until the current sponsored period ends.
+    days_remaining = None
+    expires_at = user.get("subscription_expires_at")
+    if expires_at:
+        try:
+            if isinstance(expires_at, str):
+                from dateutil import parser as _dtparser
+                expires_at = _dtparser.parse(expires_at)
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            delta = expires_at - datetime.now(timezone.utc)
+            days_remaining = max(0, delta.days)
+        except Exception:
+            days_remaining = None
+
+    redeemed_at = promo.get("applied_at")
+    return {
+        "sponsored": True,
+        "name": school_name,          # may be None if the school later cleared its code
+        "promo_code": code.upper(),
+        "days_remaining": days_remaining,
+        "months_remaining": (round(days_remaining / 30, 1) if days_remaining is not None else None),
+        "redeemed_at": redeemed_at.isoformat() if hasattr(redeemed_at, "isoformat") else redeemed_at,
+    }
+
+
 @router.get("/users", response_model=UserListResponse)
 async def get_users_admin(
     page: int = 1,
@@ -319,6 +376,9 @@ async def get_users_admin(
                 return date_value.isoformat()
             return str(date_value)
 
+        # One-shot school map so we can label B2B users without an N+1 query.
+        school_map = await _build_promo_code_to_school()
+
         # Convert ObjectId to string and format response
         formatted_users = []
         for user in users:
@@ -348,6 +408,8 @@ async def get_users_admin(
                     "learning_plan_preserved": user.get("learning_plan_preserved", False),
                     # practice-minute usage (used / plan limit / remaining) for the list view
                     **_minutes_quota(user),
+                    # 🏫 B2B: sponsoring school + membership left (None for B2C users)
+                    "institution": _institution_for_user(user, school_map),
                 }
                 formatted_users.append(user_dict)
             except Exception as format_error:
@@ -1610,6 +1672,8 @@ async def get_user_overview_admin(
             "expires_at": _iso(user.get("subscription_expires_at")),
             "is_in_trial": user.get("is_in_trial", False),
             **_minutes_quota(user),  # minutes_used / minutes_limit / minutes_remaining
+            # 🏫 B2B: sponsoring school + membership left (None for B2C users)
+            "institution": _institution_for_user(user, await _build_promo_code_to_school()),
         },
         "engagement": {
             "total_xp": total_xp,
