@@ -1272,63 +1272,61 @@ async def get_institution_learners_admin(
     institution_id: str,
     current_admin: AdminUser = Depends(get_current_admin)
 ):
-    """Get all learners for an institution (admin view, no consent gate)"""
+    """
+    Learners for an institution (admin view) — sourced from Stripe promo-code
+    redemptions, matching the institution-side Sponsored Learners tab. We list
+    every user whose active subscription carries this school's promo_code
+    (stamped as institution_promo.code by the Stripe webhook). No enrollment
+    records are involved; the source of truth is Stripe.
+    """
     from bson import ObjectId
-    enrollments = await database.institutional_learners.find({
-        "institution_id": institution_id
-    }).to_list(length=None)
+
+    inst = None
+    try:
+        inst = await database.institutions.find_one({"_id": ObjectId(institution_id)})
+    except Exception:
+        inst = None
+    promo_code = ((inst or {}).get("promo_code") or "").strip().upper()
 
     learner_list = []
-    for enrollment in enrollments:
-        user_id = enrollment.get("user_id", "")
-        user = None
-        try:
-            if ObjectId.is_valid(user_id):
-                user = await database.users.find_one({"_id": ObjectId(user_id)})
-        except Exception:
-            pass
+    if promo_code:
+        cursor = database.users.find(
+            {"institution_promo.code": {"$regex": f"^{promo_code}$", "$options": "i"}}
+        )
+        async for user in cursor:
+            user_id = str(user["_id"])
+            promo = user.get("institution_promo") or {}
 
-        # Get learning plan summary
-        plans = await database.learning_plans.find({"user_id": user_id}).to_list(length=None)
-        plan_summary = None
-        if plans:
-            plan = plans[0]
-            plan_summary = {
-                "language": plan.get("language"),
-                "level": plan.get("proficiency_level") or plan.get("level"),
-                "progress_percentage": round(plan.get("progress_percentage", 0), 1),
-                "completed_sessions": plan.get("completed_sessions", 0),
-                "total_sessions": plan.get("total_sessions", 16),
-                "practice_minutes_used": round(plan.get("practice_minutes_used", 0), 1)
-            }
+            # Optional learning-plan summary (may be absent for a new subscriber).
+            plans = await database.learning_plans.find({"user_id": user_id}).to_list(length=None)
+            plan_summary = None
+            if plans:
+                plan = plans[0]
+                plan_summary = {
+                    "language": plan.get("language"),
+                    "level": plan.get("proficiency_level") or plan.get("level"),
+                    "progress_percentage": round(plan.get("progress_percentage", 0), 1),
+                    "completed_sessions": plan.get("completed_sessions", 0),
+                    "total_sessions": plan.get("total_sessions", 16),
+                    "practice_minutes_used": round(plan.get("practice_minutes_used", 0), 1)
+                }
 
-        # Get tutor info
-        tutor = None
-        tutor_id = enrollment.get("tutor_id")
-        if tutor_id:
-            try:
-                t = await database.tutors.find_one({"_id": ObjectId(tutor_id)})
-                if t:
-                    tutor = {"id": str(t["_id"]), "name": t.get("name"), "email": t.get("email")}
-            except Exception:
-                pass
-
-        learner_list.append({
-            "enrollment_id": str(enrollment["_id"]),
-            "user_id": user_id,
-            "name": user.get("name") if user else enrollment.get("email", "Unknown"),
-            "email": user.get("email") if user else enrollment.get("email", ""),
-            "preferred_language": user.get("preferred_language") if user else None,
-            "preferred_level": user.get("preferred_level") if user else None,
-            "subscription_status": user.get("subscription_status") if user else None,
-            "subscription_plan": user.get("subscription_plan") if user else None,
-            "consent_given": enrollment.get("consent_given", False),
-            "is_active": enrollment.get("is_active", True),
-            "enrollment_method": enrollment.get("enrollment_method"),
-            "enrolled_at": enrollment.get("enrolled_at").isoformat() if enrollment.get("enrolled_at") else None,
-            "tutor": tutor,
-            "plan_summary": plan_summary
-        })
+            learner_list.append({
+                "enrollment_id": user_id,  # stable key for the admin table
+                "user_id": user_id,
+                "name": user.get("name") or "Unknown",
+                "email": user.get("email") or "",
+                "preferred_language": user.get("preferred_language"),
+                "preferred_level": user.get("preferred_level"),
+                "subscription_status": user.get("subscription_status"),
+                "subscription_plan": user.get("subscription_plan"),
+                "consent_given": True,  # redeeming the code is an explicit action
+                "is_active": user.get("subscription_status") in ("active", "trialing"),
+                "enrollment_method": "promo_code",
+                "enrolled_at": promo.get("applied_at").isoformat() if promo.get("applied_at") else None,
+                "tutor": None,
+                "plan_summary": plan_summary,
+            })
 
     return {"total_learners": len(learner_list), "learners": learner_list}
 
