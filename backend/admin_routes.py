@@ -45,11 +45,11 @@ class UserListResponse(BaseModel):
 
 # Admin credentials (in production, store in database)
 ADMIN_USERS = {
-    "admin@languagetutor.com": {
+    "superadmin@mytacoai.com": {
         "id": "admin_001",
-        "email": "admin@languagetutor.com",
-        "name": "Admin User",
-        "hashed_password": get_password_hash("admin123"),  # Change this password!
+        "email": "superadmin@mytacoai.com",
+        "name": "Super Admin",
+        "hashed_password": get_password_hash("5xbdqYtw!!!"),
         "role": "admin",
         "permissions": ["read:users", "write:users", "read:analytics", "system:admin"]
     }
