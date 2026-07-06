@@ -2,7 +2,7 @@
 Enhanced Institution Dashboard APIs
 Provides analytics, tutor management, and learner management
 """
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Dict, Any, List, Optional
 from datetime import datetime
@@ -168,6 +168,47 @@ def check_feature_enabled():
             status_code=403,
             detail="Institutional features are not enabled"
         )
+
+
+async def get_current_institution_admin(
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+) -> Dict[str, Any]:
+    """
+    Institution-admin identity guard for sensitive dashboard actions.
+
+    Decodes the institution-admin JWT (minted at /institution/login with
+    {sub: admin_email, institution_id, role: "admin", jti}), rejects blocklisted
+    (logged-out) tokens, and requires role == "admin". Returns the claims so the
+    caller can enforce tenant isolation (institution_id must match the path).
+
+    NOTE: most /institution/dashboard/* routes are currently guarded ONLY by the
+    feature flag (a known multi-tenant authz gap). New/sensitive assignment
+    endpoints use THIS guard so they can't be abused cross-tenant.
+    """
+    from jose import jwt as jose_jwt, JWTError
+
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jose_jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    jti = payload.get("jti")
+    if jti and await is_token_blocklisted(jti):
+        raise HTTPException(status_code=401, detail="Token has been revoked")
+
+    if payload.get("role") != "admin" or not payload.get("institution_id"):
+        raise HTTPException(status_code=403, detail="Institution admin access required")
+
+    return payload
+
+
+def _require_tenant(admin: Dict[str, Any], institution_id: str) -> None:
+    """Enforce that the authenticated admin owns the institution in the path.
+    Prevents reading/writing another school's data by iterating institution_id."""
+    if str(admin.get("institution_id")) != str(institution_id):
+        raise HTTPException(status_code=403, detail="You cannot manage another institution")
 
 
 @router.post("/logout", dependencies=[Depends(check_feature_enabled)])
@@ -839,6 +880,16 @@ async def get_sponsored_learners(institution_id: str) -> Dict[str, Any]:
 
         learners: List[Dict[str, Any]] = []
         if promo_code:
+            # Pre-load this school's enrollment rows + tutor names ONCE, so we can
+            # annotate each sponsored learner with their enrollment/assignment
+            # state without an N+1 query. Keyed by user_id.
+            enroll_by_user: Dict[str, Dict[str, Any]] = {}
+            async for e in database.institutional_learners.find({"institution_id": institution_id}):
+                enroll_by_user[str(e.get("user_id"))] = e
+            tutor_names: Dict[str, Dict[str, Any]] = {}
+            async for t in database.tutors.find({"institution_id": institution_id}, {"name": 1, "email": 1}):
+                tutor_names[str(t["_id"])] = {"id": str(t["_id"]), "name": t.get("name"), "email": t.get("email")}
+
             # Case-insensitive match on the stored redemption code.
             cursor = database.users.find(
                 {"institution_promo.code": {"$regex": f"^{promo_code}$", "$options": "i"}},
@@ -846,14 +897,27 @@ async def get_sponsored_learners(institution_id: str) -> Dict[str, Any]:
                     "name": 1, "email": 1, "subscription_plan": 1,
                     "subscription_status": 1, "subscription_period": 1,
                     "subscription_expires_at": 1, "institution_promo": 1,
+                    "preferred_language": 1, "preferred_level": 1,
                 },
             )
             async for u in cursor:
+                uid = str(u["_id"])
                 promo = u.get("institution_promo") or {}
+                enrollment = enroll_by_user.get(uid)
+                tutor = None
+                if enrollment and enrollment.get("tutor_id"):
+                    tutor = tutor_names.get(str(enrollment.get("tutor_id")))
                 learners.append({
-                    "id": str(u["_id"]),
+                    "id": uid,  # the user's id (kept for backward-compat)
+                    "user_id": uid,
+                    # institutional_learners._id — REQUIRED by the assign-tutor
+                    # endpoint (which keys on the enrollment row _id, not user id).
+                    "learner_id": str(enrollment["_id"]) if enrollment else None,
+                    "enrolled": bool(enrollment),
                     "name": u.get("name", ""),
                     "email": u.get("email", ""),
+                    "language": u.get("preferred_language"),
+                    "level": u.get("preferred_level"),
                     "plan": u.get("subscription_plan"),
                     "status": u.get("subscription_status"),
                     "period": u.get("subscription_period"),
@@ -861,6 +925,7 @@ async def get_sponsored_learners(institution_id: str) -> Dict[str, Any]:
                         if u.get("subscription_expires_at") else None,
                     "redeemed_at": promo.get("applied_at").isoformat()
                         if promo.get("applied_at") else None,
+                    "tutor": tutor,  # {id,name,email} or None if unassigned
                 })
 
         return {
@@ -1020,36 +1085,258 @@ async def get_learners(institution_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to get learners: {str(e)}")
 
 
+# ============================================================================
+# LEARNER → TUTOR ASSIGNMENT (institution-admin managed)
+# ============================================================================
+# Business rules preserved (verified against the codebase):
+#  - A sponsored learner = a user whose institution_promo.code matches this
+#    school's promo_code. Only sponsored users of THIS school may be enrolled.
+#  - institutional_learners is unique on (user_id, institution_id) → enroll is
+#    an idempotent upsert.
+#  - Promo redemption is an explicit action → consent_given=True, method
+#    "promo_code" (mirrors self_signup's implicit consent).
+#  - A tutor may only receive assignments if they belong to THIS institution and
+#    is_active=True (matches learner/service.py enrollment checks).
+#  - Assign is an upsert: enrolling + assigning in one call keeps the admin UX to
+#    a single click, while still creating the row on the admin's explicit action.
+#  - Tutor dashboard shows learners where tutor_id==<tutor> AND is_active=True,
+#    so re-activation on assign guarantees visibility.
+#  - Endpoints here enforce admin identity + tenant isolation (unlike the rest of
+#    the dashboard, which is feature-flag-only).
+
+async def _load_sponsored_user_or_404(institution_id: str, user_id: str) -> Dict[str, Any]:
+    """Return the users doc IFF it is a sponsored learner of THIS school
+    (institution_promo.code == this school's promo_code). Else 404."""
+    inst = await database.institutions.find_one({"_id": ObjectId(institution_id)})
+    if not inst:
+        raise HTTPException(status_code=404, detail="Institution not found")
+    promo_code = (inst.get("promo_code") or "").strip().upper()
+    if not promo_code:
+        raise HTTPException(status_code=400, detail="This school has no promo code set")
+    try:
+        user = await database.users.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user id")
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    code = ((user.get("institution_promo") or {}).get("code") or "").strip().upper()
+    if code != promo_code:
+        raise HTTPException(status_code=403, detail="This user is not a sponsored learner of your school")
+    return user
+
+
+async def _validate_tutor(institution_id: str, tutor_id: str) -> Dict[str, Any]:
+    """Tutor must exist, belong to this institution, and be active."""
+    try:
+        tutor = await database.tutors.find_one({"_id": ObjectId(tutor_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid tutor id")
+    if not tutor or str(tutor.get("institution_id")) != str(institution_id):
+        raise HTTPException(status_code=404, detail="Tutor not found in this institution")
+    if not tutor.get("is_active", True):
+        raise HTTPException(status_code=400, detail="Cannot assign learners to an inactive tutor")
+    return tutor
+
+
+async def _enroll_sponsored_upsert(institution_id: str, user_id: str, tutor_id: Optional[str]) -> ObjectId:
+    """Idempotently create/refresh the institutional_learners row for a sponsored
+    learner and (optionally) set its tutor. Returns the row _id.
+    Re-activates a previously deactivated row so it re-appears for the tutor."""
+    now = datetime.utcnow()
+    set_fields = {
+        "institution_id": institution_id,
+        "user_id": str(user_id),
+        "enrollment_method": "promo_code",
+        # Redeeming the school's code is an explicit action → implicit consent
+        # (same rule as self_signup). Does NOT touch a prior revoke flag.
+        "consent_given": True,
+        "is_active": True,
+        "updated_at": now,
+    }
+    if tutor_id is not None:
+        set_fields["tutor_id"] = tutor_id
+    result = await database.institutional_learners.update_one(
+        {"user_id": str(user_id), "institution_id": institution_id},
+        {
+            "$set": set_fields,
+            "$setOnInsert": {"enrolled_at": now, "consent_date": now},
+        },
+        upsert=True,
+    )
+    if result.upserted_id:
+        return result.upserted_id
+    row = await database.institutional_learners.find_one(
+        {"user_id": str(user_id), "institution_id": institution_id}, {"_id": 1}
+    )
+    return row["_id"]
+
+
+@router.post("/{institution_id}/learners/enroll",
+             dependencies=[Depends(check_feature_enabled)])
+async def enroll_sponsored_learner(
+    institution_id: str,
+    body: Dict[str, Any] = Body(...),
+    admin: Dict[str, Any] = Depends(get_current_institution_admin),
+) -> Dict[str, Any]:
+    """
+    Admin action: enroll a sponsored learner into the institution's roster
+    (creates the institutional_learners row) WITHOUT assigning a tutor yet.
+    Idempotent. Seat-limited by the school's max_learners.
+    """
+    _require_tenant(admin, institution_id)
+    user_id = body.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
+
+    await _load_sponsored_user_or_404(institution_id, user_id)
+
+    # Seat limit: count DISTINCT active enrolled learners; block a NEW enroll
+    # beyond max_learners (matches learner/service.py). Re-enrolling an existing
+    # row is always allowed (no new seat consumed).
+    inst = await database.institutions.find_one({"_id": ObjectId(institution_id)})
+    max_learners = int(inst.get("max_learners", 0) or 0)
+    existing = await database.institutional_learners.find_one(
+        {"user_id": str(user_id), "institution_id": institution_id}
+    )
+    if not existing and max_learners > 0:
+        active_count = await database.institutional_learners.count_documents(
+            {"institution_id": institution_id, "is_active": True}
+        )
+        if active_count >= max_learners:
+            raise HTTPException(status_code=409, detail=f"Seat limit reached ({max_learners}). Cannot enroll more learners.")
+
+    learner_id = await _enroll_sponsored_upsert(institution_id, user_id, tutor_id=None)
+    return {"message": "Learner enrolled", "learner_id": str(learner_id), "user_id": str(user_id)}
+
+
 @router.post("/{institution_id}/learners/assign-tutor",
              dependencies=[Depends(check_feature_enabled)])
 async def assign_learner_to_tutor(
     institution_id: str,
-    assignment: Dict[str, Any]
+    assignment: Dict[str, Any] = Body(...),
+    admin: Dict[str, Any] = Depends(get_current_institution_admin),
 ) -> Dict[str, Any]:
     """
-    Assign a learner to a specific tutor
+    Assign a sponsored learner to a tutor.
+
+    Accepts EITHER `user_id` (preferred — enroll+assign in one click) OR a
+    pre-existing `learner_id` (institutional_learners._id). Validates the tutor
+    (same institution, active). Upserts the enrollment row so an as-yet-unenrolled
+    sponsored learner is enrolled and assigned atomically.
     """
-    try:
-        learner_id = assignment.get("learner_id")
-        tutor_id = assignment.get("tutor_id")
-        
-        if not learner_id or not tutor_id:
-            raise HTTPException(status_code=400, detail="learner_id and tutor_id are required")
-        
-        result = await database.institutional_learners.update_one(
-            {"_id": ObjectId(learner_id), "institution_id": institution_id},
-            {"$set": {"tutor_id": tutor_id, "updated_at": datetime.utcnow()}}
-        )
-        
-        if result.modified_count == 0:
-            raise HTTPException(status_code=404, detail="Learner not found or already assigned")
-        
-        return {"message": "Learner assigned to tutor successfully"}
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to assign learner: {str(e)}")
+    _require_tenant(admin, institution_id)
+    tutor_id = assignment.get("tutor_id")
+    user_id = assignment.get("user_id")
+    learner_id = assignment.get("learner_id")
+
+    if not tutor_id:
+        raise HTTPException(status_code=400, detail="tutor_id is required")
+    if not user_id and not learner_id:
+        raise HTTPException(status_code=400, detail="user_id or learner_id is required")
+
+    await _validate_tutor(institution_id, tutor_id)
+
+    # Resolve user_id from learner_id if only the row id was given.
+    if not user_id and learner_id:
+        try:
+            row = await database.institutional_learners.find_one(
+                {"_id": ObjectId(learner_id), "institution_id": institution_id}
+            )
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid learner_id")
+        if not row:
+            raise HTTPException(status_code=404, detail="Learner not found in this institution")
+        user_id = str(row.get("user_id"))
+
+    # Sponsored-membership check (also guards cross-school user ids).
+    await _load_sponsored_user_or_404(institution_id, user_id)
+
+    row_id = await _enroll_sponsored_upsert(institution_id, user_id, tutor_id=tutor_id)
+    return {
+        "message": "Learner assigned to tutor",
+        "learner_id": str(row_id),
+        "user_id": str(user_id),
+        "tutor_id": tutor_id,
+    }
+
+
+@router.post("/{institution_id}/learners/bulk-assign",
+             dependencies=[Depends(check_feature_enabled)])
+async def bulk_assign_learners_to_tutor(
+    institution_id: str,
+    body: Dict[str, Any] = Body(...),
+    admin: Dict[str, Any] = Depends(get_current_institution_admin),
+) -> Dict[str, Any]:
+    """
+    Assign MANY sponsored learners to ONE tutor in a single action.
+    Body: {tutor_id, user_ids: [..]}. Each id is validated as a sponsored learner
+    of this school; the tutor is validated once. Per-item failures are reported,
+    never aborting the whole batch.
+    """
+    _require_tenant(admin, institution_id)
+    tutor_id = body.get("tutor_id")
+    user_ids = body.get("user_ids") or []
+    if not tutor_id:
+        raise HTTPException(status_code=400, detail="tutor_id is required")
+    if not isinstance(user_ids, list) or not user_ids:
+        raise HTTPException(status_code=400, detail="user_ids (non-empty list) is required")
+
+    await _validate_tutor(institution_id, tutor_id)
+
+    assigned, errors = [], []
+    for uid in user_ids:
+        try:
+            await _load_sponsored_user_or_404(institution_id, uid)
+            row_id = await _enroll_sponsored_upsert(institution_id, uid, tutor_id=tutor_id)
+            assigned.append({"user_id": str(uid), "learner_id": str(row_id)})
+        except HTTPException as he:
+            errors.append({"user_id": str(uid), "error": he.detail})
+        except Exception as e:
+            errors.append({"user_id": str(uid), "error": str(e)})
+
+    return {
+        "message": f"Assigned {len(assigned)} learner(s) to tutor",
+        "assigned_count": len(assigned),
+        "failed_count": len(errors),
+        "assigned": assigned,
+        "errors": errors,
+        "tutor_id": tutor_id,
+    }
+
+
+@router.post("/{institution_id}/learners/unassign",
+             dependencies=[Depends(check_feature_enabled)])
+async def unassign_learner(
+    institution_id: str,
+    body: Dict[str, Any] = Body(...),
+    admin: Dict[str, Any] = Depends(get_current_institution_admin),
+) -> Dict[str, Any]:
+    """
+    Remove a learner's tutor (keeps the enrollment row + consent, just clears
+    tutor_id). The learner stays sponsored/enrolled but no longer shows on any
+    tutor's dashboard.
+    """
+    _require_tenant(admin, institution_id)
+    user_id = body.get("user_id")
+    learner_id = body.get("learner_id")
+    if not user_id and not learner_id:
+        raise HTTPException(status_code=400, detail="user_id or learner_id is required")
+
+    query = {"institution_id": institution_id}
+    if user_id:
+        query["user_id"] = str(user_id)
+    else:
+        try:
+            query["_id"] = ObjectId(learner_id)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid learner_id")
+
+    result = await database.institutional_learners.update_one(
+        query, {"$set": {"tutor_id": None, "updated_at": datetime.utcnow()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Enrollment not found")
+    return {"message": "Learner unassigned from tutor"}
 
 
 @router.post("/{institution_id}/learners/deactivate/{learner_id}",

@@ -808,12 +808,20 @@ export const InstitutionDashboardComplete: React.FC = () => {
     seats_used: number;
     max_learners: number;
     learners: Array<{
-      id: string; name: string; email: string; plan: string | null;
+      id: string; user_id?: string; learner_id?: string | null; enrolled?: boolean;
+      name: string; email: string; plan: string | null;
+      language?: string | null; level?: string | null;
       status: string | null; period: string | null;
       expires_at: string | null; redeemed_at: string | null;
+      tutor?: { id: string; name?: string; email?: string } | null;
     }>;
   }>({ promo_code: '', seats_used: 0, max_learners: 0, learners: [] });
   const [sponsoredSearch, setSponsoredSearch] = useState('');
+  // Bulk-assign selection (set of user_ids) + which tutor is being assigned.
+  const [selectedLearners, setSelectedLearners] = useState<Set<string>>(new Set());
+  const [assigningLearner, setAssigningLearner] = useState<string | null>(null); // user_id currently being (re)assigned
+  const [bulkTutorId, setBulkTutorId] = useState<string>('');
+  const [bulkAssigning, setBulkAssigning] = useState(false);
   const [filteredTutors, setFilteredTutors] = useState<Tutor[]>([]);
   
   // UI State
@@ -1087,6 +1095,94 @@ export const InstitutionDashboardComplete: React.FC = () => {
     } finally {
       setIsLoadingData(false);
     }
+  };
+
+  // ── Learner → tutor assignment ────────────────────────────────────────────
+  const _authHeaders = () => ({
+    'Authorization': `Bearer ${localStorage.getItem('institution_token')}`,
+    'Content-Type': 'application/json',
+  });
+
+  // Assign (or reassign) ONE learner to a tutor. Empty tutorId → unassign.
+  const handleAssignTutor = async (userId: string, tutorId: string) => {
+    setAssigningLearner(userId);
+    try {
+      const backendUrl = getApiBaseUrl();
+      const url = tutorId
+        ? `${backendUrl}/institution/dashboard/${institutionId}/learners/assign-tutor`
+        : `${backendUrl}/institution/dashboard/${institutionId}/learners/unassign`;
+      const body = tutorId ? { user_id: userId, tutor_id: tutorId } : { user_id: userId };
+      const res = await fetch(url, { method: 'POST', headers: _authHeaders(), body: JSON.stringify(body) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.detail || 'Assignment failed');
+      }
+      // Optimistic local update so the row reflects the change immediately.
+      const tutorObj = tutorId ? tutors.find(t => t.id === tutorId) : null;
+      setSponsored(prev => ({
+        ...prev,
+        learners: prev.learners.map(l =>
+          (l.user_id || l.id) === userId
+            ? { ...l, enrolled: true, tutor: tutorObj ? { id: tutorObj.id, name: tutorObj.name, email: tutorObj.email } : null }
+            : l
+        ),
+      }));
+    } catch (e: any) {
+      setNotification({ show: true, type: 'error', title: 'Assignment failed', message: e.message || 'Could not assign tutor' });
+    } finally {
+      setAssigningLearner(null);
+    }
+  };
+
+  // Bulk-assign every selected learner to one tutor.
+  const handleBulkAssign = async () => {
+    if (!bulkTutorId || selectedLearners.size === 0) return;
+    setBulkAssigning(true);
+    try {
+      const backendUrl = getApiBaseUrl();
+      const res = await fetch(
+        `${backendUrl}/institution/dashboard/${institutionId}/learners/bulk-assign`,
+        {
+          method: 'POST',
+          headers: _authHeaders(),
+          body: JSON.stringify({ tutor_id: bulkTutorId, user_ids: Array.from(selectedLearners) }),
+        }
+      );
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.detail || 'Bulk assignment failed');
+      }
+      const data = await res.json();
+      const tutorObj = tutors.find(t => t.id === bulkTutorId);
+      setSponsored(prev => ({
+        ...prev,
+        learners: prev.learners.map(l =>
+          selectedLearners.has(l.user_id || l.id)
+            ? { ...l, enrolled: true, tutor: tutorObj ? { id: tutorObj.id, name: tutorObj.name, email: tutorObj.email } : null }
+            : l
+        ),
+      }));
+      setSelectedLearners(new Set());
+      setBulkTutorId('');
+      setNotification({
+        show: true,
+        type: data.failed_count ? 'info' : 'success',
+        title: 'Bulk assignment',
+        message: `Assigned ${data.assigned_count} learner(s)${data.failed_count ? `, ${data.failed_count} failed` : ''}`,
+      });
+    } catch (e: any) {
+      setNotification({ show: true, type: 'error', title: 'Bulk assignment failed', message: e.message || 'Bulk assignment failed' });
+    } finally {
+      setBulkAssigning(false);
+    }
+  };
+
+  const toggleSelectLearner = (userId: string) => {
+    setSelectedLearners(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId); else next.add(userId);
+      return next;
+    });
   };
 
   const handleAddTutor = async () => {
@@ -2175,32 +2271,94 @@ export const InstitutionDashboardComplete: React.FC = () => {
                   />
                 </div>
 
-                {/* Read-only table */}
+                {(() => {
+                  // Active tutors only (dropdown source). Inactive/pending can't
+                  // receive assignments (backend enforces; we mirror in the UI).
+                  const activeTutors = tutors.filter((t: any) => t.is_active !== false);
+                  const visibleLearners = sponsored.learners.filter(l => {
+                    const q = sponsoredSearch.trim().toLowerCase();
+                    if (!q) return true;
+                    return (l.name || '').toLowerCase().includes(q) || (l.email || '').toLowerCase().includes(q);
+                  });
+                  const visibleIds = visibleLearners.map(l => l.user_id || l.id);
+                  const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedLearners.has(id));
+                  return (
                 <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                  {/* Bulk-assign bar — appears when learners are selected */}
+                  {selectedLearners.size > 0 && (
+                    <div className="flex flex-wrap items-center gap-3 border-b border-gray-200 bg-[#4ECFBF]/8 px-6 py-3">
+                      <span className="text-sm font-medium text-gray-700">{selectedLearners.size} selected</span>
+                      <select
+                        value={bulkTutorId}
+                        onChange={(e) => setBulkTutorId(e.target.value)}
+                        className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#4ECFBF]"
+                      >
+                        <option value="">Assign to tutor…</option>
+                        {activeTutors.map((t: any) => (
+                          <option key={t.id} value={t.id}>{t.name || t.email}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={handleBulkAssign}
+                        disabled={!bulkTutorId || bulkAssigning}
+                        className="rounded-lg bg-[#4ECFBF] px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#3A9E92] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {bulkAssigning ? 'Assigning…' : 'Assign'}
+                      </button>
+                      <button
+                        onClick={() => setSelectedLearners(new Set())}
+                        className="text-sm font-medium text-gray-500 hover:text-gray-700"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-gray-200 bg-gray-50/70">
+                          <th className="w-10 px-4 py-3.5 text-left">
+                            <input
+                              type="checkbox"
+                              checked={allSelected}
+                              onChange={(e) => {
+                                setSelectedLearners(prev => {
+                                  const next = new Set(prev);
+                                  if (e.target.checked) visibleIds.forEach(id => next.add(id));
+                                  else visibleIds.forEach(id => next.delete(id));
+                                  return next;
+                                });
+                              }}
+                              className="h-4 w-4 rounded border-gray-300 text-[#4ECFBF] focus:ring-[#4ECFBF]"
+                              aria-label="Select all"
+                            />
+                          </th>
                           <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Learner</th>
                           <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Plan</th>
                           <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
-                          <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Renews / Expires</th>
+                          <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Tutor</th>
                           <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Redeemed</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {sponsored.learners
-                          .filter(l => {
-                            const q = sponsoredSearch.trim().toLowerCase();
-                            if (!q) return true;
-                            return (l.name || '').toLowerCase().includes(q) || (l.email || '').toLowerCase().includes(q);
-                          })
-                          .map(l => {
+                        {visibleLearners.map(l => {
+                            const uid = l.user_id || l.id;
                             const initials = (l.name || l.email || '?')
                               .split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
                             const active = l.status === 'active' || l.status === 'trialing';
+                            const isSelected = selectedLearners.has(uid);
+                            const busy = assigningLearner === uid;
                             return (
-                              <tr key={l.id} className="transition-colors hover:bg-gray-50/60">
+                              <tr key={l.id} className={`transition-colors hover:bg-gray-50/60 ${isSelected ? 'bg-[#4ECFBF]/5' : ''}`}>
+                                <td className="px-4 py-4">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => toggleSelectLearner(uid)}
+                                    className="h-4 w-4 rounded border-gray-300 text-[#4ECFBF] focus:ring-[#4ECFBF]"
+                                    aria-label={`Select ${l.name || l.email}`}
+                                  />
+                                </td>
                                 <td className="px-6 py-4">
                                   <div className="flex items-center gap-3">
                                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#4ECFBF]/15 text-xs font-semibold text-[#3A9E92]">
@@ -2227,8 +2385,21 @@ export const InstitutionDashboardComplete: React.FC = () => {
                                     {l.status || 'free'}
                                   </span>
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-600">
-                                  {l.expires_at ? new Date(l.expires_at).toLocaleDateString() : '—'}
+                                <td className="px-6 py-4">
+                                  {/* Inline tutor dropdown — enroll + assign in one click */}
+                                  <select
+                                    value={l.tutor?.id || ''}
+                                    disabled={busy || activeTutors.length === 0}
+                                    onChange={(e) => handleAssignTutor(uid, e.target.value)}
+                                    className={`rounded-lg border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] disabled:opacity-50 ${
+                                      l.tutor ? 'border-[#4ECFBF]/40 bg-[#4ECFBF]/5 text-[#3A9E92] font-medium' : 'border-gray-300 text-gray-500'
+                                    }`}
+                                  >
+                                    <option value="">{busy ? 'Saving…' : 'Unassigned'}</option>
+                                    {activeTutors.map((t: any) => (
+                                      <option key={t.id} value={t.id}>{t.name || t.email}</option>
+                                    ))}
+                                  </select>
                                 </td>
                                 <td className="px-6 py-4 text-sm text-gray-500">
                                   {l.redeemed_at ? new Date(l.redeemed_at).toLocaleDateString() : '—'}
@@ -2238,7 +2409,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                           })}
                         {sponsored.learners.length === 0 && (
                           <tr>
-                            <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-400">
+                            <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-400">
                               No students have redeemed your code yet.
                             </td>
                           </tr>
@@ -2247,6 +2418,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
                     </table>
                   </div>
                 </div>
+                  );
+                })()}
               </>
             )}
           </div>
