@@ -211,7 +211,25 @@ def _require_tenant(admin: Dict[str, Any], institution_id: str) -> None:
         raise HTTPException(status_code=403, detail="You cannot manage another institution")
 
 
-@router.post("/logout", dependencies=[Depends(check_feature_enabled)])
+async def verify_institution_admin(
+    institution_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+) -> Dict[str, Any]:
+    """
+    Combined identity + tenant guard for use in a route's `dependencies=[...]`
+    list — WITHOUT touching the endpoint's own signature.
+
+    FastAPI injects the path's `{institution_id}` here automatically, so we can
+    (1) authenticate the institution-admin JWT and (2) enforce that the admin owns
+    THAT institution, on every route, by only editing the decorator. Closes the
+    multi-tenant authz gap across the whole dashboard.
+    """
+    admin = await get_current_institution_admin(credentials)
+    _require_tenant(admin, institution_id)
+    return admin
+
+
+@router.post("/logout", dependencies=[Depends(check_feature_enabled)])  # logout has no {institution_id}; identity is verified inside the handler by decoding + blocklisting the token
 async def institution_logout(credentials: HTTPAuthorizationCredentials = Depends(_bearer)):
     """Invalidate institution JWT by adding its JTI to the Redis blocklist."""
     from jose import jwt as jose_jwt, JWTError
@@ -234,7 +252,7 @@ async def institution_logout(credentials: HTTPAuthorizationCredentials = Depends
 # ============================================================================
 
 @router.get("/{institution_id}/analytics/language-distribution",
-            dependencies=[Depends(check_feature_enabled)])
+            dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def get_language_distribution(institution_id: str) -> Dict[str, Any]:
     """
     Get language distribution of learners in the institution
@@ -294,7 +312,7 @@ async def get_language_distribution(institution_id: str) -> Dict[str, Any]:
 
 
 @router.get("/{institution_id}/analytics/level-distribution",
-            dependencies=[Depends(check_feature_enabled)])
+            dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def get_level_distribution(institution_id: str) -> Dict[str, Any]:
     """
     Get proficiency level distribution of learners
@@ -360,7 +378,7 @@ async def get_level_distribution(institution_id: str) -> Dict[str, Any]:
 # ============================================================================
 
 @router.get("/{institution_id}/tutors",
-            dependencies=[Depends(check_feature_enabled)])
+            dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def get_tutors(institution_id: str) -> Dict[str, Any]:
     """
     Get all tutors for an institution with their assigned learners (including inactive)
@@ -466,7 +484,7 @@ async def get_tutors(institution_id: str) -> Dict[str, Any]:
 
 
 @router.post("/{institution_id}/tutors",
-             dependencies=[Depends(check_feature_enabled)])
+             dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def add_tutor(institution_id: str, tutor_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Add a single tutor to the institution.
@@ -544,7 +562,7 @@ async def add_tutor(institution_id: str, tutor_data: Dict[str, Any]) -> Dict[str
 
 
 @router.post("/{institution_id}/tutors/bulk-import",
-             dependencies=[Depends(check_feature_enabled)])
+             dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def bulk_import_tutors(
     institution_id: str,
     file: UploadFile = File(...)
@@ -629,7 +647,7 @@ async def bulk_import_tutors(
 
 
 @router.get("/{institution_id}/tutors/export",
-            dependencies=[Depends(check_feature_enabled)])
+            dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def export_tutors(institution_id: str):
     """
     Export all active tutors for an institution as a downloadable CSV file.
@@ -680,7 +698,7 @@ async def export_tutors(institution_id: str):
 
 
 @router.delete("/{institution_id}/tutors/{tutor_id}",
-               dependencies=[Depends(check_feature_enabled)])
+               dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def remove_tutor(institution_id: str, tutor_id: str) -> Dict[str, Any]:
     """
     Remove/deactivate a tutor (DEPRECATED - use deactivate_tutor instead)
@@ -704,7 +722,7 @@ async def remove_tutor(institution_id: str, tutor_id: str) -> Dict[str, Any]:
 
 
 @router.post("/{institution_id}/tutors/deactivate/{tutor_id}",
-             dependencies=[Depends(check_feature_enabled)])
+             dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def deactivate_tutor(institution_id: str, tutor_id: str) -> Dict[str, Any]:
     """
     Deactivate a tutor and unassign all their learners
@@ -752,7 +770,7 @@ async def deactivate_tutor(institution_id: str, tutor_id: str) -> Dict[str, Any]
 
 
 @router.post("/{institution_id}/tutors/reactivate/{tutor_id}",
-             dependencies=[Depends(check_feature_enabled)])
+             dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def reactivate_tutor(institution_id: str, tutor_id: str) -> Dict[str, Any]:
     """
     Reactivate a previously deactivated tutor
@@ -778,7 +796,7 @@ async def reactivate_tutor(institution_id: str, tutor_id: str) -> Dict[str, Any]
 
 
 @router.post("/{institution_id}/tutors/{tutor_id}/reset-password",
-             dependencies=[Depends(check_feature_enabled)])
+             dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def reset_tutor_password(institution_id: str, tutor_id: str) -> Dict[str, Any]:
     """
     Admin-initiated tutor password reset.
@@ -827,7 +845,7 @@ async def reset_tutor_password(institution_id: str, tutor_id: str) -> Dict[str, 
 
 
 @router.put("/{institution_id}/tutors/{tutor_id}/permissions",
-            dependencies=[Depends(check_feature_enabled)])
+            dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def update_tutor_permissions(
     institution_id: str,
     tutor_id: str,
@@ -858,7 +876,7 @@ async def update_tutor_permissions(
 # ============================================================================
 
 @router.get("/{institution_id}/sponsored-learners",
-            dependencies=[Depends(check_feature_enabled)])
+            dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def get_sponsored_learners(institution_id: str) -> Dict[str, Any]:
     """
     Read-only list of students who redeemed THIS school's Stripe promo code.
@@ -941,7 +959,7 @@ async def get_sponsored_learners(institution_id: str) -> Dict[str, Any]:
 
 
 @router.get("/{institution_id}/learners",
-            dependencies=[Depends(check_feature_enabled)])
+            dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def get_learners(institution_id: str) -> Dict[str, Any]:
     """
     Get all learners for an institution with progress data (including deactivated)
@@ -1172,7 +1190,7 @@ async def _enroll_sponsored_upsert(institution_id: str, user_id: str, tutor_id: 
 
 
 @router.post("/{institution_id}/learners/enroll",
-             dependencies=[Depends(check_feature_enabled)])
+             dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def enroll_sponsored_learner(
     institution_id: str,
     body: Dict[str, Any] = Body(...),
@@ -1210,7 +1228,7 @@ async def enroll_sponsored_learner(
 
 
 @router.post("/{institution_id}/learners/assign-tutor",
-             dependencies=[Depends(check_feature_enabled)])
+             dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def assign_learner_to_tutor(
     institution_id: str,
     assignment: Dict[str, Any] = Body(...),
@@ -1261,7 +1279,7 @@ async def assign_learner_to_tutor(
 
 
 @router.post("/{institution_id}/learners/bulk-assign",
-             dependencies=[Depends(check_feature_enabled)])
+             dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def bulk_assign_learners_to_tutor(
     institution_id: str,
     body: Dict[str, Any] = Body(...),
@@ -1305,7 +1323,7 @@ async def bulk_assign_learners_to_tutor(
 
 
 @router.post("/{institution_id}/learners/unassign",
-             dependencies=[Depends(check_feature_enabled)])
+             dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def unassign_learner(
     institution_id: str,
     body: Dict[str, Any] = Body(...),
@@ -1340,7 +1358,7 @@ async def unassign_learner(
 
 
 @router.post("/{institution_id}/learners/deactivate/{learner_id}",
-             dependencies=[Depends(check_feature_enabled)])
+             dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def deactivate_learner(institution_id: str, learner_id: str) -> Dict[str, Any]:
     """
     Deactivate/archive a learner (reversible operation)
@@ -1363,7 +1381,7 @@ async def deactivate_learner(institution_id: str, learner_id: str) -> Dict[str, 
 
 
 @router.post("/{institution_id}/learners/reactivate/{learner_id}",
-             dependencies=[Depends(check_feature_enabled)])
+             dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def reactivate_learner(institution_id: str, learner_id: str) -> Dict[str, Any]:
     """
     Reactivate a previously deactivated learner
@@ -1389,7 +1407,7 @@ async def reactivate_learner(institution_id: str, learner_id: str) -> Dict[str, 
 
 
 @router.post("/{institution_id}/learners/bulk-import",
-             dependencies=[Depends(check_feature_enabled)])
+             dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def bulk_import_learners(
     institution_id: str,
     file: UploadFile = File(...)
@@ -1484,7 +1502,7 @@ async def bulk_import_learners(
 
 
 @router.get("/{institution_id}/learners/{user_id}/comprehensive-details",
-            dependencies=[Depends(check_feature_enabled)])
+            dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def get_comprehensive_learner_details(institution_id: str, user_id: str) -> Dict[str, Any]:
     """
     Get comprehensive learner analytics with AI-generated insights
@@ -1847,7 +1865,7 @@ def generate_ai_insights(user, learning_plans, conversations):
 
 
 @router.get("/{institution_id}/learners/export",
-            dependencies=[Depends(check_feature_enabled)])
+            dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def export_learners(institution_id: str):
     """
     Export learner data as a downloadable CSV file.
@@ -1909,7 +1927,7 @@ async def export_learners(institution_id: str):
 # ── Institution Profile ───────────────────────────────────────────────────────
 
 @router.get("/{institution_id}/settings/profile",
-            dependencies=[Depends(check_feature_enabled)])
+            dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def get_profile_settings(institution_id: str) -> Dict[str, Any]:
     """Return editable institution profile fields."""
     from bson import ObjectId as OID
@@ -1939,7 +1957,7 @@ async def get_profile_settings(institution_id: str) -> Dict[str, Any]:
 
 
 @router.put("/{institution_id}/settings/profile",
-            dependencies=[Depends(check_feature_enabled)])
+            dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def update_profile_settings(
     institution_id: str,
     body: Dict[str, Any]
@@ -1992,7 +2010,7 @@ async def update_profile_settings(
 # ── Admin Account ─────────────────────────────────────────────────────────────
 
 @router.get("/{institution_id}/settings/admin",
-            dependencies=[Depends(check_feature_enabled)])
+            dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def get_admin_settings(institution_id: str) -> Dict[str, Any]:
     """Return admin account settings (never returns password)."""
     from bson import ObjectId as OID
@@ -2016,7 +2034,7 @@ async def get_admin_settings(institution_id: str) -> Dict[str, Any]:
 
 
 @router.put("/{institution_id}/settings/admin",
-            dependencies=[Depends(check_feature_enabled)])
+            dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def update_admin_settings(
     institution_id: str,
     body: Dict[str, Any]
@@ -2050,7 +2068,7 @@ async def update_admin_settings(
 
 
 @router.post("/{institution_id}/settings/admin/change-password",
-             dependencies=[Depends(check_feature_enabled)])
+             dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def change_admin_password(
     institution_id: str,
     body: Dict[str, Any]
@@ -2097,7 +2115,7 @@ async def change_admin_password(
 
 
 @router.get("/{institution_id}/settings/admin/activity-log",
-            dependencies=[Depends(check_feature_enabled)])
+            dependencies=[Depends(check_feature_enabled), Depends(verify_institution_admin)])
 async def get_activity_log(institution_id: str) -> Dict[str, Any]:
     """Return the last 20 admin activity log entries for this institution."""
     try:
