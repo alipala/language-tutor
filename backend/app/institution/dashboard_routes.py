@@ -2,18 +2,45 @@
 Enhanced Institution Dashboard APIs
 Provides analytics, tutor management, and learner management
 """
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from bson import ObjectId
 from io import StringIO, BytesIO
 import csv
+import secrets
+import string
 
 from app.config.feature_flags import feature_flags
 from database import database
 from auth import create_access_token, SECRET_KEY, ALGORITHM
 from redis_client import blocklist_token, is_token_blocklisted
+
+
+def _generate_temp_password(length: int = 12) -> str:
+    """
+    Generate a strong, human-shareable temporary password for a newly created
+    tutor. Guarantees at least one lower, one upper and one digit so it always
+    passes validate_password_strength() (which the tutor must satisfy when they
+    change it too). Excludes ambiguous chars (O/0, l/1/I) for legibility.
+    """
+    lowers = "abcdefghjkmnpqrstuvwxyz"
+    uppers = "ABCDEFGHJKMNPQRSTUVWXYZ"
+    digits = "23456789"
+    pool = lowers + uppers + digits
+    # Guarantee category coverage, then fill the rest, then shuffle.
+    chars = [
+        secrets.choice(lowers),
+        secrets.choice(uppers),
+        secrets.choice(digits),
+    ]
+    chars += [secrets.choice(pool) for _ in range(max(0, length - len(chars)))]
+    # Fisher–Yates shuffle with secrets for unbiased ordering.
+    for i in range(len(chars) - 1, 0, -1):
+        j = secrets.randbelow(i + 1)
+        chars[i], chars[j] = chars[j], chars[i]
+    return "".join(chars)
 
 # ---------------------------------------------------------------------------
 # SHARED IMPORT HELPER
@@ -50,13 +77,9 @@ _TUTOR_ALIASES: Dict[str, str] = {
     # email
     "email": "email", "e-mail": "email", "email address": "email",
     "tutor email": "email", "teacher email": "email",
-    # optional
-    "bio": "bio", "biography": "bio", "description": "bio", "about": "bio",
-    "qualifications": "qualifications", "qualification": "qualifications",
-    "credentials": "qualifications", "degree": "qualifications",
-    "specializations": "specializations", "specialization": "specializations",
-    "subjects": "specializations", "languages": "specializations",
-    "expertise": "specializations",
+    # languages taught (comma-separated) — the only optional column for tutors
+    "languages": "languages", "language": "languages", "languages taught": "languages",
+    "teaches": "languages", "teaching languages": "languages",
 }
 
 
@@ -145,6 +168,47 @@ def check_feature_enabled():
             status_code=403,
             detail="Institutional features are not enabled"
         )
+
+
+async def get_current_institution_admin(
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+) -> Dict[str, Any]:
+    """
+    Institution-admin identity guard for sensitive dashboard actions.
+
+    Decodes the institution-admin JWT (minted at /institution/login with
+    {sub: admin_email, institution_id, role: "admin", jti}), rejects blocklisted
+    (logged-out) tokens, and requires role == "admin". Returns the claims so the
+    caller can enforce tenant isolation (institution_id must match the path).
+
+    NOTE: most /institution/dashboard/* routes are currently guarded ONLY by the
+    feature flag (a known multi-tenant authz gap). New/sensitive assignment
+    endpoints use THIS guard so they can't be abused cross-tenant.
+    """
+    from jose import jwt as jose_jwt, JWTError
+
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jose_jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    jti = payload.get("jti")
+    if jti and await is_token_blocklisted(jti):
+        raise HTTPException(status_code=401, detail="Token has been revoked")
+
+    if payload.get("role") != "admin" or not payload.get("institution_id"):
+        raise HTTPException(status_code=403, detail="Institution admin access required")
+
+    return payload
+
+
+def _require_tenant(admin: Dict[str, Any], institution_id: str) -> None:
+    """Enforce that the authenticated admin owns the institution in the path.
+    Prevents reading/writing another school's data by iterating institution_id."""
+    if str(admin.get("institution_id")) != str(institution_id):
+        raise HTTPException(status_code=403, detail="You cannot manage another institution")
 
 
 @router.post("/logout", dependencies=[Depends(check_feature_enabled)])
@@ -387,6 +451,8 @@ async def get_tutors(institution_id: str) -> Dict[str, Any]:
                 "learner_count": len(learner_details),
                 "learners": learner_details,
                 "is_active": tutor.get("is_active", True),  # Include is_active field
+                # Pending activation = created but hasn't set their own password yet.
+                "pending_activation": bool(tutor.get("first_login", False) or tutor.get("must_reset_password", False)),
                 "created_at": tutor.get("created_at")
             })
         
@@ -403,55 +469,62 @@ async def get_tutors(institution_id: str) -> Dict[str, Any]:
              dependencies=[Depends(check_feature_enabled)])
 async def add_tutor(institution_id: str, tutor_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Add a new tutor to the institution
-    NEW: Now includes password field for tutor login
+    Add a single tutor to the institution.
+
+    The system generates a strong temporary password (the admin does NOT choose
+    one). It is returned ONCE in the response so the admin can pass it to the
+    tutor; the tutor is forced to change it on first login (first_login +
+    must_reset_password both True — kept in sync so login and the reset gate
+    agree regardless of which flag downstream code reads).
     """
     try:
-        # Import password hashing function
-        from app.tutor.tutor_auth import get_password_hash, validate_password_strength
-        
+        from app.tutor.tutor_auth import get_password_hash
+
         # Validate required fields
-        if not tutor_data.get("name") or not tutor_data.get("email"):
-            raise HTTPException(status_code=400, detail="Name and email are required")
-        
-        # NEW: Validate password if provided
-        password = tutor_data.get("password", "")
-        if not password:
-            raise HTTPException(status_code=400, detail="Password is required for tutor account")
-        
-        # Validate password strength
-        is_valid, message = validate_password_strength(password)
-        if not is_valid:
-            raise HTTPException(status_code=400, detail=message)
-        
-        # Check if tutor email already exists
-        existing = await database.tutors.find_one({"email": tutor_data["email"]})
+        if not tutor_data.get("name") or not str(tutor_data.get("name")).strip():
+            raise HTTPException(status_code=400, detail="Name is required")
+        if not tutor_data.get("email") or not str(tutor_data.get("email")).strip():
+            raise HTTPException(status_code=400, detail="Email is required")
+
+        name = str(tutor_data["name"]).strip()
+        email = str(tutor_data["email"]).strip().lower()
+
+        # Check if tutor email already exists (global uniqueness on tutors.email)
+        existing = await database.tutors.find_one({"email": email})
         if existing:
-            raise HTTPException(status_code=400, detail="Tutor with this email already exists")
-        
-        # Hash the password
-        hashed_password = get_password_hash(password)
-        
-        # Create tutor document
+            raise HTTPException(status_code=400, detail="A tutor with this email already exists")
+
+        # System-generated temporary password (shown once to the admin).
+        temp_password = _generate_temp_password()
+        hashed_password = get_password_hash(temp_password)
+
+        now = datetime.utcnow()
         tutor = {
-            "name": tutor_data["name"],
-            "email": tutor_data["email"],
-            "hashed_password": hashed_password,  # NEW: Store hashed password
-            "first_login": True,  # NEW: Flag for password change requirement
+            "name": name,
+            "email": email,
+            "hashed_password": hashed_password,
+            "first_login": True,          # must change on first login
+            "must_reset_password": True,  # kept in sync with first_login
             "institution_id": institution_id,
-            "bio": tutor_data.get("bio", ""),
-            "specializations": tutor_data.get("specializations", []),
+            "bio": tutor_data.get("bio", "") or "",
+            "qualifications": tutor_data.get("qualifications") or None,
+            "specializations": tutor_data.get("specializations", []) or [],
+            "languages": tutor_data.get("languages", []) or [],  # languages the tutor teaches (optional)
             "permissions": tutor_data.get("permissions", ["view_learners", "assign_tasks"]),
+            "assigned_learners": [],
             "is_active": True,
-            "created_at": datetime.utcnow()
+            "enrollment_method": "manual_add",
+            "created_at": now,
+            "updated_at": now,
         }
-        
+
         result = await database.tutors.insert_one(tutor)
-        
-        # Convert ObjectId to string for JSON serialization
-        tutor_response = {
-            "message": "Tutor added successfully. Initial password has been set.",
+
+        return {
+            "message": "Tutor added successfully.",
             "tutor_id": str(result.inserted_id),
+            # Returned ONCE — the admin shares it with the tutor.
+            "temporary_password": temp_password,
             "tutor": {
                 "id": str(result.inserted_id),
                 "name": tutor["name"],
@@ -460,12 +533,10 @@ async def add_tutor(institution_id: str, tutor_data: Dict[str, Any]) -> Dict[str
                 "specializations": tutor["specializations"],
                 "permissions": tutor["permissions"],
                 "first_login": True,
-                "created_at": tutor["created_at"].isoformat() if tutor.get("created_at") else None
-            }
+                "created_at": now.isoformat(),
+            },
         }
-        
-        return tutor_response
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -483,14 +554,12 @@ async def bulk_import_tutors(
     Required columns : name (or first_name + last_name), email
     Optional columns : bio, qualifications, specializations (comma-separated)
     Column headers are matched case-insensitively with common aliases.
-    Tutors receive a random temporary password; must_reset_password is set True.
+    Tutors receive a system-generated temporary password and must change it on
+    first login (first_login + must_reset_password both True). The generated
+    credentials (email + temp password) are returned so the admin can distribute
+    them — they cannot be recovered later.
     """
-    import secrets, string
     from app.tutor.tutor_auth import get_password_hash
-
-    def _temp_password() -> str:
-        chars = string.ascii_letters + string.digits
-        return ''.join(secrets.choice(chars) for _ in range(16))
 
     try:
         rows = await _parse_import_file(file, _TUTOR_ALIASES)
@@ -503,6 +572,7 @@ async def bulk_import_tutors(
     skipped_count = 0
     failed_count  = 0
     errors: List[str] = []
+    credentials: List[Dict[str, str]] = []  # email + temp password per created tutor
 
     for row_num, row in enumerate(rows, start=2):
         try:
@@ -514,23 +584,27 @@ async def bulk_import_tutors(
                 failed_count += 1
                 continue
 
-            # Skip duplicates within the same institution
-            if await database.tutors.find_one({"email": email, "institution_id": institution_id}):
+            # Skip duplicates — tutors.email is globally unique, so check globally
+            # (matches the single-add path) to avoid an insert that would fail.
+            if await database.tutors.find_one({"email": email}):
                 skipped_count += 1
                 continue
 
-            raw_specs = row.get("specializations", "")
-            specializations = [s.strip() for s in raw_specs.split(",") if s.strip()]
+            raw_langs = row.get("languages", "")
+            languages = [s.strip() for s in raw_langs.split(",") if s.strip()]
+
+            temp_password = _generate_temp_password()
 
             await database.tutors.insert_one({
                 "name": name,
                 "email": email,
-                "bio": row.get("bio") or None,
-                "qualifications": row.get("qualifications") or None,
-                "specializations": specializations,
+                "languages": languages,       # languages the tutor teaches (optional)
+                "specializations": [],
                 "institution_id": institution_id,
-                "hashed_password": get_password_hash(_temp_password()),
+                "hashed_password": get_password_hash(temp_password),
+                "first_login": True,
                 "must_reset_password": True,
+                "permissions": ["view_learners", "assign_tasks"],
                 "assigned_learners": [],
                 "is_active": True,
                 "enrollment_method": "bulk_import",
@@ -538,6 +612,7 @@ async def bulk_import_tutors(
                 "updated_at": datetime.utcnow(),
             })
             success_count += 1
+            credentials.append({"name": name, "email": email, "temporary_password": temp_password})
 
         except Exception as exc:
             errors.append(f"Row {row_num}: unexpected error — {exc}")
@@ -549,6 +624,7 @@ async def bulk_import_tutors(
         "skipped_count": skipped_count,
         "failed_count": failed_count,
         "errors": errors[:20],
+        "credentials": credentials,
     }
 
 
@@ -701,6 +777,55 @@ async def reactivate_tutor(institution_id: str, tutor_id: str) -> Dict[str, Any]
         raise HTTPException(status_code=500, detail=f"Failed to reactivate tutor: {str(e)}")
 
 
+@router.post("/{institution_id}/tutors/{tutor_id}/reset-password",
+             dependencies=[Depends(check_feature_enabled)])
+async def reset_tutor_password(institution_id: str, tutor_id: str) -> Dict[str, Any]:
+    """
+    Admin-initiated tutor password reset.
+
+    Generates a fresh temporary password (invalidating any previous one),
+    re-arms the first-login gate (first_login + must_reset_password) and returns
+    the new temp password ONCE so the admin can pass it to the tutor. Used when
+    the tutor never received / forgot their initial credentials — we never store
+    or re-show a plaintext password, we always mint a new one.
+    """
+    try:
+        from app.tutor.tutor_auth import get_password_hash
+
+        tutor = await database.tutors.find_one(
+            {"_id": ObjectId(tutor_id), "institution_id": institution_id}
+        )
+        if not tutor:
+            raise HTTPException(status_code=404, detail="Tutor not found")
+
+        temp_password = _generate_temp_password()
+        await database.tutors.update_one(
+            {"_id": ObjectId(tutor_id), "institution_id": institution_id},
+            {"$set": {
+                "hashed_password": get_password_hash(temp_password),
+                "first_login": True,
+                "must_reset_password": True,
+                "password_reset_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            }},
+        )
+
+        return {
+            "message": "Password reset successfully.",
+            "temporary_password": temp_password,
+            "tutor": {
+                "id": str(tutor["_id"]),
+                "name": tutor.get("name", ""),
+                "email": tutor.get("email", ""),
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reset tutor password: {str(e)}")
+
+
 @router.put("/{institution_id}/tutors/{tutor_id}/permissions",
             dependencies=[Depends(check_feature_enabled)])
 async def update_tutor_permissions(
@@ -731,6 +856,89 @@ async def update_tutor_permissions(
 # ============================================================================
 # LEARNER MANAGEMENT APIs
 # ============================================================================
+
+@router.get("/{institution_id}/sponsored-learners",
+            dependencies=[Depends(check_feature_enabled)])
+async def get_sponsored_learners(institution_id: str) -> Dict[str, Any]:
+    """
+    Read-only list of students who redeemed THIS school's Stripe promo code.
+
+    The school sets its promo code (e.g. "AMSTERDAMTAAL") in Settings; students
+    redeem it in the mobile app at checkout, which Stripe attributes to the
+    subscription. The webhook stamps `institution_promo.code` onto the user, and
+    here we surface everyone whose active subscription carries that code. No
+    enrollment records are created — the source of truth is Stripe.
+    """
+    from bson import ObjectId as OID
+    try:
+        inst = await database.institutions.find_one({"_id": OID(institution_id)})
+        if not inst:
+            raise HTTPException(status_code=404, detail="Institution not found")
+
+        promo_code = (inst.get("promo_code") or "").strip().upper()
+        max_learners = int(inst.get("max_learners", 0) or 0)
+
+        learners: List[Dict[str, Any]] = []
+        if promo_code:
+            # Pre-load this school's enrollment rows + tutor names ONCE, so we can
+            # annotate each sponsored learner with their enrollment/assignment
+            # state without an N+1 query. Keyed by user_id.
+            enroll_by_user: Dict[str, Dict[str, Any]] = {}
+            async for e in database.institutional_learners.find({"institution_id": institution_id}):
+                enroll_by_user[str(e.get("user_id"))] = e
+            tutor_names: Dict[str, Dict[str, Any]] = {}
+            async for t in database.tutors.find({"institution_id": institution_id}, {"name": 1, "email": 1}):
+                tutor_names[str(t["_id"])] = {"id": str(t["_id"]), "name": t.get("name"), "email": t.get("email")}
+
+            # Case-insensitive match on the stored redemption code.
+            cursor = database.users.find(
+                {"institution_promo.code": {"$regex": f"^{promo_code}$", "$options": "i"}},
+                {
+                    "name": 1, "email": 1, "subscription_plan": 1,
+                    "subscription_status": 1, "subscription_period": 1,
+                    "subscription_expires_at": 1, "institution_promo": 1,
+                    "preferred_language": 1, "preferred_level": 1,
+                },
+            )
+            async for u in cursor:
+                uid = str(u["_id"])
+                promo = u.get("institution_promo") or {}
+                enrollment = enroll_by_user.get(uid)
+                tutor = None
+                if enrollment and enrollment.get("tutor_id"):
+                    tutor = tutor_names.get(str(enrollment.get("tutor_id")))
+                learners.append({
+                    "id": uid,  # the user's id (kept for backward-compat)
+                    "user_id": uid,
+                    # institutional_learners._id — REQUIRED by the assign-tutor
+                    # endpoint (which keys on the enrollment row _id, not user id).
+                    "learner_id": str(enrollment["_id"]) if enrollment else None,
+                    "enrolled": bool(enrollment),
+                    "name": u.get("name", ""),
+                    "email": u.get("email", ""),
+                    "language": u.get("preferred_language"),
+                    "level": u.get("preferred_level"),
+                    "plan": u.get("subscription_plan"),
+                    "status": u.get("subscription_status"),
+                    "period": u.get("subscription_period"),
+                    "expires_at": u.get("subscription_expires_at").isoformat()
+                        if u.get("subscription_expires_at") else None,
+                    "redeemed_at": promo.get("applied_at").isoformat()
+                        if promo.get("applied_at") else None,
+                    "tutor": tutor,  # {id,name,email} or None if unassigned
+                })
+
+        return {
+            "promo_code": promo_code,
+            "seats_used": len(learners),
+            "max_learners": max_learners,
+            "learners": learners,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/{institution_id}/learners",
             dependencies=[Depends(check_feature_enabled)])
@@ -877,36 +1085,258 @@ async def get_learners(institution_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to get learners: {str(e)}")
 
 
+# ============================================================================
+# LEARNER → TUTOR ASSIGNMENT (institution-admin managed)
+# ============================================================================
+# Business rules preserved (verified against the codebase):
+#  - A sponsored learner = a user whose institution_promo.code matches this
+#    school's promo_code. Only sponsored users of THIS school may be enrolled.
+#  - institutional_learners is unique on (user_id, institution_id) → enroll is
+#    an idempotent upsert.
+#  - Promo redemption is an explicit action → consent_given=True, method
+#    "promo_code" (mirrors self_signup's implicit consent).
+#  - A tutor may only receive assignments if they belong to THIS institution and
+#    is_active=True (matches learner/service.py enrollment checks).
+#  - Assign is an upsert: enrolling + assigning in one call keeps the admin UX to
+#    a single click, while still creating the row on the admin's explicit action.
+#  - Tutor dashboard shows learners where tutor_id==<tutor> AND is_active=True,
+#    so re-activation on assign guarantees visibility.
+#  - Endpoints here enforce admin identity + tenant isolation (unlike the rest of
+#    the dashboard, which is feature-flag-only).
+
+async def _load_sponsored_user_or_404(institution_id: str, user_id: str) -> Dict[str, Any]:
+    """Return the users doc IFF it is a sponsored learner of THIS school
+    (institution_promo.code == this school's promo_code). Else 404."""
+    inst = await database.institutions.find_one({"_id": ObjectId(institution_id)})
+    if not inst:
+        raise HTTPException(status_code=404, detail="Institution not found")
+    promo_code = (inst.get("promo_code") or "").strip().upper()
+    if not promo_code:
+        raise HTTPException(status_code=400, detail="This school has no promo code set")
+    try:
+        user = await database.users.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user id")
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    code = ((user.get("institution_promo") or {}).get("code") or "").strip().upper()
+    if code != promo_code:
+        raise HTTPException(status_code=403, detail="This user is not a sponsored learner of your school")
+    return user
+
+
+async def _validate_tutor(institution_id: str, tutor_id: str) -> Dict[str, Any]:
+    """Tutor must exist, belong to this institution, and be active."""
+    try:
+        tutor = await database.tutors.find_one({"_id": ObjectId(tutor_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid tutor id")
+    if not tutor or str(tutor.get("institution_id")) != str(institution_id):
+        raise HTTPException(status_code=404, detail="Tutor not found in this institution")
+    if not tutor.get("is_active", True):
+        raise HTTPException(status_code=400, detail="Cannot assign learners to an inactive tutor")
+    return tutor
+
+
+async def _enroll_sponsored_upsert(institution_id: str, user_id: str, tutor_id: Optional[str]) -> ObjectId:
+    """Idempotently create/refresh the institutional_learners row for a sponsored
+    learner and (optionally) set its tutor. Returns the row _id.
+    Re-activates a previously deactivated row so it re-appears for the tutor."""
+    now = datetime.utcnow()
+    set_fields = {
+        "institution_id": institution_id,
+        "user_id": str(user_id),
+        "enrollment_method": "promo_code",
+        # Redeeming the school's code is an explicit action → implicit consent
+        # (same rule as self_signup). Does NOT touch a prior revoke flag.
+        "consent_given": True,
+        "is_active": True,
+        "updated_at": now,
+    }
+    if tutor_id is not None:
+        set_fields["tutor_id"] = tutor_id
+    result = await database.institutional_learners.update_one(
+        {"user_id": str(user_id), "institution_id": institution_id},
+        {
+            "$set": set_fields,
+            "$setOnInsert": {"enrolled_at": now, "consent_date": now},
+        },
+        upsert=True,
+    )
+    if result.upserted_id:
+        return result.upserted_id
+    row = await database.institutional_learners.find_one(
+        {"user_id": str(user_id), "institution_id": institution_id}, {"_id": 1}
+    )
+    return row["_id"]
+
+
+@router.post("/{institution_id}/learners/enroll",
+             dependencies=[Depends(check_feature_enabled)])
+async def enroll_sponsored_learner(
+    institution_id: str,
+    body: Dict[str, Any] = Body(...),
+    admin: Dict[str, Any] = Depends(get_current_institution_admin),
+) -> Dict[str, Any]:
+    """
+    Admin action: enroll a sponsored learner into the institution's roster
+    (creates the institutional_learners row) WITHOUT assigning a tutor yet.
+    Idempotent. Seat-limited by the school's max_learners.
+    """
+    _require_tenant(admin, institution_id)
+    user_id = body.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
+
+    await _load_sponsored_user_or_404(institution_id, user_id)
+
+    # Seat limit: count DISTINCT active enrolled learners; block a NEW enroll
+    # beyond max_learners (matches learner/service.py). Re-enrolling an existing
+    # row is always allowed (no new seat consumed).
+    inst = await database.institutions.find_one({"_id": ObjectId(institution_id)})
+    max_learners = int(inst.get("max_learners", 0) or 0)
+    existing = await database.institutional_learners.find_one(
+        {"user_id": str(user_id), "institution_id": institution_id}
+    )
+    if not existing and max_learners > 0:
+        active_count = await database.institutional_learners.count_documents(
+            {"institution_id": institution_id, "is_active": True}
+        )
+        if active_count >= max_learners:
+            raise HTTPException(status_code=409, detail=f"Seat limit reached ({max_learners}). Cannot enroll more learners.")
+
+    learner_id = await _enroll_sponsored_upsert(institution_id, user_id, tutor_id=None)
+    return {"message": "Learner enrolled", "learner_id": str(learner_id), "user_id": str(user_id)}
+
+
 @router.post("/{institution_id}/learners/assign-tutor",
              dependencies=[Depends(check_feature_enabled)])
 async def assign_learner_to_tutor(
     institution_id: str,
-    assignment: Dict[str, Any]
+    assignment: Dict[str, Any] = Body(...),
+    admin: Dict[str, Any] = Depends(get_current_institution_admin),
 ) -> Dict[str, Any]:
     """
-    Assign a learner to a specific tutor
+    Assign a sponsored learner to a tutor.
+
+    Accepts EITHER `user_id` (preferred — enroll+assign in one click) OR a
+    pre-existing `learner_id` (institutional_learners._id). Validates the tutor
+    (same institution, active). Upserts the enrollment row so an as-yet-unenrolled
+    sponsored learner is enrolled and assigned atomically.
     """
-    try:
-        learner_id = assignment.get("learner_id")
-        tutor_id = assignment.get("tutor_id")
-        
-        if not learner_id or not tutor_id:
-            raise HTTPException(status_code=400, detail="learner_id and tutor_id are required")
-        
-        result = await database.institutional_learners.update_one(
-            {"_id": ObjectId(learner_id), "institution_id": institution_id},
-            {"$set": {"tutor_id": tutor_id, "updated_at": datetime.utcnow()}}
-        )
-        
-        if result.modified_count == 0:
-            raise HTTPException(status_code=404, detail="Learner not found or already assigned")
-        
-        return {"message": "Learner assigned to tutor successfully"}
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to assign learner: {str(e)}")
+    _require_tenant(admin, institution_id)
+    tutor_id = assignment.get("tutor_id")
+    user_id = assignment.get("user_id")
+    learner_id = assignment.get("learner_id")
+
+    if not tutor_id:
+        raise HTTPException(status_code=400, detail="tutor_id is required")
+    if not user_id and not learner_id:
+        raise HTTPException(status_code=400, detail="user_id or learner_id is required")
+
+    await _validate_tutor(institution_id, tutor_id)
+
+    # Resolve user_id from learner_id if only the row id was given.
+    if not user_id and learner_id:
+        try:
+            row = await database.institutional_learners.find_one(
+                {"_id": ObjectId(learner_id), "institution_id": institution_id}
+            )
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid learner_id")
+        if not row:
+            raise HTTPException(status_code=404, detail="Learner not found in this institution")
+        user_id = str(row.get("user_id"))
+
+    # Sponsored-membership check (also guards cross-school user ids).
+    await _load_sponsored_user_or_404(institution_id, user_id)
+
+    row_id = await _enroll_sponsored_upsert(institution_id, user_id, tutor_id=tutor_id)
+    return {
+        "message": "Learner assigned to tutor",
+        "learner_id": str(row_id),
+        "user_id": str(user_id),
+        "tutor_id": tutor_id,
+    }
+
+
+@router.post("/{institution_id}/learners/bulk-assign",
+             dependencies=[Depends(check_feature_enabled)])
+async def bulk_assign_learners_to_tutor(
+    institution_id: str,
+    body: Dict[str, Any] = Body(...),
+    admin: Dict[str, Any] = Depends(get_current_institution_admin),
+) -> Dict[str, Any]:
+    """
+    Assign MANY sponsored learners to ONE tutor in a single action.
+    Body: {tutor_id, user_ids: [..]}. Each id is validated as a sponsored learner
+    of this school; the tutor is validated once. Per-item failures are reported,
+    never aborting the whole batch.
+    """
+    _require_tenant(admin, institution_id)
+    tutor_id = body.get("tutor_id")
+    user_ids = body.get("user_ids") or []
+    if not tutor_id:
+        raise HTTPException(status_code=400, detail="tutor_id is required")
+    if not isinstance(user_ids, list) or not user_ids:
+        raise HTTPException(status_code=400, detail="user_ids (non-empty list) is required")
+
+    await _validate_tutor(institution_id, tutor_id)
+
+    assigned, errors = [], []
+    for uid in user_ids:
+        try:
+            await _load_sponsored_user_or_404(institution_id, uid)
+            row_id = await _enroll_sponsored_upsert(institution_id, uid, tutor_id=tutor_id)
+            assigned.append({"user_id": str(uid), "learner_id": str(row_id)})
+        except HTTPException as he:
+            errors.append({"user_id": str(uid), "error": he.detail})
+        except Exception as e:
+            errors.append({"user_id": str(uid), "error": str(e)})
+
+    return {
+        "message": f"Assigned {len(assigned)} learner(s) to tutor",
+        "assigned_count": len(assigned),
+        "failed_count": len(errors),
+        "assigned": assigned,
+        "errors": errors,
+        "tutor_id": tutor_id,
+    }
+
+
+@router.post("/{institution_id}/learners/unassign",
+             dependencies=[Depends(check_feature_enabled)])
+async def unassign_learner(
+    institution_id: str,
+    body: Dict[str, Any] = Body(...),
+    admin: Dict[str, Any] = Depends(get_current_institution_admin),
+) -> Dict[str, Any]:
+    """
+    Remove a learner's tutor (keeps the enrollment row + consent, just clears
+    tutor_id). The learner stays sponsored/enrolled but no longer shows on any
+    tutor's dashboard.
+    """
+    _require_tenant(admin, institution_id)
+    user_id = body.get("user_id")
+    learner_id = body.get("learner_id")
+    if not user_id and not learner_id:
+        raise HTTPException(status_code=400, detail="user_id or learner_id is required")
+
+    query = {"institution_id": institution_id}
+    if user_id:
+        query["user_id"] = str(user_id)
+    else:
+        try:
+            query["_id"] = ObjectId(learner_id)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid learner_id")
+
+    result = await database.institutional_learners.update_one(
+        query, {"$set": {"tutor_id": None, "updated_at": datetime.utcnow()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Enrollment not found")
+    return {"message": "Learner unassigned from tutor"}
 
 
 @router.post("/{institution_id}/learners/deactivate/{learner_id}",
@@ -1498,6 +1928,9 @@ async def get_profile_settings(institution_id: str) -> Dict[str, Any]:
             "timezone":         inst.get("timezone") or "UTC",
             "semester_start":   inst.get("semester_start") or "",
             "semester_end":     inst.get("semester_end") or "",
+            # Stripe promotion code (e.g. "AMSTERDAMTAAL") the school hands to its
+            # students; the Learners tab lists everyone who redeemed it.
+            "promo_code":       inst.get("promo_code") or "",
         }
     except HTTPException:
         raise
@@ -1517,14 +1950,19 @@ async def update_profile_settings(
     ALLOWED = {
         "name", "institution_type", "website", "phone",
         "address", "logo_url", "admin_language", "timezone",
-        "semester_start", "semester_end",
+        "semester_start", "semester_end", "promo_code",
     }
     INSTITUTION_TYPES = {"school", "university", "language_center", "corporate"}
 
     update: Dict[str, Any] = {}
     for field in ALLOWED:
         if field in body:
-            update[field] = body[field]
+            # Normalise the promo code: Stripe promotion codes are matched
+            # case-insensitively at checkout, but we store a canonical upper form.
+            if field == "promo_code" and isinstance(body[field], str):
+                update[field] = body[field].strip().upper()
+            else:
+                update[field] = body[field]
 
     if not update:
         raise HTTPException(status_code=400, detail="No valid fields to update")

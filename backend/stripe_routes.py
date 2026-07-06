@@ -203,25 +203,19 @@ async def create_checkout_session(
                 payment_methods.append("ideal")
                 logger.info(f"[AUTH_CHECKOUT] iDEAL payment method enabled")
 
-            # Determine if user should get trial
-            # Only NEW customers get trial (no current/previous subscription)
-            user_plan = getattr(current_user, 'subscription_plan', 'try_learn')
-            is_new_customer = user_plan in ['try_learn', 'free', None]
-
-            # Build subscription data
+            # Build subscription data.
+            # NOTE: free trials are DISABLED platform-wide. Every checkout charges
+            # immediately (B2C) or resolves to €0 via a 100%-off school promo code
+            # (B2B) — no trial_period_days is ever set. If trials are ever
+            # reintroduced, ALSO check the Stripe Price "Free trial" setting in the
+            # Dashboard, which can grant a trial independently of this code.
             subscription_data = {
                 "metadata": {
                     "user_id": str(current_user.id),
                     "user_email": current_user.email
                 }
             }
-
-            # Add 3-day trial ONLY for new customers
-            if is_new_customer:
-                subscription_data["trial_period_days"] = 3
-                logger.info(f"[AUTH_CHECKOUT] New customer - adding 3-day free trial")
-            else:
-                logger.info(f"[AUTH_CHECKOUT] Existing customer ({user_plan}) - NO trial, immediate charge")
+            logger.info(f"[AUTH_CHECKOUT] Trials disabled — immediate charge (or €0 with a 100%-off promo)")
 
             checkout_session_data = {
                 "customer": customer_id,
@@ -237,6 +231,12 @@ async def create_checkout_session(
                 "cancel_url": cancel_url,
                 # 🔥 PROMO CODE FIX: Enable promotion codes (simplified config)
                 "allow_promotion_codes": True,
+                # 🏫 INSTITUTION / 100%-OFF SUPPORT: only collect a payment method
+                # when the amount due is actually > 0. A 100%-off school coupon
+                # (or a full-discount promo) then requires NO card at all, so the
+                # student checks out for €0. Paid checkouts are unaffected — the
+                # amount is > 0 so Stripe still collects a card as before.
+                "payment_method_collection": "if_required",
                 # Add metadata for tracking
                 "metadata": {
                     "user_id": str(current_user.id),
@@ -326,6 +326,9 @@ async def get_subscription_status(
             # active-subscription expiry (so the benefits modal can show "renews/ends in N days")
             "expires_at": status.expires_at.isoformat() if status.expires_at else None,
             "days_until_expiry": status.days_until_expiry,
+            # 🏫 B2B: sponsoring school when the plan came from a school's promo
+            # code ({sponsored, name, promo_code}); None for normal B2C users.
+            "institution": getattr(status, "institution", None),
         }
         
         logger.info(f"[SUBSCRIPTION_STATUS] ✅ Response served for user {current_user.id}")
@@ -521,6 +524,25 @@ async def cancel_subscription(
             raise HTTPException(status_code=400, detail="No subscription found")
 
         subscription = subscriptions.data[0]
+
+        # 🏫 B2B GUARD: a student on a school-sponsored plan (redeemed a school's
+        # promo code) must NOT self-cancel — the seat belongs to the school, not
+        # the student. The school manages it (cancel the coupon / end the
+        # contract). Block here so the API can't be used to bypass the hidden UI.
+        try:
+            from bson import ObjectId as _OID
+            _u = await database["users"].find_one(
+                {"_id": _OID(current_user.id)}, {"institution_promo": 1}
+            )
+            if _u and (_u.get("institution_promo") or {}).get("code"):
+                raise HTTPException(
+                    status_code=403,
+                    detail="This premium is provided by your school and can't be cancelled here. Please contact your institution.",
+                )
+        except HTTPException:
+            raise
+        except Exception as _guard_err:
+            logger.warning(f"[CANCEL] institution guard check failed (allowing cancel): {_guard_err}")
 
         # Handle trial cancellation differently
         if subscription.status == "trialing":
@@ -906,6 +928,56 @@ async def stripe_webhook(
         logger.error(f"Error processing webhook: {str(e)}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+def _extract_promo_from_subscription(subscription) -> Optional[dict]:
+    """
+    Best-effort read of the coupon / promotion code applied to a Stripe
+    subscription, so we can attribute a student to a school's promo code.
+
+    Handles both the legacy single `discount` object and the newer `discounts`
+    array, and both dict-shaped (webhook JSON) and object-shaped (SDK) payloads.
+    Returns {code, coupon_id, coupon_name, percent_off, applied_at} or None.
+    Never raises — attribution is a nice-to-have, not a correctness requirement.
+    """
+    def _get(obj, key):
+        if obj is None:
+            return None
+        if isinstance(obj, dict):
+            return obj.get(key)
+        return getattr(obj, key, None)
+
+    # Normalise to a single "discount" object.
+    discount = _get(subscription, "discount")
+    if not discount:
+        discounts = _get(subscription, "discounts")
+        if isinstance(discounts, (list, tuple)) and discounts:
+            discount = discounts[0]
+    if not discount:
+        return None
+
+    coupon = _get(discount, "coupon") or {}
+    promotion_code = _get(discount, "promotion_code")
+
+    # promotion_code may be an id string; try to resolve its human-readable code.
+    code_str = None
+    if isinstance(promotion_code, str) and promotion_code:
+        try:
+            pc = stripe.PromotionCode.retrieve(promotion_code)
+            code_str = _get(pc, "code")
+        except Exception:
+            code_str = promotion_code  # fall back to the id
+    elif promotion_code:
+        code_str = _get(promotion_code, "code")
+
+    from datetime import datetime, timezone
+    return {
+        "code": code_str,
+        "coupon_id": _get(coupon, "id"),
+        "coupon_name": _get(coupon, "name"),
+        "percent_off": _get(coupon, "percent_off"),
+        "applied_at": datetime.now(timezone.utc),
+    }
+
+
 async def handle_subscription_created(subscription):
     """Handle subscription created event"""
     try:
@@ -970,6 +1042,17 @@ async def handle_subscription_created(subscription):
                 if price.get("recurring") and price.get("recurring").get("interval"):
                     update_data["subscription_period"] = "monthly" if price.get("recurring").get("interval") == "month" else "annual"
 
+        # 🏫 INSTITUTION SPONSORSHIP: record which promo/coupon (if any) was
+        # applied, so the school dashboard can list who redeemed its code. A
+        # 100%-off school coupon (e.g. "AMSTERDAMTAAL") shows up here as a
+        # discount on the subscription. Safe no-op for normal paid subs.
+        try:
+            promo_info = _extract_promo_from_subscription(subscription)
+            if promo_info:
+                update_data["institution_promo"] = promo_info
+        except Exception as promo_err:
+            logger.warning(f"[SUB_CREATED] Could not read promo info: {promo_err}")
+
         # 🔥 REMOVE old provider data on Stripe subscription
         unset_data = {
             "subscription": 1,  # Remove nested object
@@ -983,7 +1066,20 @@ async def handle_subscription_created(subscription):
             "google_play_order_id": 1,
             "google_play_is_trial": 1,
             "google_play_auto_renewing": 1,
+            # Clear any prior sponsorship-ended / payment-failure markers — this
+            # is a fresh active subscription (B2C card OR a re-redeemed school
+            # code), so the old "your school premium ended" state no longer holds.
+            "sponsorship_ended_at": 1,
+            "sponsorship_ended_reason": 1,
+            "payment_failed_at": 1,
+            "last_payment_failure_reason": 1,
+            "payment_retry_count": 1,
         }
+        # If this new subscription has NO promo (a normal B2C card checkout),
+        # make sure no stale institution_promo lingers — the user is now a
+        # self-serve B2C subscriber and must NOT appear on any school's list.
+        if not update_data.get("institution_promo"):
+            unset_data["institution_promo"] = 1
 
         # Update user in MongoDB
         await database["users"].update_one(
@@ -1272,6 +1368,9 @@ async def handle_subscription_deleted(subscription):
             "subscription_started_at": 1,
             "trial_end_date": 1,
             "cancellation_date": 1,
+            # 🏫 Drop school-promo attribution when the sponsored sub ends, so the
+            # student no longer appears as an active seat in the school dashboard.
+            "institution_promo": 1,
         }
 
         # Update user in MongoDB
@@ -1801,6 +1900,172 @@ async def handle_payment_intent_succeeded(payment_intent):
     except Exception as e:
         logger.error(f"[PAYMENT_INTENT] Error handling payment_intent.succeeded: {str(e)}")
 
+async def _end_institution_sponsorship(user, subscription_id, reason: str = "sponsorship_ended"):
+    """
+    Cleanly end a school-sponsored (B2B) premium and drop the student to the free
+    tier — no 'past_due' limbo.
+
+    This is the RIGHT behaviour when a 100%-off school coupon runs out (e.g. a
+    3-month 'repeating' coupon): the student has NO card on file (the €0 checkout
+    never collected one), so Stripe can never charge them. Leaving them 'past_due'
+    for a week would falsely read as "your payment failed". Instead we cancel the
+    Stripe sub immediately and reset to free — same end-state as
+    handle_subscription_deleted, minus the wait — then notify them so they can
+    re-enter the school code (extension) or start a normal paid plan (B2C).
+
+    Returns True if it handled the user (caller should stop), False otherwise.
+    """
+    try:
+        from datetime import datetime, timezone
+        promo = user.get("institution_promo") or {}
+        if not promo.get("code"):
+            return False  # not a sponsored user — let normal flow handle it
+
+        old_plan = user.get("subscription_plan", "try_learn")
+        school_name = None
+        # Best-effort school name for the notification.
+        try:
+            import re as _re
+            code = str(promo.get("code")).strip()
+            inst = await database["institutions"].find_one(
+                {"promo_code": {"$regex": f"^{_re.escape(code)}$", "$options": "i"}}, {"name": 1}
+            )
+            school_name = (inst or {}).get("name")
+        except Exception:
+            pass
+
+        # Cancel the Stripe subscription immediately (best-effort).
+        if subscription_id:
+            try:
+                stripe.Subscription.cancel(subscription_id)
+                logger.info(f"[SPONSORSHIP_END] Cancelled Stripe sub {subscription_id} for {user.get('email')}")
+            except Exception as e:
+                logger.warning(f"[SPONSORSHIP_END] Could not cancel sub {subscription_id}: {e}")
+
+        now = datetime.now(timezone.utc)
+        period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        period_end = (period_start.replace(year=period_start.year + 1, month=1)
+                      if period_start.month == 12
+                      else period_start.replace(month=period_start.month + 1))
+
+        await database["users"].update_one(
+            {"_id": user["_id"]},
+            {
+                "$set": {
+                    "subscription_status": "free",
+                    "subscription_plan": "try_learn",
+                    "is_in_trial": False,
+                    "cancel_at_period_end": False,
+                    "practice_minutes_used": 0.0,
+                    "practice_sessions_used": 0,
+                    "assessments_used": 0,
+                    "current_period_start": period_start,
+                    "current_period_end": period_end,
+                    "sponsorship_ended_at": now,
+                    "sponsorship_ended_reason": reason,
+                },
+                "$unset": {
+                    "stripe_subscription_id": 1,
+                    "subscription_price_id": 1,
+                    "subscription_period": 1,
+                    "subscription_expires_at": 1,
+                    "subscription_started_at": 1,
+                    "trial_end_date": 1,
+                    "cancellation_date": 1,
+                    "payment_failed_at": 1,
+                    "last_payment_failure_reason": 1,
+                    "payment_retry_count": 1,
+                    # Drop attribution → student leaves the school's seat list.
+                    "institution_promo": 1,
+                },
+            },
+        )
+        logger.info(f"[SPONSORSHIP_END] {user.get('email')} reset to free (was {old_plan}); reason={reason}")
+
+        # Reset hearts to free tier.
+        try:
+            from services.heart_service import HeartService
+            await HeartService().update_hearts_on_subscription_change(
+                user_id=str(user["_id"]), old_plan=old_plan, new_plan="try_learn"
+            )
+        except Exception as e:
+            logger.warning(f"[SPONSORSHIP_END] heart reset failed: {e}")
+
+        # Notify the student (push) so they can re-enter the code or go B2C.
+        try:
+            await _notify_sponsorship_ended(user, school_name)
+        except Exception as e:
+            logger.warning(f"[SPONSORSHIP_END] notification failed: {e}")
+
+        return True
+    except Exception as e:
+        logger.error(f"[SPONSORSHIP_END] error: {e}")
+        return False
+
+
+async def _notify_sponsorship_ended(user, school_name):
+    """
+    Push-notify a student whose school sponsorship just ended, inviting them to
+    re-enter their school code (extension) or pick a plan (B2C). Best-effort:
+    writes an in-app notification row AND sends an Expo push if a token exists.
+    """
+    school = school_name or "your school"
+    title = "Your school premium has ended"
+    body = f"Your premium from {school} has ended. Re-enter your school code to extend, or choose a plan to continue."
+    user_id = str(user["_id"])
+
+    # In-app bell notification — SAME two-collection pattern the tutor
+    # send-recommendation + admin notifications use (notifications holds the
+    # content, user_notifications links it to the user), so it renders in the
+    # mobile bell + notification list regardless of push delivery.
+    try:
+        from datetime import datetime, timezone
+        from bson import ObjectId
+        now = datetime.now(timezone.utc)
+        notification_id = str(ObjectId())
+        await database.notifications.insert_one({
+            "_id": notification_id,
+            "title": title,
+            "content": body,
+            "notification_type": "Information",  # uses existing mobile rendering
+            "created_by": "system:sponsorship",
+            "created_at": now,
+            "sent_at": now,
+            "is_sent": True,
+        })
+        await database.user_notifications.insert_one({
+            "_id": str(ObjectId()),
+            "user_id": user_id,
+            "notification_id": notification_id,
+            "is_read": False,
+            "read_at": None,
+            "deleted_at": None,
+            "created_at": now,
+        })
+        try:
+            from cache_helpers import invalidate_notif_poll_cache
+            await invalidate_notif_poll_cache(user_id)
+        except Exception:
+            pass
+    except Exception as e:
+        logger.warning(f"[SPONSORSHIP_END] could not write notification row: {e}")
+
+    # Best-effort Expo push. Canonical token field on users = push_token.
+    try:
+        token = user.get("push_token") or user.get("expo_push_token")
+        if token:
+            from notification_service import send_push_notification  # best-effort import
+            await send_push_notification(
+                token,
+                title,
+                body,
+                data={"type": "sponsorship_ended", "action": "resubscribe"},
+                user_id=user_id,
+            )
+    except Exception as e:
+        logger.warning(f"[SPONSORSHIP_END] push failed: {e}")
+
+
 async def handle_invoice_payment_failed(invoice):
     """
     Handle invoice.payment_failed event
@@ -1852,6 +2117,20 @@ async def handle_invoice_payment_failed(invoice):
         if not user:
             logger.warning(f"[PAYMENT_FAILED] No user found for customer {customer_id}")
             return
+
+        # 🏫 B2B SPONSORSHIP END: if this is a school-sponsored student, a failed
+        # invoice almost always means their 100%-off coupon just ran out and they
+        # have NO card on file (the €0 checkout never collected one). Don't park
+        # them in 'past_due' for a week — cleanly drop to free now and notify them
+        # to re-enter the code (extension) or go B2C. Only for sponsored users;
+        # normal B2C payment failures fall through to the retry/grace flow below.
+        if (user.get("institution_promo") or {}).get("code"):
+            handled = await _end_institution_sponsorship(
+                user, subscription_id, reason="coupon_ended_no_card"
+            )
+            if handled:
+                logger.info(f"[PAYMENT_FAILED] Sponsored user {user.get('email')} cleanly ended → free tier")
+                return
 
         # 🔥 CRITICAL: Check if user still has premium access despite payment failure
         user_plan = user.get("subscription_plan", "try_learn")

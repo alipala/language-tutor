@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 import uuid
-from fastapi import APIRouter, HTTPException, Depends, status, Request
+from fastapi import APIRouter, HTTPException, Depends, status, Request, Body
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, EmailStr
 
@@ -233,6 +233,63 @@ def _minutes_quota(user: dict) -> dict:
     return {"minutes_used": used, "minutes_limit": limit, "minutes_remaining": remaining}
 
 
+async def _build_promo_code_to_school() -> Dict[str, str]:
+    """
+    One-shot map of upper-cased Stripe promo_code → institution name, so the
+    admin user views can label B2B (school-sponsored) users WITHOUT an N+1 query
+    per user. Only schools that actually have a promo_code are included.
+    """
+    mapping: Dict[str, str] = {}
+    try:
+        async for inst in database.institutions.find(
+            {"promo_code": {"$exists": True, "$ne": ""}}, {"name": 1, "promo_code": 1}
+        ):
+            code = (inst.get("promo_code") or "").strip().upper()
+            if code:
+                mapping[code] = inst.get("name") or ""
+    except Exception:
+        pass
+    return mapping
+
+
+def _institution_for_user(user: Dict[str, Any], school_map: Dict[str, str]) -> Optional[Dict[str, Any]]:
+    """
+    Build the B2B sponsorship block for an admin user view, or None for a normal
+    B2C user. Resolves the school name from the pre-built promo_code→name map and
+    computes how much of the sponsored membership is left.
+    """
+    promo = user.get("institution_promo") or {}
+    code = (promo.get("code") or "").strip()
+    if not code:
+        return None
+
+    school_name = school_map.get(code.upper())
+    # Days/months remaining until the current sponsored period ends.
+    days_remaining = None
+    expires_at = user.get("subscription_expires_at")
+    if expires_at:
+        try:
+            if isinstance(expires_at, str):
+                from dateutil import parser as _dtparser
+                expires_at = _dtparser.parse(expires_at)
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            delta = expires_at - datetime.now(timezone.utc)
+            days_remaining = max(0, delta.days)
+        except Exception:
+            days_remaining = None
+
+    redeemed_at = promo.get("applied_at")
+    return {
+        "sponsored": True,
+        "name": school_name,          # may be None if the school later cleared its code
+        "promo_code": code.upper(),
+        "days_remaining": days_remaining,
+        "months_remaining": (round(days_remaining / 30, 1) if days_remaining is not None else None),
+        "redeemed_at": redeemed_at.isoformat() if hasattr(redeemed_at, "isoformat") else redeemed_at,
+    }
+
+
 @router.get("/users", response_model=UserListResponse)
 async def get_users_admin(
     page: int = 1,
@@ -319,6 +376,9 @@ async def get_users_admin(
                 return date_value.isoformat()
             return str(date_value)
 
+        # One-shot school map so we can label B2B users without an N+1 query.
+        school_map = await _build_promo_code_to_school()
+
         # Convert ObjectId to string and format response
         formatted_users = []
         for user in users:
@@ -348,6 +408,8 @@ async def get_users_admin(
                     "learning_plan_preserved": user.get("learning_plan_preserved", False),
                     # practice-minute usage (used / plan limit / remaining) for the list view
                     **_minutes_quota(user),
+                    # 🏫 B2B: sponsoring school + membership left (None for B2C users)
+                    "institution": _institution_for_user(user, school_map),
                 }
                 formatted_users.append(user_dict)
             except Exception as format_error:
@@ -1220,6 +1282,10 @@ async def get_institution_detail(
         "tutor_count": tutor_count,
         "activation_code": act_code.get("activation_code") if act_code else None,
         "activation_code_status": act_code.get("status") if act_code else None,
+        # Stripe promotion code the platform assigns to this school; students
+        # redeem it at checkout for sponsored premium.
+        "promo_code": inst.get("promo_code") or "",
+        "promo_code": inst.get("promo_code") or "",
         "tutors": [
             {
                 "id": str(t["_id"]),
@@ -1231,68 +1297,98 @@ async def get_institution_detail(
     }
 
 
+@router.put("/institutions/{institution_id}/promo-code")
+async def set_institution_promo_code(
+    institution_id: str,
+    body: Dict[str, Any] = Body(...),
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """
+    Platform-admin-only: assign (or clear) the Stripe promotion code a school
+    hands to its students. Stored upper-cased to match how the Learners tab and
+    the webhook attribution compare it. Send {"promo_code": ""} to clear.
+    """
+    from bson import ObjectId
+    raw = body.get("promo_code", "")
+    if not isinstance(raw, str):
+        raise HTTPException(status_code=400, detail="promo_code must be a string")
+    promo = raw.strip().upper()
+
+    try:
+        oid = ObjectId(institution_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid institution ID")
+
+    result = await database.institutions.update_one(
+        {"_id": oid},
+        {"$set": {"promo_code": promo, "updated_at": datetime.utcnow()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Institution not found")
+
+    return {"message": "Promo code updated", "promo_code": promo}
+
+
 @router.get("/institutions/{institution_id}/learners")
 async def get_institution_learners_admin(
     institution_id: str,
     current_admin: AdminUser = Depends(get_current_admin)
 ):
-    """Get all learners for an institution (admin view, no consent gate)"""
+    """
+    Learners for an institution (admin view) — sourced from Stripe promo-code
+    redemptions, matching the institution-side Sponsored Learners tab. We list
+    every user whose active subscription carries this school's promo_code
+    (stamped as institution_promo.code by the Stripe webhook). No enrollment
+    records are involved; the source of truth is Stripe.
+    """
     from bson import ObjectId
-    enrollments = await database.institutional_learners.find({
-        "institution_id": institution_id
-    }).to_list(length=None)
+
+    inst = None
+    try:
+        inst = await database.institutions.find_one({"_id": ObjectId(institution_id)})
+    except Exception:
+        inst = None
+    promo_code = ((inst or {}).get("promo_code") or "").strip().upper()
 
     learner_list = []
-    for enrollment in enrollments:
-        user_id = enrollment.get("user_id", "")
-        user = None
-        try:
-            if ObjectId.is_valid(user_id):
-                user = await database.users.find_one({"_id": ObjectId(user_id)})
-        except Exception:
-            pass
+    if promo_code:
+        cursor = database.users.find(
+            {"institution_promo.code": {"$regex": f"^{promo_code}$", "$options": "i"}}
+        )
+        async for user in cursor:
+            user_id = str(user["_id"])
+            promo = user.get("institution_promo") or {}
 
-        # Get learning plan summary
-        plans = await database.learning_plans.find({"user_id": user_id}).to_list(length=None)
-        plan_summary = None
-        if plans:
-            plan = plans[0]
-            plan_summary = {
-                "language": plan.get("language"),
-                "level": plan.get("proficiency_level") or plan.get("level"),
-                "progress_percentage": round(plan.get("progress_percentage", 0), 1),
-                "completed_sessions": plan.get("completed_sessions", 0),
-                "total_sessions": plan.get("total_sessions", 16),
-                "practice_minutes_used": round(plan.get("practice_minutes_used", 0), 1)
-            }
+            # Optional learning-plan summary (may be absent for a new subscriber).
+            plans = await database.learning_plans.find({"user_id": user_id}).to_list(length=None)
+            plan_summary = None
+            if plans:
+                plan = plans[0]
+                plan_summary = {
+                    "language": plan.get("language"),
+                    "level": plan.get("proficiency_level") or plan.get("level"),
+                    "progress_percentage": round(plan.get("progress_percentage", 0), 1),
+                    "completed_sessions": plan.get("completed_sessions", 0),
+                    "total_sessions": plan.get("total_sessions", 16),
+                    "practice_minutes_used": round(plan.get("practice_minutes_used", 0), 1)
+                }
 
-        # Get tutor info
-        tutor = None
-        tutor_id = enrollment.get("tutor_id")
-        if tutor_id:
-            try:
-                t = await database.tutors.find_one({"_id": ObjectId(tutor_id)})
-                if t:
-                    tutor = {"id": str(t["_id"]), "name": t.get("name"), "email": t.get("email")}
-            except Exception:
-                pass
-
-        learner_list.append({
-            "enrollment_id": str(enrollment["_id"]),
-            "user_id": user_id,
-            "name": user.get("name") if user else enrollment.get("email", "Unknown"),
-            "email": user.get("email") if user else enrollment.get("email", ""),
-            "preferred_language": user.get("preferred_language") if user else None,
-            "preferred_level": user.get("preferred_level") if user else None,
-            "subscription_status": user.get("subscription_status") if user else None,
-            "subscription_plan": user.get("subscription_plan") if user else None,
-            "consent_given": enrollment.get("consent_given", False),
-            "is_active": enrollment.get("is_active", True),
-            "enrollment_method": enrollment.get("enrollment_method"),
-            "enrolled_at": enrollment.get("enrolled_at").isoformat() if enrollment.get("enrolled_at") else None,
-            "tutor": tutor,
-            "plan_summary": plan_summary
-        })
+            learner_list.append({
+                "enrollment_id": user_id,  # stable key for the admin table
+                "user_id": user_id,
+                "name": user.get("name") or "Unknown",
+                "email": user.get("email") or "",
+                "preferred_language": user.get("preferred_language"),
+                "preferred_level": user.get("preferred_level"),
+                "subscription_status": user.get("subscription_status"),
+                "subscription_plan": user.get("subscription_plan"),
+                "consent_given": True,  # redeeming the code is an explicit action
+                "is_active": user.get("subscription_status") in ("active", "trialing"),
+                "enrollment_method": "promo_code",
+                "enrolled_at": promo.get("applied_at").isoformat() if promo.get("applied_at") else None,
+                "tutor": None,
+                "plan_summary": plan_summary,
+            })
 
     return {"total_learners": len(learner_list), "learners": learner_list}
 
@@ -1576,6 +1672,8 @@ async def get_user_overview_admin(
             "expires_at": _iso(user.get("subscription_expires_at")),
             "is_in_trial": user.get("is_in_trial", False),
             **_minutes_quota(user),  # minutes_used / minutes_limit / minutes_remaining
+            # 🏫 B2B: sponsoring school + membership left (None for B2C users)
+            "institution": _institution_for_user(user, await _build_promo_code_to_school()),
         },
         "engagement": {
             "total_xp": total_xp,

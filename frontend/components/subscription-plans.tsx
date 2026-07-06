@@ -46,7 +46,6 @@ const monthlyPlans: PricingCard[] = [
     priceNote: '/month',
     description: 'For consistent learners ready to level up',
     features: [
-      { text: '3-day free trial included', included: true },
       { text: 'Generous monthly speaking minutes', included: true },
       { text: 'Personalised learning plan', included: true },
       { text: 'Voice DNA analysis', included: true },
@@ -54,7 +53,7 @@ const monthlyPlans: PricingCard[] = [
       { text: 'Advanced progress tracking', included: true },
       { text: 'All conversation topics', included: true },
     ],
-    ctaButton: 'Start Free Trial',
+    ctaButton: 'Get Started',
     popular: true,
   },
   {
@@ -63,7 +62,6 @@ const monthlyPlans: PricingCard[] = [
     priceNote: '/month',
     description: 'The ultimate immersive experience',
     features: [
-      { text: '3-day free trial included', included: true },
       { text: 'UNLIMITED speaking time', included: true },
       { text: 'Personalised learning plan', included: true },
       { text: 'DNA acoustic analysis', included: true },
@@ -71,7 +69,7 @@ const monthlyPlans: PricingCard[] = [
       { text: 'Instant heart refills', included: true },
       { text: 'Advanced analytics & DNA reports', included: true },
     ],
-    ctaButton: 'Start Free Trial',
+    ctaButton: 'Get Started',
     popular: false,
   },
 ];
@@ -101,7 +99,6 @@ const annualPlans: PricingCard[] = [
     savings: 'Save €59.89 · ~€5/month',
     description: 'For consistent learners ready to level up',
     features: [
-      { text: '3-day free trial included', included: true },
       { text: 'Generous speaking minutes, billed annually', included: true },
       { text: 'Personalised learning plan', included: true },
       { text: 'Voice DNA analysis', included: true },
@@ -119,7 +116,6 @@ const annualPlans: PricingCard[] = [
     savings: 'Save €107.99 · ~€9/month',
     description: 'The ultimate immersive experience',
     features: [
-      { text: '3-day free trial included', included: true },
       { text: 'UNLIMITED speaking time', included: true },
       { text: 'Personalised learning plan', included: true },
       { text: 'DNA acoustic analysis', included: true },
@@ -392,8 +388,8 @@ export default function SubscriptionPlans() {
               ⚡
             </div>
             <div>
-              <div className="text-sm font-semibold text-white">Free trial on paid plans</div>
-              <div className="text-xs text-white/35">3 days free, no credit card required</div>
+              <div className="text-sm font-semibold text-white">Cancel anytime</div>
+              <div className="text-xs text-white/35">No lock-in — manage your plan whenever</div>
             </div>
           </div>
           <div className="hidden sm:block w-px h-8 bg-white/[0.08]" />

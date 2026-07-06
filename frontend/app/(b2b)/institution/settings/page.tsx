@@ -29,17 +29,17 @@ export default function InstitutionSettingsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-16">
+    <div className="min-h-screen bg-gray-50 pt-8 sm:pt-24 pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Page header */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <button
             onClick={() => router.push('/institution/dashboard')}
             className="text-sm text-brand hover:text-[#3a9e92] font-medium mb-4 inline-flex items-center gap-1"
           >
             ← Back to Dashboard
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Settings</h1>
           <p className="text-gray-500 mt-1 text-sm">Manage your institution profile and admin account.</p>
         </div>
 
@@ -61,8 +61,8 @@ export default function InstitutionSettingsPage() {
               notification.type === 'error'   ? 'bg-gradient-to-r from-red-50 to-rose-50' :
                                                 'bg-gradient-to-r from-blue-50 to-cyan-50'
             }`}>
-              <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-full flex items-center justify-center ${
                   notification.type === 'success' ? 'bg-green-100' :
                   notification.type === 'error'   ? 'bg-red-100' : 'bg-blue-100'
                 }`}>
@@ -77,12 +77,12 @@ export default function InstitutionSettingsPage() {
                     </svg>
                   )}
                 </div>
-                <div>
-                  <h3 className={`font-bold text-lg ${
+                <div className="min-w-0">
+                  <h3 className={`font-bold text-base sm:text-lg ${
                     notification.type === 'success' ? 'text-green-900' :
                     notification.type === 'error'   ? 'text-red-900' : 'text-blue-900'
                   }`}>{notification.title}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                  <p className="text-sm text-gray-600 mt-1 break-words">{notification.message}</p>
                 </div>
               </div>
             </div>

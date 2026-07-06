@@ -17,10 +17,14 @@ class InstitutionSignupRequest(BaseModel):
 
     @validator('institution_type')
     def validate_type(cls, v):
+        # Normalise case + spacing: activation codes store display-cased values
+        # like "School" / "Language Center", but institutions store the snake
+        # form. Accept both so an activation-code value can flow straight through.
+        normalised = (v or "").strip().lower().replace(" ", "_")
         valid_types = ['school', 'university', 'language_center', 'corporate']
-        if v not in valid_types:
+        if normalised not in valid_types:
             raise ValueError(f'Type must be one of: {valid_types}')
-        return v
+        return normalised
 
     @validator('subscription_plan')
     def validate_plan(cls, v):
@@ -51,3 +55,18 @@ class InstitutionLoginResponse(BaseModel):
     institution_id: str
     institution_name: str
     admin_email: str
+    admin_name: Optional[str] = ""
+
+class ActivationCodePreviewResponse(BaseModel):
+    """
+    Non-sensitive activation-code metadata returned to the (unauthenticated)
+    school-admin activation page so it can pre-fill institution details and let
+    the invited admin only set a password.
+    """
+    institution_name: str
+    institution_email: str
+    institution_type: str
+    subscription_plan: str
+    is_trial: bool
+    max_tutors: int
+    max_learners: int

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { institutionService } from '../../../services/institutionService';
 import Link from 'next/link';
+import { B2BAuthCard, B2BField, b2bInputClass, b2bPrimaryButtonClass } from '@/src/components/b2b/B2BAuthCard';
 
 export const InstitutionLogin: React.FC = () => {
   const router = useRouter();
@@ -74,7 +75,10 @@ export const InstitutionLogin: React.FC = () => {
       // Set new authentication data
       localStorage.setItem('institution_token', result.access_token);
       localStorage.setItem('institution_id', result.institution_id);
-      
+      localStorage.setItem('institution_name', result.institution_name || '');
+      if (result.admin_name) localStorage.setItem('institution_admin_name', result.admin_name);
+      if (result.admin_email) localStorage.setItem('institution_admin_email', result.admin_email);
+
       // Use window.location.href for hard navigation to prevent cache issues
       window.location.href = '/institution/dashboard';
     } catch (error: any) {
@@ -95,107 +99,72 @@ export const InstitutionLogin: React.FC = () => {
   // Show loading state while checking authentication
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4 pt-24">
+      <div className="flex min-h-[calc(100vh-64px)] items-center justify-center bg-slate-50 p-4">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand"></div>
-          <p className="mt-4 text-gray-600">Checking authentication...</p>
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-b-2 border-[#4ECFBF]"></div>
+          <p className="mt-4 text-slate-500">Checking authentication...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4 pt-24">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8 text-gray-900">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-brand to-[#3a9e92] rounded-full mb-4">
-              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">School Login</h1>
-            <p className="text-gray-600 text-sm">Access your institution dashboard</p>
+    <B2BAuthCard
+      icon={
+        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+      }
+      title="School Login"
+      subtitle="Access your institution dashboard"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <B2BField id="admin_email" label="Admin Email" error={errors.admin_email}>
+          <input
+            id="admin_email"
+            type="email"
+            value={formData.admin_email}
+            onChange={(e) => handleChange('admin_email', e.target.value)}
+            placeholder="admin@institution.edu"
+            className={`${b2bInputClass} ${errors.admin_email ? 'border-red-500' : ''}`}
+            autoComplete="email"
+          />
+        </B2BField>
+
+        <B2BField id="password" label="Password" error={errors.password}>
+          <input
+            id="password"
+            type="password"
+            value={formData.password}
+            onChange={(e) => handleChange('password', e.target.value)}
+            placeholder="Enter your password"
+            className={`${b2bInputClass} ${errors.password ? 'border-red-500' : ''}`}
+            autoComplete="current-password"
+          />
+        </B2BField>
+
+        {apiError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+            <p className="text-sm text-red-600">{apiError}</p>
           </div>
+        )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Admin Email */}
-            <div>
-              <label htmlFor="admin_email" className="block text-sm font-medium text-gray-700 mb-1">
-                Admin Email
-              </label>
-              <input
-                id="admin_email"
-                type="email"
-                value={formData.admin_email}
-                onChange={(e) => handleChange('admin_email', e.target.value)}
-                placeholder="admin@institution.edu"
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent ${
-                  errors.admin_email ? 'border-red-500' : 'border-gray-300'
-                }`}
-                autoComplete="email"
-              />
-              {errors.admin_email && (
-                <p className="text-red-500 text-xs mt-1">{errors.admin_email}</p>
-              )}
-            </div>
+        <button type="submit" disabled={isSubmitting} className={b2bPrimaryButtonClass}>
+          {isSubmitting ? 'Logging in...' : 'Login'}
+        </button>
 
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={formData.password}
-                onChange={(e) => handleChange('password', e.target.value)}
-                placeholder="Enter your password"
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent ${
-                  errors.password ? 'border-red-500' : 'border-gray-300'
-                }`}
-                autoComplete="current-password"
-              />
-              {errors.password && (
-                <p className="text-red-500 text-xs mt-1">{errors.password}</p>
-              )}
-            </div>
-
-            {/* API Error */}
-            {apiError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-red-600 text-sm">{apiError}</p>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3 bg-brand text-white font-medium rounded-lg hover:bg-[#3a9e92] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? 'Logging in...' : 'Login'}
-            </button>
-
-            {/* Links */}
-            <div className="space-y-3 text-center text-sm">
-              <p className="text-gray-600">
-                Don't have an account?{' '}
-                <Link href="/institution/signup" className="text-brand hover:text-[#3a9e92] font-medium">
-                  Sign up here
-                </Link>
-              </p>
-              <p>
-                <Link href="/institution/forgot-password" className="text-brand hover:text-[#3a9e92] font-medium underline">
-                  Forgot password?
-                </Link>
-              </p>
-            </div>
-          </form>
+        <div className="space-y-3 text-center text-sm">
+          <p>
+            <Link href="/institution/forgot-password" className="font-medium text-[#3A9E92] underline hover:text-[#4ECFBF]">
+              Forgot password?
+            </Link>
+          </p>
+          <p className="text-xs text-slate-400">
+            New schools are onboarded by invitation. Received an activation email? Use the link in it to
+            activate your account.
+          </p>
         </div>
-      </div>
-    </div>
+      </form>
+    </B2BAuthCard>
   );
 };

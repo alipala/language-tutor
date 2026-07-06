@@ -33,6 +33,17 @@ export interface InstitutionLoginResponse {
   institution_id: string;
   institution_name: string;
   admin_email: string;
+  admin_name?: string;
+}
+
+export interface ActivationCodePreview {
+  institution_name: string;
+  institution_email: string;
+  institution_type: string;
+  subscription_plan: string;
+  is_trial: boolean;
+  max_tutors: number;
+  max_learners: number;
 }
 
 export interface InstitutionStats {
@@ -56,9 +67,25 @@ export interface Institution {
 }
 
 export const institutionService = {
+  /**
+   * Public preview of an activation code — used to pre-fill the activation page
+   * with the institution details the master admin already entered, so the
+   * invited admin only sets a password. No auth required.
+   */
+  async previewActivationCode(code: string): Promise<ActivationCodePreview> {
+    // Use the /api/institution/* proxy (next.config rewrites it to backend
+    // /institution/*). The bare /institution/* path is a frontend route, so it
+    // would not reach the backend.
+    const response = await axios.get(
+      `/api/institution/activation-code/${encodeURIComponent(code)}/preview`
+    );
+    return response.data;
+  },
+
   async signup(data: InstitutionSignupData): Promise<InstitutionSignupResponse> {
+    // /api/institution/* → backend /institution/* (next.config rewrite).
     const response = await axios.post(
-      `${getApiBase()}/institution/signup`,
+      `/api/institution/signup`,
       data
     );
     return response.data;

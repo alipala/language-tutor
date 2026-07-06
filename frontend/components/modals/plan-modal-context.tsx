@@ -155,7 +155,7 @@ function PlanModal() {
                 {modalState.planId === 'fluency_builder' ? 'Fluency Builder' : 'Language Mastery'} - {modalState.period === 'annual' ? 'Annual' : 'Monthly'}
               </p>
               <p className="text-sm text-gray-500">
-                Create an account or sign in to start your free trial and access premium features.
+                Create an account or sign in to unlock premium features.
               </p>
             </div>
 
@@ -164,7 +164,7 @@ function PlanModal() {
                 onClick={handleSignUp}
                 className="w-full py-3 px-4 bg-brand text-white font-semibold rounded-lg hover:bg-[#3a9e92] transition-colors duration-300"
               >
-                Create Account & Start Free Trial
+                Create Account & Get Started
               </button>
               
               <button
@@ -275,7 +275,6 @@ function PlanModal() {
 
               <ul className="space-y-2 md:space-y-3 mb-4 md:mb-6 flex-grow">
                 {[
-                  '🎉 3-day free trial included',
                   `${isAnnual ? '1,800 minutes annually' : '150 minutes monthly'} speaking time`,
                   `${isAnnual ? '24' : '2'} speaking assessments ${isAnnual ? 'annually' : 'monthly'}`,
                   '10 hearts for challenges',
@@ -295,7 +294,7 @@ function PlanModal() {
                   onClick={() => handlePlanSelect('fluency_builder')}
                   className="w-full py-3 px-6 bg-brand text-white font-semibold rounded-xl hover:bg-[#3a9e92] transition-colors duration-300"
                 >
-                  Start Free Trial
+                  Get Started
                 </button>
               </div>
             </div>
@@ -324,7 +323,6 @@ function PlanModal() {
 
               <ul className="space-y-2 md:space-y-3 mb-4 md:mb-6 flex-grow">
                 {[
-                  '🎉 3-day free trial included',
                   'UNLIMITED speaking',
                   'UNLIMITED assessments',
                   'UNLIMITED hearts',
@@ -344,7 +342,7 @@ function PlanModal() {
                   onClick={() => handlePlanSelect('team_mastery')}
                   className="w-full py-3 px-6 bg-white text-brand border-2 border-brand font-semibold rounded-xl hover:bg-brand hover:text-white transition-colors duration-300"
                 >
-                  Start Free Trial
+                  Get Started
                 </button>
               </div>
             </div>

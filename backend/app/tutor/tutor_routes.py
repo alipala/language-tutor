@@ -66,6 +66,12 @@ async def tutor_login(credentials: TutorLoginRequest) -> TutorLoginResponse:
         
         access_token = create_tutor_access_token(token_data)
         
+        # A freshly-created tutor must set their own password before using the
+        # dashboard. Treat EITHER flag as "must reset" so both onboarding paths
+        # (single add = first_login, bulk import = must_reset_password) funnel to
+        # the change-password screen.
+        needs_reset = bool(tutor.get("first_login", False) or tutor.get("must_reset_password", False))
+
         # Return response
         return TutorLoginResponse(
             access_token=access_token,
@@ -73,7 +79,7 @@ async def tutor_login(credentials: TutorLoginRequest) -> TutorLoginResponse:
             tutor_id=str(tutor["_id"]),
             name=tutor["name"],
             email=tutor["email"],
-            first_login=tutor.get("first_login", False),
+            first_login=needs_reset,
             institution_id=tutor["institution_id"]
         )
         
