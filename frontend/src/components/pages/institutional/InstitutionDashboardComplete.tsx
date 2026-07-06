@@ -1875,22 +1875,22 @@ export const InstitutionDashboardComplete: React.FC = () => {
       {/* Tabs */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4">
-          <nav className="flex space-x-8 overflow-x-auto">
+          <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto scrollbar-hide">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`py-4 border-b-2 flex items-center ${activeTab === 'overview' ? 'border-brand text-brand' : 'border-transparent text-gray-500'}`}
+              className={`shrink-0 py-4 border-b-2 flex items-center whitespace-nowrap ${activeTab === 'overview' ? 'border-brand text-brand' : 'border-transparent text-gray-500'}`}
             >
               <BarChart2 className="w-4 h-4 mr-1.5 inline-block" /> Overview
             </button>
             <button
               onClick={() => setActiveTab('tutors')}
-              className={`py-4 border-b-2 flex items-center ${activeTab === 'tutors' ? 'border-brand text-brand' : 'border-transparent text-gray-500'}`}
+              className={`shrink-0 py-4 border-b-2 flex items-center whitespace-nowrap ${activeTab === 'tutors' ? 'border-brand text-brand' : 'border-transparent text-gray-500'}`}
             >
               <Users className="w-4 h-4 mr-1.5 inline-block" /> Tutors ({tutors.length})
             </button>
             <button
               onClick={() => setActiveTab('learners')}
-              className={`py-4 border-b-2 flex items-center whitespace-nowrap ${activeTab === 'learners' ? 'border-brand text-brand' : 'border-transparent text-gray-500'}`}
+              className={`shrink-0 py-4 border-b-2 flex items-center whitespace-nowrap ${activeTab === 'learners' ? 'border-brand text-brand' : 'border-transparent text-gray-500'}`}
             >
               <GraduationCap className="w-4 h-4 mr-1.5 inline-block" /> Learners ({sponsored.seats_used})
             </button>
@@ -1958,19 +1958,19 @@ export const InstitutionDashboardComplete: React.FC = () => {
 
         {activeTab === 'tutors' && (
           <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <h2 className="text-2xl font-bold">Tutor Management</h2>
-              <div className="flex gap-3 flex-wrap">
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+              <h2 className="text-xl sm:text-2xl font-bold">Tutor Management</h2>
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3">
                 <button
                   onClick={() => setShowImportTutorCSVModal(true)}
-                  className="px-5 py-2.5 border-2 border-brand text-brand rounded-lg hover:bg-brand hover:text-white transition-colors flex items-center text-sm font-medium"
+                  className="px-4 sm:px-5 py-2.5 border-2 border-brand text-brand rounded-lg hover:bg-brand hover:text-white transition-colors flex items-center justify-center text-sm font-medium"
                 >
                   <Upload className="w-4 h-4 mr-1.5" /> Import CSV
                 </button>
                 <button
                   onClick={handleExportTutors}
                   disabled={isExportingTutors}
-                  className={`px-5 py-2.5 border-2 border-brand rounded-lg transition-all flex items-center text-sm font-medium ${isExportingTutors ? 'bg-brand text-white cursor-wait' : 'text-brand hover:bg-brand hover:text-white'}`}
+                  className={`px-4 sm:px-5 py-2.5 border-2 border-brand rounded-lg transition-all flex items-center justify-center text-sm font-medium ${isExportingTutors ? 'bg-brand text-white cursor-wait' : 'text-brand hover:bg-brand hover:text-white'}`}
                 >
                   {isExportingTutors ? (
                     <><svg className="animate-spin h-4 w-4 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Exporting...</>
@@ -1980,7 +1980,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setShowAddTutorModal(true)}
-                  className="px-5 py-2.5 bg-brand text-white rounded-lg hover:bg-[#3a9e92] flex items-center text-sm font-medium"
+                  className="col-span-2 sm:col-span-1 px-4 sm:px-5 py-2.5 bg-brand text-white rounded-lg hover:bg-[#3a9e92] flex items-center justify-center text-sm font-medium"
                 >
                   <UserPlus className="w-4 h-4 mr-1.5" /> Add Tutor
                 </button>
@@ -1988,18 +1988,18 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </div>
 
             {/* Tutors Filters */}
-            <div className="bg-white p-4 rounded-xl shadow flex gap-4 flex-wrap">
+            <div className="bg-white p-4 rounded-xl shadow flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
               <input
                 type="text"
                 placeholder="Search tutors by name or email..."
                 value={tutorSearchQuery}
                 onChange={(e) => setTutorSearchQuery(e.target.value)}
-                className="flex-1 min-w-[250px] px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-brand focus:border-brand"
+                className="w-full sm:flex-1 sm:min-w-[250px] px-4 py-2 border rounded-lg text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-brand focus:border-brand"
               />
               <select
                 value={filterTutorStatus}
                 onChange={(e) => setFilterTutorStatus(e.target.value)}
-                className="px-4 py-2 border rounded-lg text-gray-900 font-medium focus:ring-2 focus:ring-brand focus:border-brand"
+                className="w-full sm:w-auto px-4 py-2 border rounded-lg text-gray-900 font-medium focus:ring-2 focus:ring-brand focus:border-brand"
               >
                 <option value="active">Active Only</option>
                 <option value="inactive">Inactive Only</option>
@@ -2008,7 +2008,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
               <select
                 value={filterTutorSpecialization}
                 onChange={(e) => setFilterTutorSpecialization(e.target.value)}
-                className="px-4 py-2 border rounded-lg text-gray-900 focus:ring-2 focus:ring-brand focus:border-brand"
+                className="w-full sm:w-auto px-4 py-2 border rounded-lg text-gray-900 focus:ring-2 focus:ring-brand focus:border-brand"
               >
                 <option value="all">All Specializations</option>
                 {Array.from(new Set(tutors.flatMap(t => t.specializations || []))).sort().map(spec => (
@@ -2018,7 +2018,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
               <select
                 value={filterTutorLearnerCount}
                 onChange={(e) => setFilterTutorLearnerCount(e.target.value)}
-                className="px-4 py-2 border rounded-lg text-gray-900 focus:ring-2 focus:ring-brand focus:border-brand"
+                className="w-full sm:w-auto px-4 py-2 border rounded-lg text-gray-900 focus:ring-2 focus:ring-brand focus:border-brand"
               >
                 <option value="all">All Workloads</option>
                 <option value="none">— No Learners (0)</option>
@@ -2033,7 +2033,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
                     setFilterTutorSpecialization('all');
                     setFilterTutorLearnerCount('all');
                   }}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium flex items-center"
+                  className="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium flex items-center justify-center"
                 >
                   <X className="w-4 h-4 mr-1.5" /> Clear Filters
                 </button>
@@ -2053,7 +2053,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
+              {/* Desktop / tablet: table (sm and up) */}
+              <div className="hidden overflow-x-auto sm:block">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50/70">
@@ -2169,6 +2170,57 @@ export const InstitutionDashboardComplete: React.FC = () => {
               </table>
               </div>
 
+              {/* Mobile: stacked tutor cards (below sm) */}
+              <div className="divide-y divide-gray-100 sm:hidden">
+                {paginatedTutors.map(tutor => {
+                  const initials = (tutor.name || '?').split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+                  return (
+                    <div key={tutor.id} className={`p-4 ${!tutor.is_active ? 'bg-gray-50' : ''}`}>
+                      <div className="flex items-start gap-3">
+                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${tutor.is_active ? 'bg-[#4ECFBF]/15 text-[#3A9E92]' : 'bg-gray-200 text-gray-500'}`}>
+                          {initials}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className={`truncate font-medium ${!tutor.is_active ? 'text-gray-500' : 'text-gray-900'}`}>{tutor.name}</p>
+                          <p className="truncate text-sm text-gray-500">{tutor.email}</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            {!tutor.is_active ? (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600"><span className="h-1.5 w-1.5 rounded-full bg-gray-400" /> Inactive</span>
+                            ) : tutor.pending_activation ? (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200/60"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Pending</span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700 ring-1 ring-green-200/60"><span className="h-1.5 w-1.5 rounded-full bg-green-500" /> Active</span>
+                            )}
+                            <button
+                              onClick={() => { if (tutor.learner_count > 0) { setSelectedTutor(tutor); setShowTutorLearnersModal(true); } }}
+                              disabled={!tutor.learner_count}
+                              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-[#3A9E92] hover:bg-[#4ECFBF]/10 disabled:text-gray-400 disabled:hover:bg-transparent"
+                            >
+                              <Users className="h-3.5 w-3.5" /> {tutor.learner_count || 0} learners
+                            </button>
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            if (openTutorMenu?.id === tutor.id) { setOpenTutorMenu(null); }
+                            else {
+                              const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                              setOpenTutorMenu({ id: tutor.id, x: r.right, y: r.bottom + 6 });
+                            }
+                          }}
+                          className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                            openTutorMenu?.id === tutor.id ? 'bg-gray-100 text-gray-700' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'
+                          }`}
+                          aria-label="Tutor actions"
+                        >
+                          <MoreHorizontal className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
               {/* Fixed action menu — rendered outside the table so overflow never clips it */}
               {openTutorMenu && (() => {
                 const tutor = tutors.find(t => t.id === openTutorMenu.id);
@@ -2225,7 +2277,7 @@ export const InstitutionDashboardComplete: React.FC = () => {
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Sponsored Learners</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Sponsored Learners</h2>
                 <p className="text-sm text-gray-500 mt-0.5">
                   Students who redeemed your school's premium code in the MyTaco AI app.
                 </p>
@@ -2313,7 +2365,8 @@ export const InstitutionDashboardComplete: React.FC = () => {
                       </button>
                     </div>
                   )}
-                  <div className="overflow-x-auto">
+                  {/* Desktop / tablet: table (sm and up) */}
+                  <div className="hidden overflow-x-auto sm:block">
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-gray-200 bg-gray-50/70">
@@ -2416,6 +2469,70 @@ export const InstitutionDashboardComplete: React.FC = () => {
                         )}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Mobile: stacked cards (below sm) — full assign UX without horizontal scroll */}
+                  <div className="divide-y divide-gray-100 sm:hidden">
+                    {visibleLearners.map(l => {
+                      const uid = l.user_id || l.id;
+                      const initials = (l.name || l.email || '?')
+                        .split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+                      const active = l.status === 'active' || l.status === 'trialing';
+                      const isSelected = selectedLearners.has(uid);
+                      const busy = assigningLearner === uid;
+                      return (
+                        <div key={l.id} className={`p-4 ${isSelected ? 'bg-[#4ECFBF]/5' : ''}`}>
+                          <div className="flex items-start gap-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectLearner(uid)}
+                              className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-[#4ECFBF] focus:ring-[#4ECFBF]"
+                              aria-label={`Select ${l.name || l.email}`}
+                            />
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#4ECFBF]/15 text-xs font-semibold text-[#3A9E92]">
+                              {initials}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-medium text-gray-900">{l.name || '—'}</p>
+                              <p className="truncate text-sm text-gray-500">{l.email}</p>
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <span className="text-xs capitalize text-gray-600">
+                                  {l.plan ? l.plan.replace(/_/g, ' ') : '—'}{l.period ? ` · ${l.period}` : ''}
+                                </span>
+                                <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                  active ? 'bg-green-50 text-green-700 ring-1 ring-green-200/60' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                  <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-green-500' : 'bg-gray-400'}`} />
+                                  {l.status || 'free'}
+                                </span>
+                              </div>
+                              <div className="mt-2.5">
+                                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-400">Tutor</label>
+                                <select
+                                  value={l.tutor?.id || ''}
+                                  disabled={busy || activeTutors.length === 0}
+                                  onChange={(e) => handleAssignTutor(uid, e.target.value)}
+                                  className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4ECFBF] disabled:opacity-50 ${
+                                    l.tutor ? 'border-[#4ECFBF]/40 bg-[#4ECFBF]/5 text-[#3A9E92] font-medium' : 'border-gray-300 text-gray-500'
+                                  }`}
+                                >
+                                  <option value="">{busy ? 'Saving…' : 'Unassigned'}</option>
+                                  {activeTutors.map((t: any) => (
+                                    <option key={t.id} value={t.id}>{t.name || t.email}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {sponsored.learners.length === 0 && (
+                      <div className="px-6 py-12 text-center text-sm text-gray-400">
+                        No students have redeemed your code yet.
+                      </div>
+                    )}
                   </div>
                 </div>
                   );

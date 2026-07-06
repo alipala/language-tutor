@@ -667,7 +667,7 @@ function LearnerDetailModal({
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-sm p-4 pt-8">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl my-4 sm:my-8 mx-2 sm:mx-4">
         {/* Modal Header */}
-        <div className="relative bg-gradient-to-br from-brand via-[#3bbdad] to-[#2a9e92] rounded-t-3xl p-7">
+        <div className="relative bg-gradient-to-br from-brand via-[#3bbdad] to-[#2a9e92] rounded-t-3xl p-5 sm:p-7">
           <button onClick={onClose} className="absolute top-5 right-5 text-white/80 hover:text-white hover:bg-white/20 rounded-xl p-2 transition-all">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
@@ -722,13 +722,14 @@ function LearnerDetailModal({
           )}
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-0 border-b border-gray-100 px-4 sm:px-6 bg-gray-50/50 overflow-x-auto">
+        {/* Tabs — horizontally scrollable on mobile; each tab is a discrete,
+            non-shrinking pill-row item so they never overlap/crowd on phones. */}
+        <div className="flex gap-1 border-b border-gray-100 px-3 sm:px-6 bg-gray-50/50 overflow-x-auto scrollbar-hide">
           {tabs.map(t => (
             <button
               key={t.key}
               onClick={() => setTab(t.key as any)}
-              className={`py-3.5 px-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap flex items-center gap-1.5 ${
+              className={`shrink-0 py-3.5 px-3 sm:px-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap flex items-center gap-1.5 ${
                 tab === t.key ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -1068,7 +1069,7 @@ function LearnerDetailModal({
                         <div className="w-full bg-white/70 rounded-full h-3">
                           <div className="bg-gradient-to-r from-brand to-[#3a9e92] h-3 rounded-full" style={{ width: `${p.progress_percentage || 0}%` }} />
                         </div>
-                        <div className="grid grid-cols-3 gap-3 mt-3 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mt-3 text-sm">
                           <div><span className="text-gray-500">Sessions:</span> <span className="font-semibold">{p.completed_sessions}/{p.total_sessions}</span></div>
                           <div><span className="text-gray-500">Minutes:</span> <span className="font-semibold">{p.practice_minutes_used}/{p.total_practice_minutes}</span></div>
                           <div><span className="text-gray-500">Score:</span> <span className="font-semibold">{p.assessment_data?.overall_score ?? '—'}</span></div>
@@ -1473,7 +1474,7 @@ function LearnerDetailModal({
                               {dna.sentence_scores.slice(0, 5).map((s: any, i: number) => (
                                 <div key={i} className="border border-gray-100 rounded-xl p-3">
                                   <p className="text-xs text-gray-600 italic mb-2">"{s.text}"</p>
-                                  <div className="grid grid-cols-4 gap-2">
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                     {[
                                       { label: 'Grammar', val: s.grammatical, color: 'text-emerald-600' },
                                       { label: 'Vocab', val: s.vocabulary, color: 'text-purple-600' },
@@ -1880,7 +1881,8 @@ export default function TutorDashboardPage() {
                   {hasFilters && <p className="text-gray-400 text-sm mt-1">Try clearing your filters</p>}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                <div className="hidden overflow-x-auto sm:block">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50/80">
@@ -2018,6 +2020,61 @@ export default function TutorDashboardPage() {
                   </tbody>
                 </table>
                 </div>
+
+                {/* Mobile: stacked learner cards (below sm) */}
+                <div className="divide-y divide-gray-50 sm:hidden">
+                  {learners.map(learner => {
+                    const plan = learner.learning_plans[0];
+                    const statusColors: any = {
+                      on_track: { dot: 'bg-emerald-400', badge: 'bg-emerald-50 text-emerald-700 border-emerald-100', label: 'On Track' },
+                      at_risk: { dot: 'bg-amber-400', badge: 'bg-amber-50 text-amber-700 border-amber-100', label: 'At Risk' },
+                      inactive: { dot: 'bg-gray-300', badge: 'bg-gray-50 text-gray-500 border-gray-100', label: 'Inactive' },
+                    };
+                    const status = statusColors[plan?.progress_status as string] || statusColors.inactive;
+                    return (
+                      <div key={learner.user_id} className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${status.dot === 'bg-emerald-400' ? 'bg-emerald-400' : status.dot === 'bg-amber-400' ? 'bg-amber-400' : 'bg-gray-300'}`}>
+                            {learner.name.charAt(0)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="font-semibold text-gray-900 text-sm truncate">{learner.name}</div>
+                                <div className="text-xs text-gray-400 truncate">{learner.email}</div>
+                              </div>
+                              <button
+                                onClick={() => openLearnerDetails(learner)}
+                                className="shrink-0 px-3 py-1.5 bg-brand hover:bg-[#3a9e92] text-white text-xs font-semibold rounded-xl shadow-sm"
+                              >
+                                View
+                              </button>
+                            </div>
+                            {plan ? (
+                              <>
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                  <span className="inline-flex items-center gap-1.5"><FlagOrText language={plan.language} size={16} /><span className="text-xs font-medium text-gray-700 capitalize">{plan.language}</span></span>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${LEVEL_COLORS[plan.proficiency_level] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>{plan.proficiency_level}</span>
+                                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${status.badge}`}><span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />{status.label}</span>
+                                </div>
+                                <div className="mt-2.5">
+                                  <div className="flex justify-between text-xs mb-1">
+                                    <span className="text-gray-400">{plan.completed_sessions}/{plan.total_sessions} sessions{plan.assessment_score > 0 ? ` · score ${plan.assessment_score}` : ''}</span>
+                                    <span className="font-bold text-gray-800">{plan.progress_percentage.toFixed(0)}%</span>
+                                  </div>
+                                  <div className="w-full bg-gray-100 rounded-full h-2">
+                                    <div className={`h-2 rounded-full ${plan.progress_status === 'on_track' ? 'bg-emerald-400' : plan.progress_status === 'at_risk' ? 'bg-amber-400' : 'bg-gray-300'}`} style={{ width: `${plan.progress_percentage}%` }} />
+                                  </div>
+                                </div>
+                              </>
+                            ) : <div className="mt-2 text-xs text-gray-300">No learning plan yet</div>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                </>
               )}
             </div>
           </div>
