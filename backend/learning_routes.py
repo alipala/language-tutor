@@ -36,6 +36,7 @@ class LearningPlanRequest(BaseModel):
     from_final_assessment: Optional[bool] = None
     previous_plan_id: Optional[str] = None
     preferred_session_duration: Optional[int] = None  # Minutes per session chosen at plan creation (1, 3, or 5)
+    interface_language: Optional[str] = None  # User's app display language (e.g. "tr", "nl", "de"). When set, all plan text is generated in this language.
 
 class LearningPlan(BaseModel):
     id: str
@@ -488,6 +489,58 @@ async def create_learning_plan(
                 recommended_level
             )
         
+        # Translate weekly schedule text into the user's interface language if set.
+        # This covers focus titles and activities which are generated in English
+        # by IntelligentScheduleGenerator / generate_weekly_schedule.
+        # Safe-by-default: any error keeps the English schedule intact.
+        _iface_code_sched = (getattr(plan_request, 'interface_language', None) or "en").lower().strip()
+        if _iface_code_sched != "en" and weekly_schedule:
+            try:
+                _LANG_NAMES_SCHED = {
+                    "tr": "Turkish", "nl": "Dutch", "de": "German",
+                    "fr": "French", "es": "Spanish", "pt": "Portuguese",
+                }
+                _iface_name_sched = _LANG_NAMES_SCHED.get(_iface_code_sched)
+                if _iface_name_sched:
+                    logger.info(f"[LEARNING_PLAN] 🌐 Translating schedule into {_iface_name_sched}")
+                    # Build compact JSON of texts to translate
+                    import json as _json
+                    texts_to_translate = [
+                        {"week": w["week"], "focus": w.get("focus", ""), "activities": w.get("activities", [])}
+                        for w in weekly_schedule
+                    ]
+                    _trans_client = get_async_openai()
+                    _trans_resp = await _trans_client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        response_format={"type": "json_object"},
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": (
+                                    f"You are a professional translator. Translate all 'focus' and 'activities' "
+                                    f"values from English to {_iface_name_sched}. Keep week numbers unchanged. "
+                                    f"Return a JSON object with key 'weeks' containing the translated array. "
+                                    f"Do NOT translate language-learning jargon like CEFR levels (A1, B2…) or "
+                                    f"the name of the target language being learned ({plan_request.language})."
+                                )
+                            },
+                            {"role": "user", "content": _json.dumps({"weeks": texts_to_translate})}
+                        ],
+                        max_tokens=4000,
+                    )
+                    _trans_data = _json.loads(_trans_resp.choices[0].message.content)
+                    _translated_weeks = {w["week"]: w for w in _trans_data.get("weeks", [])}
+                    for week in weekly_schedule:
+                        _tw = _translated_weeks.get(week["week"])
+                        if _tw:
+                            if _tw.get("focus"):
+                                week["focus"] = _tw["focus"]
+                            if _tw.get("activities"):
+                                week["activities"] = _tw["activities"]
+                    logger.info(f"[LEARNING_PLAN] ✅ Schedule translated into {_iface_name_sched}")
+            except Exception as _trans_err:
+                logger.warning(f"[LEARNING_PLAN] ⚠️ Schedule translation failed (keeping English): {_trans_err}")
+
         # Create a personalized plan based on assessment data
         plan_content_json = {
             "title": f"{plan_request.duration_months}-Month {plan_request.language.capitalize()} Learning Plan for {recommended_level} Level",
@@ -706,8 +759,25 @@ Speaking DNA Profile:
             week_summary_block = "\n".join(week_summary_lines)
 
             # ── Build the prompt ─────────────────────────────────────────────
+            # Determine the language to generate plan text in.
+            # interface_language is the user's app UI language (ISO code, e.g. "tr", "nl").
+            # Supported codes map to full language names for the GPT instruction.
+            _INTERFACE_LANG_NAMES = {
+                "tr": "Turkish", "nl": "Dutch", "de": "German",
+                "fr": "French", "es": "Spanish", "pt": "Portuguese",
+                "en": "English",
+            }
+            _iface_code = (plan_request.interface_language or "en").lower().strip()
+            _iface_name = _INTERFACE_LANG_NAMES.get(_iface_code, "English")
+            _lang_instruction = (
+                f"\n\nIMPORTANT: Write ALL output — overview, learning objectives, and resources — "
+                f"in {_iface_name}. Do NOT write in English unless {_iface_name} is English. "
+                f"The learning target language is still {plan_request.language.capitalize()} "
+                f"(the language the student is learning), but your descriptions must be in {_iface_name}."
+            ) if _iface_code != "en" else ""
+
             gpt_prompt = f"""You are an expert CEFR-certified language learning curriculum designer.
-Create a deeply personalised learning plan for a real student.
+Create a deeply personalised learning plan for a real student.{_lang_instruction}
 
 === STUDENT PROFILE ===
 Language: {plan_request.language.capitalize()}

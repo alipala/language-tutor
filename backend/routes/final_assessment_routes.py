@@ -100,6 +100,7 @@ class CreateNextLevelPlanRequest(BaseModel):
     duration_months: Optional[int] = None
     goals: Optional[List[str]] = None
     custom_goal: Optional[str] = None
+    interface_language: Optional[str] = None
 
 
 # Routes
@@ -497,7 +498,8 @@ async def create_next_level_plan(
             "custom_goal": custom_goal,
             "assessment_data": assessment_data,  # Add assessment data for proper plan generation
             "from_final_assessment": True,
-            "previous_plan_id": request.current_plan_id
+            "previous_plan_id": request.current_plan_id,
+            "interface_language": request.interface_language,
         }
 
         # Create the plan by calling the endpoint
