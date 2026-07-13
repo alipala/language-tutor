@@ -903,13 +903,94 @@ async def get_learning_plans_admin(
             formatted_plans.append(plan_dict)
         
         return {"data": formatted_plans, "total": total}
-        
+
     except Exception as e:
         print(f"Get learning plans error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch learning plans: {str(e)}"
         )
+
+
+@router.get("/learning_plans/{plan_id}")
+async def get_learning_plan_detail_admin(
+    plan_id: str,
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Get a single learning plan with full detail for admin panel"""
+    try:
+        from bson import ObjectId as BsonObjectId
+
+        # Plans use a string "id" field (UUID); fall back to _id
+        plan = await learning_plans_collection.find_one({"id": plan_id})
+        if not plan:
+            try:
+                plan = await learning_plans_collection.find_one({"_id": BsonObjectId(plan_id)})
+            except Exception:
+                pass
+        if not plan:
+            raise HTTPException(status_code=404, detail="Learning plan not found")
+
+        # Fetch user info
+        uid = plan.get("user_id", "")
+        user_info = {}
+        if uid:
+            try:
+                u = await users_collection.find_one(
+                    {"_id": BsonObjectId(uid)},
+                    {"_id": 0, "name": 1, "email": 1}
+                )
+                if u:
+                    user_info = u
+            except Exception:
+                pass
+
+        # Fetch recent sessions for this plan
+        sessions = []
+        try:
+            raw_sessions = await conversation_sessions_collection.find(
+                {"user_id": uid, "learning_plan_id": plan.get("id", str(plan["_id"]))}
+            ).sort("created_at", -1).limit(20).to_list(length=20)
+            for s in raw_sessions:
+                sessions.append({
+                    "id": str(s["_id"]),
+                    "session_type": s.get("session_type"),
+                    "duration_minutes": s.get("duration_minutes", 0),
+                    "completed": s.get("completed", False),
+                    "created_at": s.get("created_at").isoformat() if s.get("created_at") and not isinstance(s.get("created_at"), str) else s.get("created_at"),
+                })
+        except Exception:
+            pass
+
+        return {
+            "id": plan.get("id", str(plan["_id"])),
+            "user_id": uid,
+            "user_name": user_info.get("name") or None,
+            "user_email": user_info.get("email") or None,
+            "language": plan.get("language"),
+            "proficiency_level": plan.get("proficiency_level"),
+            "goals": plan.get("goals", []),
+            "custom_goal": plan.get("custom_goal"),
+            "duration_months": plan.get("duration_months", 0),
+            "total_sessions": plan.get("total_sessions", 0),
+            "completed_sessions": plan.get("completed_sessions", 0),
+            "progress_percentage": plan.get("progress_percentage", 0),
+            "practice_minutes_used": plan.get("practice_minutes_used", 0),
+            "assessment_data": plan.get("assessment_data"),
+            "sessions": sessions,
+            "created_at": plan.get("created_at").isoformat() if plan.get("created_at") and not isinstance(plan.get("created_at"), str) else plan.get("created_at"),
+            "updated_at": plan.get("updated_at").isoformat() if plan.get("updated_at") and not isinstance(plan.get("updated_at"), str) else plan.get("updated_at"),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Get learning plan detail error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch learning plan: {str(e)}"
+        )
+
 
 # Mock endpoints for collections that don't exist yet
 @router.get("/user_stats")
