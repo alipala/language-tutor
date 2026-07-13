@@ -281,11 +281,17 @@ async def get_news_content(
                     f"[NEWS] Skipping unparseable vocab item in {news_id} {language}/{level}: {ve}"
                 )
 
+        # Inject translated_title into original dict so mobile can use it.
+        # Falls back to original.title for articles generated before this field existed.
+        original_with_translation = dict(article["original"])
+        if variation.get("translated_title"):
+            original_with_translation["translated_title"] = variation["translated_title"]
+
         return NewsContent(
             news_id=news_id,
             language=language,
             level=level,
-            original=article["original"],
+            original=original_with_translation,
             summary=variation["summary"],
             vocabulary=vocabulary_items,
             discussion_questions=variation["discussion_questions"],

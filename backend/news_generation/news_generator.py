@@ -749,17 +749,19 @@ Title: {title}
 Original Summary: {summary}
 
 Create:
-1. A clear, engaging summary (150-200 words) in {lang_name} appropriate for {level} level
-2. Extract 8-10 key vocabulary words with:
+1. A translated title in {lang_name} (keep it concise and accurate)
+2. A clear, engaging summary (150-200 words) in {lang_name} appropriate for {level} level
+3. Extract 8-10 key vocabulary words with:
    - The word in {lang_name}
    - Translation to English (if not English)
    - Example sentence using the word
    - IPA pronunciation
-3. 5 discussion questions that encourage conversation
-4. Teaching instructions for an AI tutor
+4. 5 discussion questions that encourage conversation
+5. Teaching instructions for an AI tutor
 
 Return as JSON:
 {{
+  "translated_title": "article title translated to {lang_name}",
   "summary": "adapted summary text",
   "vocabulary": [
     {{"word": "word", "translation": "translation or null", "example": "sentence", "ipa": "/pronunciation/"}}
@@ -803,6 +805,7 @@ Return as JSON:
         clean_qs = [q for q in raw_qs if isinstance(q, str) and q.strip()]
 
         return {
+            "translated_title": result.get("translated_title", title),
             "summary": result.get("summary", f"{title}. {summary}"),
             "word_count": len(result.get("summary", "").split()),
             "vocabulary": clean_vocab,
