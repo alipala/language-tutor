@@ -857,12 +857,38 @@ async def get_learning_plans_admin(
         # Get total count
         total = await learning_plans_collection.count_documents({})
         
+        # Batch-fetch user info for all plans
+        user_ids = list({p.get("user_id") for p in plans if p.get("user_id")})
+        user_map = {}
+        if user_ids:
+            try:
+                from bson import ObjectId as BsonObjectId
+                object_ids = []
+                for uid in user_ids:
+                    try:
+                        object_ids.append(BsonObjectId(uid))
+                    except Exception:
+                        pass
+                if object_ids:
+                    user_cursor = users_collection.find(
+                        {"_id": {"$in": object_ids}},
+                        {"_id": 1, "name": 1, "email": 1}
+                    )
+                    async for u in user_cursor:
+                        user_map[str(u["_id"])] = {"name": u.get("name", ""), "email": u.get("email", "")}
+            except Exception:
+                pass
+
         # Format learning plans
         formatted_plans = []
         for plan in plans:
+            uid = plan.get("user_id", "")
+            user_info = user_map.get(uid, {})
             plan_dict = {
                 "id": plan.get("id", str(plan["_id"])),
-                "user_id": plan.get("user_id"),
+                "user_id": uid,
+                "user_name": user_info.get("name") or None,
+                "user_email": user_info.get("email") or None,
                 "language": plan.get("language"),
                 "proficiency_level": plan.get("proficiency_level"),
                 "goals": plan.get("goals", []),
