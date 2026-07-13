@@ -277,6 +277,7 @@ from routes.assessment_routes import router as assessment_router
 from routes.transcription_routes import router as transcription_router
 from routes.guest_analysis_routes import router as guest_analysis_router
 from routes.final_assessment_routes import router as final_assessment_router
+from routes.version_routes import router as version_router
 
 app.include_router(health_router)
 app.include_router(mock_router)
@@ -290,6 +291,7 @@ app.include_router(assessment_router)
 app.include_router(transcription_router)
 app.include_router(guest_analysis_router)
 app.include_router(final_assessment_router)
+app.include_router(version_router)
 
 
 # NEWS FEATURE: News generation runs in the scheduler Railway service (run_scheduler.py).
