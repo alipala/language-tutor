@@ -33,6 +33,7 @@ class NewsArticleMetadata(BaseModel):
     """Metadata for a news article (returned in list view)"""
     id: str
     title: str
+    translated_title: Optional[str] = None
     image_url: Optional[str] = None
     category: str
     source: str
@@ -67,6 +68,7 @@ class NewsContent(BaseModel):
 
 @router.get("/today", response_model=NewsList)
 async def get_todays_news(
+    language: Optional[str] = None,
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
@@ -132,16 +134,21 @@ async def get_todays_news(
                 )
 
         # Query today's articles (or yesterday's if fallback)
+        # Include variations so we can surface translated_title when language param is given
+        projection = {
+            "_id": 1,
+            "original.title": 1,
+            "original.image_url": 1,
+            "original.category": 1,
+            "original.source": 1,
+            "article_index": 1,
+        }
+        if language:
+            projection[f"variations.{language}"] = 1
+
         articles_cursor = news_articles_collection.find(
             {"date": {"$gte": query_date}},
-            {
-                "_id": 1,
-                "original.title": 1,
-                "original.image_url": 1,
-                "original.category": 1,
-                "original.source": 1,
-                "article_index": 1
-            }
+            projection
         ).sort("article_index", 1)
 
         # Phase 4 Task 2A: raised from 20 → 200 so the flag-ON multi-provider
@@ -150,17 +157,25 @@ async def get_todays_news(
         articles_raw = await articles_cursor.to_list(200)
 
         # Transform to response format
-        articles = [
-            NewsArticleMetadata(
+        articles = []
+        for article in articles_raw:
+            translated_title = None
+            if language:
+                lang_variations = (article.get("variations") or {}).get(language, {})
+                # translated_title is stored per-level; pick any available level
+                for lvl_data in lang_variations.values():
+                    if isinstance(lvl_data, dict) and lvl_data.get("translated_title"):
+                        translated_title = lvl_data["translated_title"]
+                        break
+            articles.append(NewsArticleMetadata(
                 id=str(article["_id"]),
                 title=article["original"]["title"],
+                translated_title=translated_title,
                 image_url=article["original"].get("image_url"),
                 category=article["original"]["category"],
                 source=article["original"]["source"],
                 article_index=article["article_index"]
-            )
-            for article in articles_raw
-        ]
+            ))
 
         # Get user's recommended level from their learning plan
         learning_plan = await learning_plans_collection.find_one(
