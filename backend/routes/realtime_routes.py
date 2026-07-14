@@ -168,6 +168,21 @@ def get_language_iso_code(language: str) -> str:
     }
 
     language_lower = language.lower().strip()
+
+    # If already an ISO code (e.g. "nl", "de"), pass it through directly
+    known_iso_codes = {"en", "nl", "es", "fr", "de", "it", "pt", "ru", "ja", "ko",
+                       "zh", "ar", "hi", "tr", "pl", "sv", "no", "da", "fi", "cs",
+                       "hu", "ro", "bg", "hr", "sk", "sl", "lt", "lv", "et", "el",
+                       "he", "th", "vi", "id", "ms", "tl", "uk", "bn", "ta", "te",
+                       "mr", "gu", "kn", "ml", "pa", "ur", "fa", "sw", "af", "am",
+                       "az", "be", "bs", "ca", "cy", "eu", "gl", "ka", "is", "ga",
+                       "kk", "ky", "lb", "mk", "mt", "mn", "ne", "sr", "si", "sq",
+                       "tg", "tk", "uz", "yi"}
+    if language_lower in known_iso_codes:
+        if DEBUG_REALTIME:
+            print(f"Language mapping: '{language}' -> '{language_lower}' (ISO passthrough)")
+        return language_lower
+
     iso_code = language_map.get(language_lower, "en")
 
     if DEBUG_REALTIME:
