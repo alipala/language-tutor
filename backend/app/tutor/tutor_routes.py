@@ -1188,7 +1188,9 @@ async def generate_ai_report(
                 "cache_age_hours": round(age_hours, 1)
             }
 
-    if not _openai_client:
+    try:
+        _openai_client = get_async_openai()
+    except Exception:
         raise HTTPException(status_code=503, detail="AI service unavailable")
 
     # 2. Fetch all learner data in parallel
