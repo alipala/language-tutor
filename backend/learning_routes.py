@@ -63,6 +63,10 @@ class LearningPlan(BaseModel):
     preferred_session_duration: Optional[int] = None  # Minutes per session chosen at plan creation (1, 3, or 5)
     voice_check_schedule: Optional[List[int]] = None
     voice_checks_completed: Optional[List[int]] = None
+    # Total completed plans across ALL history (including archived) for the
+    # Serial Finisher badge. Injected by GET /plans — same value on every plan
+    # in the list. Mobile reads it from plans[0].completed_plans_total.
+    completed_plans_total: Optional[int] = None
 
 # Initialize learning goals collection
 learning_goals_collection = database.learning_goals
@@ -1412,9 +1416,19 @@ async def get_user_learning_plans(
                 print(f"Updated plan {plan['id']} with voice check schedule: {voice_check_schedule}")
 
             updated_plans.append(plan)
-        
+
+        # Count ALL completed plans for this user (archived included) for the
+        # Serial Finisher badge. A separate query so archived plans are counted
+        # even though the main list excludes them.
+        completed_plans_total = await learning_plans_collection.count_documents({
+            "user_id": user_id,
+            "status": "completed",
+        })
+        for plan in updated_plans:
+            plan["completed_plans_total"] = completed_plans_total
+
         return updated_plans
-    
+
     except Exception as e:
         logger.error(f"Error fetching learning plans: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching learning plans: {str(e)}")
