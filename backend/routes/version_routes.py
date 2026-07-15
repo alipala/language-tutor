@@ -29,9 +29,9 @@ class VersionCheckResponse(BaseModel):
     store_url: Optional[str]         # deep link to the correct store listing
 
 
-# Store URLs — universal links that work in every region
-_IOS_STORE_URL = "itms-apps://itunes.apple.com/app/id6744053599"
-_ANDROID_STORE_URL = "market://details?id=com.bigdavinci.MyTacoAI"
+# Store URLs — HTTPS universal links work in every region without country prefix
+_IOS_STORE_URL = "https://apps.apple.com/app/id6744053599"
+_ANDROID_STORE_URL = "https://play.google.com/store/apps/details?id=com.bigdavinci.MyTacoAI"
 
 
 def _parse_version(v: str) -> tuple[int, ...]:
