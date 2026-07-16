@@ -9,7 +9,13 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 from bson import ObjectId
-from database import learning_plans_collection
+from database import (
+    learning_plans_collection,
+    sentence_analysis_jobs_collection,
+    speaking_time_tracking_collection,
+    notifications_collection,
+    user_achievements_collection,
+)
 from models import UserResponse
 
 logger = logging.getLogger(__name__)
@@ -249,19 +255,33 @@ class LearningPlanService:
         current_user: Optional[UserResponse] = None
     ) -> bool:
         """
-        Soft-delete ("archive") a learning plan the user owns.
+        Soft-delete ("archive") a learning plan the user owns, then cascade-
+        clean all operational data that was tied exclusively to this plan.
 
-        The plan and ALL its associated data stay in the DB untouched — we only
-        flip `status` to "archived" and stamp `archived_at`. This is what powers
-        the user-facing "delete my plan" action: the plan (and its Today's Path
-        missions, hero card, challenge language source) disappears from every
-        user-facing read (each filters `status != "archived"`), while admin /
-        export / analytics reads still see the full history. Archiving never
-        touches already-earned XP or streaks (those live on daily_stats / the
-        user doc, not the plan) — archive is not undo.
+        What is KEPT (user's general learning history, independent of any plan):
+          - conversation_sessions  (freestyle / news practice)
+          - speaking_breakthroughs (breakthrough moments earned per language)
+          - challenge_sessions     (games / flashcard XP)
+          - daily_stats / XP       (XP is never rolled back)
+          - @lang / @level scoped badges (DNA, CEFR, fluency, streaks…)
+          - story_progress         (games tab progression)
+          - The learning_plan doc itself (kept as "archived" for analytics /
+            admin / tutor AI-report reads)
+
+        What is DELETED (orphaned operational data tied to this plan only):
+          - sentence_analysis_jobs  (plan_id = this plan)
+          - speaking_time_tracking  (session_id prefix = "plan_<plan_id>_")
+          - notifications           (session_id prefix = "plan_<plan_id>_")
+          - plan_ prefix badges in user_achievements — BUT ONLY when the user
+            has no remaining active plans.  If the user still has an active
+            plan those badges stay valid.  When all plans are gone the user is
+            starting fresh (Duolingo-style reset) so plan milestones should
+            reset too; they'll be re-earned on the new plan.
+
+        Already-earned XP / streaks are never touched — archive is not undo.
 
         Returns True if archived, False if not found. Raises on permission
-        denial (mirrors delete_learning_plan_safe's ownership check).
+        denial.
         """
         try:
             plan = await learning_plans_collection.find_one({"id": plan_id})
@@ -274,28 +294,82 @@ class LearningPlanService:
                     logger.error(f"[LEARNING_PLAN_SERVICE] Permission denied for plan archive {plan_id}")
                     raise Exception("You don't have permission to delete this learning plan")
 
-            # Already archived → idempotent success.
+            # Already archived → idempotent success (skip cascade; already ran).
             if plan.get("status") == "archived":
                 return True
 
+            user_id = plan.get("user_id")
+
+            # ── 1. Soft-archive the plan document ─────────────────────────────
             result = await learning_plans_collection.update_one(
                 {"id": plan_id},
                 {"$set": {
                     "status": "archived",
                     "archived_at": datetime.utcnow(),
-                    # Preserve the pre-archive status so support/analytics can
-                    # see where the user left off, and a future "restore"
-                    # feature could revert to it.
                     "status_before_archive": plan.get("status"),
                     "is_active": False,
                     "updated_at": datetime.utcnow(),
                 }},
             )
-            if result.modified_count > 0:
-                logger.info(f"[LEARNING_PLAN_SERVICE] ✅ Archived plan {plan_id}")
-                return True
-            logger.warning(f"[LEARNING_PLAN_SERVICE] No plan archived for {plan_id}")
-            return False
+            if result.modified_count == 0:
+                logger.warning(f"[LEARNING_PLAN_SERVICE] No plan archived for {plan_id}")
+                return False
+
+            logger.info(f"[LEARNING_PLAN_SERVICE] ✅ Archived plan {plan_id}")
+
+            # ── 2. Cascade cleanup — best-effort, never raise ─────────────────
+            # Failures are logged but must not surface to the caller; the plan
+            # is already archived so the user-facing action succeeded.
+            session_id_prefix = f"plan_{plan_id}_"
+
+            try:
+                r = await sentence_analysis_jobs_collection.delete_many(
+                    {"plan_id": plan_id}
+                )
+                logger.info(f"[LEARNING_PLAN_SERVICE] Deleted {r.deleted_count} sentence_analysis_jobs for plan {plan_id}")
+            except Exception as ce:
+                logger.warning(f"[LEARNING_PLAN_SERVICE] sentence_analysis_jobs cleanup failed: {ce}")
+
+            try:
+                r = await speaking_time_tracking_collection.delete_many(
+                    {"session_id": {"$regex": f"^{session_id_prefix}"}}
+                )
+                logger.info(f"[LEARNING_PLAN_SERVICE] Deleted {r.deleted_count} speaking_time_tracking rows for plan {plan_id}")
+            except Exception as ce:
+                logger.warning(f"[LEARNING_PLAN_SERVICE] speaking_time_tracking cleanup failed: {ce}")
+
+            try:
+                r = await notifications_collection.delete_many(
+                    {"session_id": {"$regex": f"^{session_id_prefix}"}}
+                )
+                logger.info(f"[LEARNING_PLAN_SERVICE] Deleted {r.deleted_count} notifications for plan {plan_id}")
+            except Exception as ce:
+                logger.warning(f"[LEARNING_PLAN_SERVICE] notifications cleanup failed: {ce}")
+
+            # ── 3. plan_ prefix badges — only when user has no remaining active plans ──
+            if user_id:
+                try:
+                    active_plan_count = await learning_plans_collection.count_documents(
+                        {"user_id": user_id, "status": {"$nin": ["archived"]}}
+                    )
+                    if active_plan_count == 0:
+                        r = await user_achievements_collection.delete_many(
+                            {"user_id": user_id, "achievement_id": {"$regex": "^plan_"}}
+                        )
+                        logger.info(
+                            f"[LEARNING_PLAN_SERVICE] Deleted {r.deleted_count} plan_ badges for user {user_id} "
+                            f"(no active plans remaining)"
+                        )
+                    else:
+                        logger.info(
+                            f"[LEARNING_PLAN_SERVICE] Kept plan_ badges for user {user_id} "
+                            f"({active_plan_count} active plan(s) still exist)"
+                        )
+                except Exception as ce:
+                    logger.warning(f"[LEARNING_PLAN_SERVICE] plan_ badge cleanup failed: {ce}")
+
+            return True
+
         except Exception as e:
             logger.error(f"[LEARNING_PLAN_SERVICE] Error archiving plan {plan_id}: {str(e)}")
             raise Exception(f"Failed to archive learning plan: {str(e)}")

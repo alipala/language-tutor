@@ -513,10 +513,13 @@ async def _first_moments(
         except Exception:
             game_doc = None
 
-        # first PLAN (learning_plans created_at per language)
+        # first PLAN (learning_plans created_at per language).
+        # Exclude archived plans — a deleted plan should not ghost as
+        # "Your first Dutch plan" when the user has started fresh.
         try:
             plan_doc = await learning_plans_collection.find_one(
-                {"user_id": user_id, "language": {"$in": lang_variants}},
+                {"user_id": user_id, "language": {"$in": lang_variants},
+                 "status": {"$ne": "archived"}},
                 sort=[("created_at", 1)],
             )
         except Exception:
