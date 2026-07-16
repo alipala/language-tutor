@@ -522,13 +522,19 @@ async def _get_flashcard_sets(user_id: str) -> List[Dict]:
 
 
 async def _get_or_generate_missions(
-    user_id: str, local_date: str, timezone: str, language: Optional[str]
+    user_id: str, local_date: str, timezone: str, language: Optional[str],
+    has_active_plan: Optional[bool] = None,
 ) -> tuple:
     """Load cached missions and attach live progress inline.
     Returns (missions_list, silver_reason, silver_source) tuple.
 
     Cache versioning: bump MISSIONS_CACHE_VERSION whenever mission generation
     logic changes so existing cached docs are automatically regenerated.
+
+    has_active_plan: live plan state for THIS language, resolved by the hub
+    route from the plans it already fetched. Used to reconcile a cached
+    bronze that predates a mid-day plan create/archive (bronze swaps to
+    plan_session/news_session; silver+gold untouched).
 
     Phase 0: also returns silver_source (already stored on the missions doc
     by _generate_missions_for_today) and passes silver_reason through to
@@ -537,6 +543,7 @@ async def _get_or_generate_missions(
     from routes.missions_routes import (
         _generate_missions_for_today,
         _hydrate_progress,
+        _reconcile_bronze_with_plan_state,
     )
 
     MISSIONS_CACHE_VERSION = 2  # bump when mission generation logic changes
@@ -554,6 +561,10 @@ async def _get_or_generate_missions(
         raw = cached["missions"]
         silver_reason: str = cached.get("silver_reason", "")
         silver_source: str = cached.get("silver_source", "")
+        # Mid-day plan create/archive: bronze must follow the live plan state.
+        raw = await _reconcile_bronze_with_plan_state(
+            user_id, local_date, language, raw, has_active_plan
+        )
     else:
         if cached:
             print(f"[MISSIONS] Cache version mismatch for {user_id} lang={lang_key} — regenerating")
@@ -625,10 +636,20 @@ async def get_hub_today(
         if active:
             language = active.get("language")
 
+    # Live plan state for the resolved language — same predicate as
+    # _build_missions' plan_filter (in_progress/active/None + language match).
+    # Reused by the bronze reconcile guard so it costs zero extra queries.
+    _lang_lower = (language or "").lower()
+    has_active_plan = any(
+        (p.get("status") in ("in_progress", "active") or not p.get("status"))
+        and (not _lang_lower or (p.get("language") or "").lower() == _lang_lower)
+        for p in plans
+    )
+
     # DNA + missions can now run with resolved language
     dna_summary, (missions, silver_reason, silver_source) = await asyncio.gather(
         _get_dna_summary(user_id, language),
-        _get_or_generate_missions(user_id, local_date, tz, language),
+        _get_or_generate_missions(user_id, local_date, tz, language, has_active_plan),
     )
 
     # Path A — predicted preview of tomorrow's missions.

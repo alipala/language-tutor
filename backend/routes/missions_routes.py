@@ -662,6 +662,36 @@ async def _resolve_gold_mission(
     }
 
 
+def _bronze_mission(has_active_plan: bool, bronze_target: int) -> Dict:
+    """
+    Pure builder for the Bronze mission — plan_session when the user has an
+    active plan in this language, news_session otherwise. Shared by
+    _build_missions and _reconcile_bronze_with_plan_state so a mid-day
+    bronze swap produces the exact same doc shape as day-start generation.
+    """
+    if has_active_plan:
+        bronze_id    = "plan_session"
+        bronze_title = (
+            "i18n:bronze_plan_title"
+            if bronze_target == 1
+            else f"i18n:bronze_plan_title_plural:{bronze_target}"
+        )
+    else:
+        bronze_id    = "news_session"
+        bronze_title = (
+            "i18n:bronze_news_title"
+            if bronze_target == 1
+            else f"i18n:bronze_news_title_plural:{bronze_target}"
+        )
+    return {
+        "id":             bronze_id,
+        "tier":           "bronze",
+        "title":          bronze_title,
+        "challenge_type": None,
+        "target":         bronze_target,
+    }
+
+
 async def _build_missions(
     user_id: str,
     language: Optional[str],
@@ -695,29 +725,8 @@ async def _build_missions(
     silver_cfg = CHALLENGE_CFG.get(silver.winner, CHALLENGE_CFG["micro_quiz"])
 
     # ── Bronze: plan_session OR news_session, target scales with streak ──
-    bronze_target = _bronze_target_for_streak(current_streak)
-    if has_active_plan:
-        bronze_id    = "plan_session"
-        bronze_title = (
-            "i18n:bronze_plan_title"
-            if bronze_target == 1
-            else f"i18n:bronze_plan_title_plural:{bronze_target}"
-        )
-    else:
-        bronze_id    = "news_session"
-        bronze_title = (
-            "i18n:bronze_news_title"
-            if bronze_target == 1
-            else f"i18n:bronze_news_title_plural:{bronze_target}"
-        )
-
-    bronze = {
-        "id":             bronze_id,
-        "tier":           "bronze",
-        "title":          bronze_title,
-        "challenge_type": None,
-        "target":         bronze_target,
-    }
+    bronze = _bronze_mission(bool(has_active_plan), _bronze_target_for_streak(current_streak))
+    bronze_id = bronze["id"]
 
     # ── Gold mission — resolved via 5-profile decision tree ─────
     has_any_flashcards = await flashcard_sets_collection.count_documents(
@@ -788,6 +797,68 @@ async def _generate_missions_for_today(
         f"gold=flashcards({missions[2]['target']})"
     )
     return missions
+
+
+async def _reconcile_bronze_with_plan_state(
+    user_id: str,
+    local_date: str,
+    language: Optional[str],
+    raw_missions: List[Dict],
+    has_active_plan: Optional[bool] = None,
+) -> List[Dict]:
+    """
+    Missions are generated once per (user, local_date, language), but the
+    Hub's mode (no-plan funnel vs plan hero) follows the LIVE plan state.
+    When the user creates or archives a plan mid-day the cached Bronze no
+    longer matches what the Hub renders: two bronze cards on screen, and a
+    progress bar that ignores just-completed plan sessions.
+
+    Reconcile by swapping ONLY the Bronze mission to match the live plan
+    state. Silver/Gold are preserved — their type is locked at generation
+    and may carry partial progress. Progress is hydrated live from
+    daily_stats AFTER this runs, so a plan session completed moments before
+    the swap counts retroactively (create plan → finish session → bar moves).
+
+    `has_active_plan` can be passed in by callers that already resolved the
+    user's plans (hub route) to avoid a redundant query.
+    """
+    if not raw_missions:
+        return raw_missions
+    bronze = raw_missions[0]
+    if bronze.get("id") not in ("plan_session", "news_session"):
+        return raw_missions
+
+    if has_active_plan is None:
+        plan_filter: dict = {
+            "user_id": user_id,
+            "status": {"$in": ["in_progress", "active", None]},
+        }
+        if language:
+            plan_filter["language"] = language.lower()
+        has_active_plan = (
+            await learning_plans_collection.count_documents(plan_filter) > 0
+        )
+
+    expected_id = "plan_session" if has_active_plan else "news_session"
+    if bronze.get("id") == expected_id:
+        return raw_missions
+
+    current_streak = await _get_current_streak(user_id)
+    new_bronze = _bronze_mission(
+        bool(has_active_plan), _bronze_target_for_streak(current_streak)
+    )
+    reconciled = [new_bronze] + list(raw_missions[1:])
+
+    lang_key = (language or "").lower()
+    await _missions_coll().update_one(
+        {"user_id": user_id, "local_date": local_date, "language": lang_key},
+        {"$set": {"missions": reconciled, "bronze_reconciled_at": datetime.utcnow()}},
+    )
+    print(
+        f"[MISSIONS] Bronze reconciled for {user_id} on {local_date} "
+        f"lang={lang_key}: {bronze.get('id')} → {expected_id}"
+    )
+    return reconciled
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1085,6 +1156,10 @@ async def get_today_missions(
         raw       = cached["missions"]
         generated = cached["generated_at"].isoformat()
         language  = cached.get("language") or None
+        # Mid-day plan create/archive: bronze must follow the live plan state.
+        raw       = await _reconcile_bronze_with_plan_state(
+            user_id, local_date, language, raw
+        )
     else:
         language  = getattr(current_user, "preferred_language", None)
         raw       = await _generate_missions_for_today(user_id, local_date, tz, language)
