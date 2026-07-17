@@ -242,6 +242,20 @@ async def build_universal_instructions(request: TutorSessionRequest) -> str:
     # Roleplay mode bypasses all specialized paths — handled at end of this function
     _session_mode = getattr(request, 'session_mode', 'conversation') or 'conversation'
 
+    # ── PROMPT_V3 (guide-aligned short prompt for gpt-realtime-mini) ──────
+    # Returns None for unsupported modes (roleplay, learning-plan final
+    # assessment, unparseable context) → falls through to legacy builders.
+    # Flag off = byte-identical legacy behavior.
+    if os.getenv("PROMPT_V3", "false").lower() == "true":
+        from prompt_v3 import build_instructions_v3
+        _v3 = build_instructions_v3(request, language, level)
+        if _v3:
+            if DEBUG_REALTIME:
+                print(f"[PROMPT_V3] Using V3 instructions: {len(_v3)} characters")
+            return _v3
+        if DEBUG_REALTIME:
+            print("[PROMPT_V3] Mode unsupported by V3 — falling back to legacy builder")
+
     # ROUTE BEGINNER/INTERMEDIATE/ADVANCED TO build_beginner_instructions.
     # When BEGINNER_PROMPT_V2 is on, that builder serves ALL CEFR levels (A1–C2)
     # via per-level profiles, so freestyle/news/custom stays consistent across
@@ -1977,13 +1991,24 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         from prompt_optimization_helpers import build_truncation_config
 
         # Define function tools for grammar correction (all levels, unless disabled)
+        # PROMPT_V3 lowers the reporting threshold: the V3 prompt tells the model
+        # to correct explicitly and to report every fix, so the tool description
+        # must match (guide: prompt/tool misalignment degrades tool calling).
+        _prompt_v3_on = os.getenv("PROMPT_V3", "false").lower() == "true"
+        _grammar_tool_desc = (
+            "Report a clear grammar or word-choice mistake the student made. Call this every time "
+            "you give the student a spoken correction, and also for clear mistakes you only recast. "
+            "Do NOT call for minor pronunciation slips."
+            if _prompt_v3_on else
+            "Report a MAJOR grammar mistake made by the student. Only call this for significant errors in articles, verb conjugation, or word order. Do NOT call for minor pronunciation or vocabulary issues."
+        )
         tools = []
         if not request.disable_corrections:
             tools = [
                 {
                     "type": "function",
                     "name": "report_grammar_mistake",
-                    "description": "Report a MAJOR grammar mistake made by the student. Only call this for significant errors in articles, verb conjugation, or word order. Do NOT call for minor pronunciation or vocabulary issues.",
+                    "description": _grammar_tool_desc,
                     "parameters": {
                         "type": "object",
                         "properties": {
