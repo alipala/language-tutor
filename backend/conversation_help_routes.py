@@ -181,6 +181,71 @@ async def generate_help_content(
             detail="Context-aware help system encountered an error. Please try again."
         )
 
+from pydantic import BaseModel
+
+
+class TutorTranslateRequest(BaseModel):
+    text: str
+    target_language: str  # language to translate INTO (the user's app/help language)
+    source_language: Optional[str] = None  # the tutor's speaking language (optional hint)
+
+
+class TutorTranslateResponse(BaseModel):
+    translation: str
+
+
+@router.post("/translate", response_model=TutorTranslateResponse)
+async def translate_tutor_line(
+    request: TutorTranslateRequest,
+    current_user: Optional[UserResponse] = Depends(get_optional_current_user_from_request),
+):
+    """
+    Fast, single-purpose translation of ONE AI-tutor line into the user's
+    language. Used by the live conversation screen to show a subtitle-style
+    translation under the tutor's message for beginner (A1/A2) sessions.
+
+    Deliberately minimal: no suggested responses, no vocab, no context —
+    just the translation, so it lands in ~300-700ms and never blocks the
+    tutor's audio. Best-effort: on any failure returns the original text so
+    the client never shows an empty subtitle.
+    """
+    from openai_client import get_async_openai
+
+    text = (request.text or "").strip()
+    if not text:
+        return TutorTranslateResponse(translation="")
+
+    target = (request.target_language or "english").strip()
+    source_hint = f" The text is in {request.source_language}." if request.source_language else ""
+
+    try:
+        response = await asyncio.wait_for(
+            get_async_openai().chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            f"You are a translation engine. Translate the user's message into {target}.{source_hint} "
+                            f"Return ONLY the translation — no quotes, no notes, no explanation, "
+                            f"no romanization. Preserve tone and punctuation."
+                        ),
+                    },
+                    {"role": "user", "content": text},
+                ],
+                temperature=0.2,
+                max_tokens=200,
+            ),
+            timeout=6.0,
+        )
+        translation = (response.choices[0].message.content or "").strip()
+        return TutorTranslateResponse(translation=translation or text)
+    except Exception as e:
+        print(f"[TUTOR_TRANSLATE] ⚠️ Translation failed, returning source: {e}")
+        # Fail open — never leave the client hanging on an empty subtitle.
+        return TutorTranslateResponse(translation=text)
+
+
 @router.get("/settings", response_model=UserHelpSettings)
 async def get_help_settings(
     current_user: UserResponse = Depends(get_current_user)
