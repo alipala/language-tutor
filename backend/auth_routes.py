@@ -425,14 +425,22 @@ async def apple_login(login_data: AppleLoginRequest):
         # Create session
         session_token = await create_session(user_id)
 
-        print(f"[APPLE AUTH] Login successful for user: {user['email']}")
+        # `user` may be a UserInDB object (existing-user branch) or a dict
+        # (account-linking / new-user branches). Normalize field access so both work.
+        def _field(u, key):
+            return u.get(key) if isinstance(u, dict) else getattr(u, key, None)
+
+        user_email = _field(user, "email")
+        user_name = _field(user, "name")
+
+        print(f"[APPLE AUTH] Login successful for user: {user_email}")
 
         return {
             "access_token": access_token,
             "token_type": "bearer",
             "user_id": user_id,
-            "name": user["name"],
-            "email": user["email"]
+            "name": user_name,
+            "email": user_email
         }
 
     except HTTPException as he:
