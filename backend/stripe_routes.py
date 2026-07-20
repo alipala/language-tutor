@@ -107,6 +107,42 @@ async def create_checkout_session(
         customer_id = getattr(current_user, 'stripe_customer_id', None)
         logger.info(f"[AUTH_CHECKOUT] User has existing customer ID: {bool(customer_id)}")
 
+        # 🛡️ DUPLICATE-SUBSCRIPTION GUARD
+        # This endpoint always creates a NEW Stripe subscription (mode=subscription).
+        # If the user is ALREADY an active/trialing Stripe subscriber, creating another
+        # checkout would leave them with two parallel subscriptions (double billing +
+        # wrong plan display). A plan change for an existing subscriber must go through
+        # POST /api/upgrade/process (which modifies the existing subscription in place).
+        # Reject here so the client routes the user to the upgrade flow instead.
+        if customer_id:
+            try:
+                existing = stripe.Subscription.list(
+                    customer=customer_id,
+                    status="all",
+                    limit=100,
+                )
+                active_subs = [
+                    s for s in existing.get("data", [])
+                    if s.get("status") in ("active", "trialing", "past_due")
+                ]
+                if active_subs:
+                    logger.warning(
+                        f"[AUTH_CHECKOUT] User {current_user.id} already has "
+                        f"{len(active_subs)} active subscription(s); blocking new checkout "
+                        f"(should use /api/upgrade/process)."
+                    )
+                    raise HTTPException(
+                        status_code=409,
+                        detail="You already have an active subscription. Use the upgrade "
+                               "flow to change your plan.",
+                    )
+            except HTTPException:
+                raise
+            except Exception as guard_err:
+                # Fail OPEN: if the lookup fails we don't want to block a legitimate
+                # first-time checkout. Log and continue (matches pre-guard behaviour).
+                logger.error(f"[AUTH_CHECKOUT] Duplicate-sub guard check failed, continuing: {guard_err}")
+
         # If not, create a new customer in Stripe
         if not customer_id:
             logger.info(f"[AUTH_CHECKOUT] Creating new Stripe customer...")

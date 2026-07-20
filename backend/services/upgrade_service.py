@@ -54,7 +54,24 @@ class UpgradeService:
             "period": "annual"
         }
     }
-    
+
+    @staticmethod
+    def _price_amount(price_id: str) -> float | None:
+        """Return a Stripe price's amount in major units (e.g. 59.99), or None.
+
+        Prices are read LIVE from Stripe so displayed amounts never drift from the
+        real billing amount (the previous hardcoded 199.99/39.99 values were wrong).
+        """
+        try:
+            price = stripe.Price.retrieve(price_id)
+            amount = price.get("unit_amount")
+            if amount is None:
+                return None
+            return round(amount / 100.0, 2)
+        except Exception as e:
+            logger.warning(f"[UPGRADE] Could not read price {price_id} from Stripe: {e}")
+            return None
+
     @staticmethod
     async def get_upgrade_options(user_id: str) -> dict:
         """
@@ -76,79 +93,100 @@ class UpgradeService:
         current_plan = user.get("subscription_plan", "try_learn")
         current_period = user.get("subscription_period", "monthly")
         minutes_used = user.get("practice_minutes_used", 0)
-        
+
+        # Normalize the legacy "team_mastery" plan id to "language_mastery" for logic.
+        is_language_mastery = current_plan in ("language_mastery", "team_mastery")
+
         # Calculate minutes limit based on plan
         if current_plan == "try_learn":
             minutes_limit = 15
         elif current_plan == "fluency_builder":
             minutes_limit = 150 if current_period == "monthly" else 1800
-        elif current_plan == "team_mastery":
+        elif is_language_mastery:
             minutes_limit = -1  # Unlimited
         else:
             minutes_limit = 0
-            
+
         minutes_remaining = max(0, minutes_limit - minutes_used) if minutes_limit != -1 else -1
-        
+
         # Calculate days until renewal
         renewal_date = user.get("current_period_end")
         if renewal_date:
             days_until_renewal = (renewal_date - datetime.utcnow()).days
         else:
             days_until_renewal = 0
-        
+
+        # LIVE prices from Stripe (never hardcode — the old 199.99/39.99 were wrong).
+        fb_monthly_price = UpgradeService._price_amount(UpgradeService.PLAN_CONFIGS["fluency_builder_monthly"]["price_id"])
+        fb_annual_price = UpgradeService._price_amount(UpgradeService.PLAN_CONFIGS["fluency_builder_annual"]["price_id"])
+        lm_monthly_price = UpgradeService._price_amount(UpgradeService.PLAN_CONFIGS["language_mastery_monthly"]["price_id"])
+        lm_annual_price = UpgradeService._price_amount(UpgradeService.PLAN_CONFIGS["language_mastery_annual"]["price_id"])
+
+        # Current plan's real price
+        if current_plan == "fluency_builder":
+            current_price = fb_monthly_price if current_period == "monthly" else fb_annual_price
+        elif is_language_mastery:
+            current_price = lm_monthly_price if current_period == "monthly" else lm_annual_price
+        else:
+            current_price = 0.0
+
         options = []
-        
+
         # ========================================
-        # OPTION 1: Upgrade to Annual (if on monthly)
+        # OPTION: Upgrade monthly -> annual (SAME plan only)
+        # Cross-plan (FB -> LM) is intentionally out of scope for now.
         # ========================================
-        if current_period == "monthly" and current_plan == "fluency_builder":
+        if current_period == "monthly" and current_plan == "fluency_builder" and fb_annual_price:
+            monthly_year_cost = round((fb_monthly_price or 0) * 12, 2)
+            savings_amount = round(monthly_year_cost - fb_annual_price, 2) if fb_monthly_price else None
+            savings_pct = round(100 * savings_amount / monthly_year_cost) if (savings_amount and monthly_year_cost) else None
+            effective_monthly = round(fb_annual_price / 12, 2)
             options.append({
                 "type": "upgrade_to_annual",
-                "title": "Upgrade to Annual Plan (Save 17%)",
-                "current_price": 19.99,
-                "new_price": 16.66,  # €199.99/12
-                "annual_total": 199.99,
-                "savings_amount": 40.00,  # (19.99 * 12) - 199.99
-                "savings_percentage": 17,
+                "title": f"Upgrade to Annual Plan" + (f" (Save {savings_pct}%)" if savings_pct else ""),
+                "current_price": current_price,
+                "new_price": effective_monthly,          # effective per-month rate
+                "annual_total": fb_annual_price,
+                "savings_amount": savings_amount,
+                "savings_percentage": savings_pct,
                 "immediate_benefit": "Get 1,800 minutes for the next 12 months",
                 "features": [
-                    "€16.66/month effective rate",
+                    f"€{effective_monthly}/month effective rate",
                     "1,800 minutes total per year",
-                    "Save €40 vs monthly payments",
+                    (f"Save €{savings_amount} vs monthly payments" if savings_amount else "Best value"),
                     "Locked-in pricing for 12 months",
-                    "Fresh start - usage resets to 0"
+                    "Fresh start - usage resets to 0",
                 ],
                 "stripe_price_id": UpgradeService.PLAN_CONFIGS["fluency_builder_annual"]["price_id"],
-                "recommended": True
+                "recommended": True,
             })
-        
-        # ========================================
-        # OPTION 2: Upgrade to Team Mastery
-        # ========================================
-        if current_plan == "fluency_builder":
-            team_price = 39.99 if current_period == "monthly" else 399.99
-            team_price_id = UpgradeService.PLAN_CONFIGS[f"team_mastery_{current_period}"]["price_id"]
-            
+
+        if current_period == "monthly" and is_language_mastery and lm_annual_price:
+            monthly_year_cost = round((lm_monthly_price or 0) * 12, 2)
+            savings_amount = round(monthly_year_cost - lm_annual_price, 2) if lm_monthly_price else None
+            savings_pct = round(100 * savings_amount / monthly_year_cost) if (savings_amount and monthly_year_cost) else None
+            effective_monthly = round(lm_annual_price / 12, 2)
             options.append({
-                "type": "upgrade_to_team_mastery",
-                "title": f"Upgrade to Team Mastery {current_period.title()}",
-                "current_price": 19.99 if current_period == "monthly" else 199.99,
-                "new_price": team_price,
-                "price_difference": team_price - (19.99 if current_period == "monthly" else 199.99),
-                "immediate_benefit": "UNLIMITED minutes starting now",
+                "type": "upgrade_to_language_mastery_annual",
+                "title": f"Upgrade to Annual Plan" + (f" (Save {savings_pct}%)" if savings_pct else ""),
+                "current_price": current_price,
+                "new_price": effective_monthly,
+                "annual_total": lm_annual_price,
+                "savings_amount": savings_amount,
+                "savings_percentage": savings_pct,
+                "immediate_benefit": "Unlimited minutes for the next 12 months",
                 "features": [
-                    "Unlimited practice sessions",
-                    "Unlimited speaking assessments",
-                    "Priority support",
-                    "Advanced analytics",
-                    "Early access to new features"
+                    f"€{effective_monthly}/month effective rate",
+                    "Unlimited minutes",
+                    (f"Save €{savings_amount} vs monthly payments" if savings_amount else "Best value"),
+                    "Locked-in pricing for 12 months",
                 ],
-                "stripe_price_id": team_price_id,
-                "recommended": False
+                "stripe_price_id": UpgradeService.PLAN_CONFIGS["language_mastery_annual"]["price_id"],
+                "recommended": True,
             })
-        
+
         # ========================================
-        # OPTION 3: Wait for renewal
+        # OPTION: Wait for renewal (always available)
         # ========================================
         options.append({
             "type": "wait_renewal",
@@ -165,11 +203,11 @@ class UpgradeService:
             ],
             "recommended": False
         })
-        
+
         return {
             "current_plan": {
                 "name": f"{current_plan.replace('_', ' ').title()} {current_period.title()}",
-                "price": 19.99 if current_period == "monthly" else 199.99,
+                "price": current_price,
                 "billing_period": current_period,
                 "minutes_total": minutes_limit,
                 "minutes_used": minutes_used,
@@ -218,18 +256,23 @@ class UpgradeService:
             current_period_start = user.get("current_period_start")
             current_period_end = user.get("current_period_end")
             
-            # Get current subscription from Stripe — include trialing users
+            # Get current subscription from Stripe — include trialing users.
+            # IMPORTANT: fetch ALL subscriptions (not limit=1) and then filter, so we
+            # never miss the live one when the most-recent subscription is canceled.
             subscriptions = stripe.Subscription.list(
                 customer=stripe_customer_id,
-                limit=1
+                status="all",
+                limit=100,
             )
             # Filter to active or trialing only
             active_subs = [s for s in subscriptions.data if s.status in ("active", "trialing")]
 
             if not active_subs:
                 raise HTTPException(status_code=400, detail="No active or trialing subscription found")
-            
-            current_subscription = active_subs[0]
+
+            # If somehow more than one is active, prefer the most recently created so we
+            # modify the subscription the user is actually paying on right now.
+            current_subscription = max(active_subs, key=lambda s: s.get("created", 0))
             
             # ========================================
             # DETERMINE NEW PLAN DETAILS
