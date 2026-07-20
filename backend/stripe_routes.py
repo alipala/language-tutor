@@ -1331,6 +1331,50 @@ async def handle_subscription_deleted(subscription):
         logger.info(f"[SUB_DELETED] Old plan: {old_plan}, Old status: {old_status}")
         logger.info(f"[SUB_DELETED] Subscription ID: {subscription_id}")
 
+        # 🛡️ MULTI-SUBSCRIPTION GUARD
+        # A single Stripe customer can hold more than one subscription (e.g. an
+        # upgrade that created a NEW sub instead of switching the existing one).
+        # Cancelling ONE of them must NOT blindly reset the user to free tier while
+        # another paid subscription is still active — otherwise a paying customer
+        # gets silently downgraded (150 min → 15 min). If any other active/trialing
+        # subscription remains, skip the free-tier reset and let the normal
+        # subscription.updated/created sync keep the user on their real plan.
+        try:
+            remaining = stripe.Subscription.list(
+                customer=customer_id,
+                status="all",
+                limit=100,
+            )
+            other_active = [
+                s for s in remaining.get("data", [])
+                if s.get("id") != subscription_id
+                and s.get("status") in ("active", "trialing", "past_due")
+            ]
+            if other_active:
+                keep = other_active[0]
+                logger.warning(
+                    f"[SUB_DELETED] User {user['_id']} still has {len(other_active)} active "
+                    f"subscription(s) after deleting {subscription_id}; "
+                    f"SKIPPING free-tier reset (keeping {keep.get('id')}, status={keep.get('status')})."
+                )
+                # Best-effort: make sure the stored stripe_subscription_id points at a
+                # subscription that actually exists, so later syncs target the live one.
+                try:
+                    if user.get("stripe_subscription_id") == subscription_id:
+                        await database["users"].update_one(
+                            {"_id": user["_id"]},
+                            {"$set": {"stripe_subscription_id": keep.get("id")}},
+                        )
+                        await delete_cached(f"stripe_sub:{customer_id}")
+                        await _invalidate_after_subscription_write(str(user["_id"]))
+                except Exception as repoint_err:
+                    logger.warning(f"[SUB_DELETED] Could not repoint stripe_subscription_id: {repoint_err}")
+                return
+        except Exception as guard_err:
+            # Fail OPEN to the original behaviour: if we cannot verify remaining
+            # subscriptions, proceed with the reset (matches pre-fix behaviour).
+            logger.error(f"[SUB_DELETED] Multi-sub guard check failed, proceeding with reset: {guard_err}")
+
         # 🔥 COMPLETE RESET TO FREE TIER
         from datetime import datetime, timezone
         now = datetime.now(timezone.utc)
