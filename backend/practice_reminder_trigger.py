@@ -15,6 +15,11 @@ from database import (
     daily_stats_collection
 )
 from notification_service import NotificationService
+from reminder_common import (
+    already_sent_any_today,
+    can_send_more_this_week,
+    record_send,
+)
 
 import logging
 logger = logging.getLogger(__name__)
@@ -88,11 +93,16 @@ class PracticeReminderTrigger:
                             reminders_skipped += 1
                             continue
 
-                    # Check weekly notification limit
-                    max_per_week = prefs.get("max_notifications_per_week", 3)
-                    notification_count = prefs.get("notification_count_this_week", 0)
-
-                    if notification_count >= max_per_week:
+                    # Check the shared weekly notification budget.
+                    #
+                    # This MUST go through reminder_common: the inline version that
+                    # used to live here compared the raw counter against the cap with
+                    # no week-expiry check. Because the counter is only ever reset
+                    # inside the post-send block below, a user who reached the cap
+                    # could never send again, so the reset could never run — a
+                    # permanent lockout. Three prod docs sat silently at cnt=3 from
+                    # January onward because of exactly this.
+                    if not can_send_more_this_week(prefs, now_utc):
                         reminders_skipped += 1
                         continue
 
@@ -108,16 +118,14 @@ class PracticeReminderTrigger:
                         reminders_skipped += 1
                         continue
 
-                    # Check if we already sent a reminder today
-                    last_sent = prefs.get("last_notification_sent_at")
-                    if last_sent:
-                        last_sent_date = last_sent.strftime("%Y-%m-%d") if isinstance(last_sent, datetime) else last_sent.split("T")[0]
-                        today_date = now_utc.strftime("%Y-%m-%d")
-
-                        if last_sent_date == today_date:
-                            # Already sent a reminder today
-                            reminders_skipped += 1
-                            continue
+                    # One reminder per local day, of ANY kind. The replaced
+                    # version compared last_notification_sent_at against the UTC
+                    # date, which drifts from the user's day near midnight, and
+                    # it could not see sends made by the news/story/plan triggers
+                    # at all — so all four could stack inside the same hour.
+                    if already_sent_any_today(prefs, local_time):
+                        reminders_skipped += 1
+                        continue
 
                     # Get user's push token
                     user = await users_collection.find_one({"_id": ObjectId(user_id)})
@@ -156,30 +164,11 @@ class PracticeReminderTrigger:
                             reminders_sent += 1
                             print(f"✅ Practice reminder sent to user {user_id}")
 
-                            # Update notification tracking
-                            # Reset weekly count if it's a new week
-                            week_start = prefs.get("week_start_date", now_utc)
-                            if isinstance(week_start, str):
-                                week_start = datetime.fromisoformat(week_start)
-
-                            days_since_week_start = (now_utc - week_start).days
-
-                            if days_since_week_start >= 7:
-                                # New week, reset count
-                                new_count = 1
-                                new_week_start = now_utc
-                            else:
-                                new_count = notification_count + 1
-                                new_week_start = week_start
-
-                            await notification_preferences_collection.update_one(
-                                {"user_id": user_id},
-                                {"$set": {
-                                    "last_notification_sent_at": now_utc,
-                                    "notification_count_this_week": new_count,
-                                    "week_start_date": new_week_start
-                                }}
-                            )
+                            # Book the send through the shared helper so the weekly
+                            # rollover matches the budget CHECK above exactly, and
+                            # so this reminder also lands in last_sent_by_kind
+                            # alongside news/story/plan.
+                            await record_send(user_id, "practice", now_utc)
                         else:
                             errors += 1
                             print(f"⚠️ Failed to send practice reminder: {result.get('message')}")

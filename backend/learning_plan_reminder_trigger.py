@@ -85,7 +85,7 @@ class LearningPlanReminderTrigger:
                     if not rc.can_send_more_this_week(prefs, now_utc):
                         skipped += 1
                         continue
-                    if rc.already_sent_today(prefs, "learning_plan", local_time):
+                    if rc.already_sent_any_today(prefs, local_time):
                         skipped += 1
                         continue
 

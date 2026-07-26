@@ -152,11 +152,13 @@ import reminder_common as rc  # noqa: E402
 import story_reminder_trigger as srt  # noqa: E402
 import news_reminder_trigger as nrt  # noqa: E402
 import learning_plan_reminder_trigger as prt  # noqa: E402
+import practice_reminder_trigger as pract  # noqa: E402
 
 # Point the trigger singletons at the stub service instance.
 srt.story_reminder_trigger.notification_service = StubNotificationService()
 nrt.news_reminder_trigger.notification_service = StubNotificationService()
 prt.learning_plan_reminder_trigger.notification_service = StubNotificationService()
+pract.practice_reminder_trigger.notification_service = StubNotificationService()
 
 # Make triggers use a controllable "now" by monkeypatching datetime.utcnow.
 # Instead, each trigger calls datetime.utcnow() internally; we set the machine
@@ -180,7 +182,7 @@ class _PatchedDatetime(datetime):
 
 
 # Patch datetime in each trigger + reminder_common module namespace.
-for mod in (srt, nrt, prt, rc):
+for mod in (srt, nrt, prt, pract, rc):
     mod.datetime = _PatchedDatetime
 
 
@@ -230,6 +232,7 @@ bson.ObjectId = _IdentityObjectId
 srt.ObjectId = _IdentityObjectId
 nrt.ObjectId = _IdentityObjectId
 prt.ObjectId = _IdentityObjectId
+pract.ObjectId = _IdentityObjectId
 
 
 def mk_prefs(uid="u1", tz="America/New_York", story=True, news=True, plan=True,
@@ -418,6 +421,68 @@ def scenario_perkind_daily_dedup():
     })
     run(srt.run_story_reminder_check())
     check("DAILY DEDUP: same-kind already sent today -> suppressed", len(SENT) == 0)
+
+
+def scenario_crosskind_daily_cap():
+    """A DIFFERENT kind sent today must also close the day."""
+    reset()
+    set_utc(2026, 7, 3, 22, 0)  # 18:00 NY
+    # practice already went out this morning; story must now stand down.
+    prefs.docs.append(mk_prefs(
+        preferred_hour=18,
+        last_by_kind={"practice": datetime(2026, 7, 3, 15, 0, tzinfo=timezone.utc)}))
+    users.docs.append(mk_user())
+    story_progress.docs.append({
+        "_id": "u1:s1", "user_id": "u1", "series_id": "s1", "status": "in_progress",
+        "current": {"episode_number": 1},
+        "last_played_at": datetime(2026, 6, 29, 20, 0, tzinfo=timezone.utc),
+    })
+    run(srt.run_story_reminder_check())
+    check("CROSS-KIND: a different kind sent today suppresses this one",
+          len(SENT) == 0, f"sent={len(SENT)}")
+
+
+def scenario_crosskind_no_burst_then_next_day():
+    """
+    The regression that motivated the rule: one user qualifying for practice AND
+    story AND learning-plan used to get all three inside a single hour, spending
+    the whole weekly budget at once. Now it is one today, and the budget survives
+    for tomorrow.
+    """
+    reset()
+    set_utc(2026, 7, 3, 18, 0)  # 18:00 UTC == preferred hour for a UTC user
+    p = mk_prefs(uid="u1", tz="UTC", preferred_hour=18, week_count=0)
+    prefs.docs.append(p)
+    users.docs.append(mk_user(uid="u1", tz="UTC"))
+    story_progress.docs.append({
+        "_id": "u1:s1", "user_id": "u1", "series_id": "s1", "status": "in_progress",
+        "current": {"episode_number": 2},
+        "last_played_at": datetime(2026, 6, 28, 20, 0, tzinfo=timezone.utc),
+    })
+    learning_plans.docs.append({
+        "id": "p1", "user_id": "u1", "language": "dutch",
+        "completed_sessions": 2, "total_sessions": 10,
+        "updated_at": datetime(2026, 6, 25, 10, 0),
+        "created_at": datetime(2026, 6, 1, 10, 0),
+    })
+
+    for fn in (pract.run_practice_reminder_check,
+               srt.run_story_reminder_check,
+               prt.run_plan_reminder_check):
+        run(fn())
+
+    check("NO BURST: three eligible kinds produce exactly one push today",
+          len(SENT) == 1, f"sent={len(SENT)}")
+    check("NO BURST: only one of the three weekly sends was spent",
+          p.get("notification_count_this_week") == 1,
+          str(p.get("notification_count_this_week")))
+
+    # Next local day: budget still has room, so a reminder can land again.
+    SENT.clear()
+    set_utc(2026, 7, 4, 18, 0)
+    run(srt.run_story_reminder_check())
+    check("NO BURST: the budget survives to reach the user again tomorrow",
+          len(SENT) == 1, f"sent={len(SENT)}")
 
 
 def scenario_missing_token():
@@ -792,6 +857,91 @@ def scenario_failed_push_no_budget_burn():
         srt.story_reminder_trigger.notification_service = prev
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Practice reminders
+#
+# This trigger was the only one with its OWN inline copy of the weekly-cap
+# check, and that copy had no week-expiry branch. Since the counter is reset
+# only inside the post-send block, a user who reached the cap could never send,
+# so the reset could never run: permanent silence. Three production docs sat at
+# cnt=3 from January onward. These scenarios pin the repaired behaviour.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _practice_setup(week_count=0, week_start=None, enabled=_MISSING,
+                    challenges_today=0, tz="UTC"):
+    reset()
+    set_utc(2026, 7, 3, 18)
+    p = mk_prefs(uid="u1", tz=tz, preferred_hour=18,
+                 week_count=week_count, week_start=week_start)
+    # The DEFAULT case leaves practice_reminders_enabled absent entirely, which
+    # is what real pre-existing docs look like.
+    if enabled is not _MISSING:
+        p["practice_reminders_enabled"] = enabled
+    prefs.docs.append(p)
+    users.docs.append(mk_user(uid="u1", tz=tz))
+    if challenges_today:
+        daily_stats.docs.append({"user_id": "u1", "date": "2026-07-03",
+                                 "total_challenges": challenges_today})
+    return p
+
+
+def scenario_practice_expired_week_unlocks():
+    """REGRESSION: a capped counter from a week ago must NOT silence forever."""
+    p = _practice_setup(week_count=3,
+                        week_start=datetime(2026, 6, 1, 12, 0, 0))  # 32 days old
+    run(pract.run_practice_reminder_check())
+    check("practice: expired week resets the budget (was a permanent lockout)",
+          len(SENT) == 1, f"sent={len(SENT)}")
+    check("practice: counter restarts at 1 for the new week",
+          p.get("notification_count_this_week") == 1,
+          str(p.get("notification_count_this_week")))
+
+
+def scenario_practice_cap_within_week():
+    """The cap must still bite inside a live week."""
+    _practice_setup(week_count=3, week_start=datetime(2026, 7, 1, 12, 0, 0))
+    run(pract.run_practice_reminder_check())
+    check("practice: cap still enforced within the current week", len(SENT) == 0,
+          f"sent={len(SENT)}")
+
+
+def scenario_practice_records_kind():
+    """Bookkeeping must go through record_send so budgets stay shared."""
+    p = _practice_setup(week_count=1)
+    run(pract.run_practice_reminder_check())
+    check("practice: send happened", len(SENT) == 1, f"sent={len(SENT)}")
+    check("practice: shared weekly counter incremented",
+          p.get("notification_count_this_week") == 2,
+          str(p.get("notification_count_this_week")))
+    check("practice: stamped under last_sent_by_kind.practice",
+          "practice" in (p.get("last_sent_by_kind") or {}),
+          str(p.get("last_sent_by_kind")))
+
+
+def scenario_practice_absent_field_is_optin():
+    """#3 semantics: a doc predating the field is not an opt-out."""
+    _practice_setup()  # practice_reminders_enabled absent entirely
+    run(pract.run_practice_reminder_check())
+    check("practice: doc without the field still receives the reminder",
+          len(SENT) == 1, f"sent={len(SENT)}")
+
+
+def scenario_practice_explicit_optout():
+    """An explicit False is a real choice and must win."""
+    _practice_setup(enabled=False)
+    run(pract.run_practice_reminder_check())
+    check("practice: explicit False suppresses the reminder", len(SENT) == 0,
+          f"sent={len(SENT)}")
+
+
+def scenario_practice_already_practiced_today():
+    """Don't nag someone who already did the thing."""
+    _practice_setup(challenges_today=4)
+    run(pract.run_practice_reminder_check())
+    check("practice: no reminder after the user already practiced today",
+          len(SENT) == 0, f"sent={len(SENT)}")
+
+
 def main():
     scenarios = [
         scenario_legacy_prefs_field_missing,
@@ -809,6 +959,8 @@ def main():
         scenario_quiet_hours,
         scenario_weekly_cap,
         scenario_perkind_daily_dedup,
+        scenario_crosskind_daily_cap,
+        scenario_crosskind_no_burst_then_next_day,
         scenario_missing_token,
         scenario_bad_timezone,
         scenario_malformed_timestamps,
@@ -829,6 +981,12 @@ def main():
         scenario_budget_week_rollover,
         scenario_budget_increments,
         scenario_precedence_one_push,
+        scenario_practice_expired_week_unlocks,
+        scenario_practice_cap_within_week,
+        scenario_practice_records_kind,
+        scenario_practice_absent_field_is_optin,
+        scenario_practice_explicit_optout,
+        scenario_practice_already_practiced_today,
     ]
     for s in scenarios:
         try:

@@ -814,6 +814,70 @@ async def get_user_preferences(current_user: UserResponse = Depends(get_current_
         "suggested_topic":            suggested_topic,
     }
 
+async def _ensure_notification_preferences(user_id: str) -> None:
+    """
+    Guarantee this user has a notification_preferences document.
+
+    Every reminder trigger (practice / news / story / learning-plan) opens its
+    loop with `notification_preferences_collection.find(...)`, so a user with no
+    doc is never even iterated — the "default ON" in the model never gets a
+    chance to apply to them. Until now the doc was created ONLY lazily by
+    GET /api/preferences/notifications, which mobile calls solely from the
+    Notification Settings screen; 7 of 9 push-token holders in production had
+    never opened it and were therefore unreachable by any reminder.
+
+    Registering a push token is the honest signal that this user CAN receive
+    notifications, so the doc belongs here.
+
+    Two deliberate safety properties:
+      * $setOnInsert only — an existing doc is never modified, so a choice the
+        user made on the settings screen can't be silently overwritten.
+      * failures are swallowed — push-token registration is the caller's actual
+        request and must not start failing because of this side effect.
+    """
+    try:
+        import pytz
+        from models import NotificationPreferencesInDB
+
+        existing = await notification_preferences_collection.find_one(
+            {"user_id": user_id}, {"_id": 1}
+        )
+        if existing:
+            return
+
+        # Seed the real timezone when we already know it (other endpoints persist
+        # user.timezone). Leave it unset rather than writing a fake "UTC": the
+        # triggers already fall back to UTC, and a stored "UTC" is truthy, which
+        # would make this user look explicitly configured and block a later fix.
+        user = await users_collection.find_one({"_id": ObjectId(user_id)}, {"timezone": 1})
+        tz = (user or {}).get("timezone")
+        if tz:
+            try:
+                pytz.timezone(tz)
+            except Exception:
+                tz = None
+
+        # preferred_notification_time is pinned explicitly rather than taking the
+        # model default (10), to match what the settings screen writes and because
+        # the hour is read as UTC whenever tz is unknown: 18:00 UTC is 19:00-21:00
+        # across the EU/TR user base, while 10:00 UTC would be 02:00-05:00 in the
+        # US. Quiet hours can't rescue a wrong guess here — they're evaluated in
+        # the same unknown local time.
+        defaults = NotificationPreferencesInDB(
+            user_id=user_id,
+            timezone=tz,
+            preferred_notification_time=18,
+        )
+        await notification_preferences_collection.update_one(
+            {"user_id": user_id},
+            {"$setOnInsert": defaults.model_dump(by_alias=True)},
+            upsert=True,
+        )
+        print(f"🔔 Created notification preferences for user {user_id} (timezone={tz or 'unset'})")
+    except Exception as e:
+        print(f"⚠️ Could not ensure notification preferences for {user_id}: {str(e)}")
+
+
 @router.post("/push-token", status_code=status.HTTP_200_OK)
 async def register_push_token(
     push_token_data: dict,
@@ -894,6 +958,10 @@ async def register_push_token(
             print(f"✅ Push token already up to date for {current_user.email}")
         else:
             print(f"✅ Push token registered successfully for {current_user.email}")
+
+        # A device that can receive pushes must be visible to the reminder
+        # triggers, which iterate notification_preferences — not users.
+        await _ensure_notification_preferences(current_user.id)
 
         return {
             "success": True,

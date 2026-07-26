@@ -123,7 +123,7 @@ class StoryReminderTrigger:
                     # Per-kind daily anti-spam: never two of the SAME story
                     # reminder in one local day. (A different kind on another
                     # day is fine.)
-                    if rc.already_sent_today(prefs, f"story_{tier}", local_time):
+                    if rc.already_sent_any_today(prefs, local_time):
                         skipped += 1
                         continue
 

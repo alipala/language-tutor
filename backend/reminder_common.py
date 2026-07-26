@@ -13,15 +13,21 @@ each user asks two questions:
          -> is_preferred_hour(...) / is_quiet_hours(...) answer timing
     2. Is this user allowed ANOTHER notification right now?
          -> can_send_more_this_week(prefs)  enforces the weekly cap
-         -> already_sent_today(prefs, kind) prevents same-kind spam per day
+         -> already_sent_any_today(prefs)   at most one reminder per local day
 
     ...then AFTER a successful send:
          -> record_send(user_id, kind)  bumps the weekly counter + stamps time
 
 The weekly cap is shared across ALL reminder kinds (one budget per user), so a
-chatty week of news reminders correctly suppresses a story reminder. Per-kind
-daily anti-spam is tracked separately under last_sent_by_kind.<kind> so two
-DIFFERENT reminders can still both land on the same day (up to the weekly cap).
+chatty week of news reminders correctly suppresses a story reminder. The daily
+cap is shared too: at most one reminder per local day, of any kind. Individual
+sends are still stamped per kind under last_sent_by_kind.<kind>, which is what
+both caps read.
+
+That daily rule replaced an earlier per-kind-only one. Because every kind fires
+in the same preferred-hour window, per-kind dedup let practice + story +
+learning-plan all land inside a single hour and burn the whole weekly budget at
+once. Spreading the same 3 sends over 3 days is the intent of the cap.
 """
 
 from datetime import datetime
@@ -113,6 +119,34 @@ def _coerce_dt(v: Any) -> Optional[datetime]:
             return datetime.strptime(head, "%Y-%m-%d")
         except Exception:
             return None
+
+
+def already_sent_any_today(prefs: Dict[str, Any],
+                           local_time: Optional[datetime] = None) -> bool:
+    """
+    Cross-kind daily cap: at most ONE reminder per local day, whatever its kind.
+
+    The per-kind check below is not enough on its own. Every kind shares the same
+    preferred-hour window, so a user who qualifies for practice AND story AND
+    learning-plan receives all three inside the same hour, which immediately
+    exhausts the 3-per-week budget and buys a week of silence. Measured against
+    production data, two of the users being onboarded matched exactly that
+    profile.
+
+    Spending the same weekly budget across three separate days is what
+    max_notifications_per_week=3 was actually meant to express.
+
+    Reuses last_sent_by_kind, so there is no new field to migrate: any stamp
+    bearing today's local date closes the day.
+    """
+    local_time = local_time or local_time_for(prefs)
+    local_date = local_time.strftime("%Y-%m-%d")
+
+    for stamp in (prefs.get("last_sent_by_kind") or {}).values():
+        dt = _coerce_dt(stamp)
+        if dt is not None and dt.strftime("%Y-%m-%d") == local_date:
+            return True
+    return False
 
 
 def already_sent_today(prefs: Dict[str, Any], kind: str,
