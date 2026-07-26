@@ -616,7 +616,7 @@ class NotificationPreferencesBase(BaseModel):
     user_id: str
 
     # Category preferences (matches mobile app settings)
-    practice_reminders_enabled: bool = False  # Default OFF - opt-in
+    practice_reminders_enabled: bool = True  # Default ON - matches the other reminder kinds
     achievement_alerts_enabled: bool = True   # Default ON
     learning_plan_updates_enabled: bool = True  # Default ON
     product_updates_enabled: bool = True  # Default ON

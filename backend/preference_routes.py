@@ -37,7 +37,7 @@ async def get_notification_preferences(
     if not preferences:
         default_prefs = NotificationPreferencesInDB(
             user_id=current_user.id,
-            practice_reminders_enabled=False,  # Default OFF - opt-in
+            practice_reminders_enabled=True,  # Default ON - same as the other reminder kinds
             achievement_alerts_enabled=True,   # Default ON
             learning_plan_updates_enabled=True,  # Default ON
             product_updates_enabled=True,  # Default ON
@@ -79,7 +79,7 @@ async def update_notification_preferences(
         # Create default preferences first
         default_prefs = NotificationPreferencesInDB(
             user_id=current_user.id,
-            practice_reminders_enabled=False,
+            practice_reminders_enabled=True,
             achievement_alerts_enabled=True,
             learning_plan_updates_enabled=True,
             product_updates_enabled=True,
@@ -159,7 +159,7 @@ async def reset_notification_preferences(
     """
     default_prefs = NotificationPreferencesInDB(
         user_id=current_user.id,
-        practice_reminders_enabled=False,
+        practice_reminders_enabled=True,
         achievement_alerts_enabled=True,
         learning_plan_updates_enabled=True,
         product_updates_enabled=True,

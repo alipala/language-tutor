@@ -18,6 +18,8 @@ import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
+from bson import ObjectId
+
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -29,6 +31,12 @@ load_dotenv()
 
 MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "language_tutor")
+
+# A digest is a "today" message. If delivery was broken (or the service was
+# down) the backlog must NOT fire all at once when it comes back — a two-week-old
+# "you're on a 3-day streak!" is worse than no push. Anything older than this
+# many hours past its scheduled_for is retired unsent.
+DIGEST_MAX_AGE_HOURS = int(os.getenv("DIGEST_MAX_AGE_HOURS", "24"))
 
 # Initialize MongoDB connection
 client = AsyncIOMotorClient(MONGODB_URL)
@@ -78,10 +86,12 @@ async def generate_digests_for_active_users():
         for user in active_users:
             prefs = await notification_preferences_collection.find_one({"user_id": str(user["_id"])})
 
-            # Default to False (opt-in model)
-            practice_reminders_enabled = False
-            if prefs:
-                practice_reminders_enabled = prefs.get("practice_reminders_enabled", False)
+            # Default ON — only an EXPLICIT False opts the user out. A missing
+            # prefs doc means "never opened notification settings", not "said no"
+            # (the doc is created lazily by GET /api/preferences/notifications).
+            practice_reminders_enabled = True
+            if prefs is not None:
+                practice_reminders_enabled = prefs.get("practice_reminders_enabled", True)
 
             if practice_reminders_enabled:
                 filtered_users.append(user)
@@ -125,6 +135,37 @@ async def generate_digests_for_active_users():
         return 0
 
 
+def _user_object_id(user_id: Any) -> Any:
+    """
+    Digest docs store user_id as a STRING; users._id is an ObjectId. Looking the
+    user up with the raw string silently matches nothing, so coerce here.
+    """
+    if isinstance(user_id, ObjectId):
+        return user_id
+    try:
+        return ObjectId(str(user_id))
+    except Exception:
+        return None
+
+
+async def _retire_digest(digest_id: Any, reason: str) -> None:
+    """
+    Close out a digest we will never push (no user, no token, opted out, stale).
+
+    Marking it sent is what keeps the pending queue from growing without bound —
+    every terminal path in the delivery loop MUST end here, otherwise the same
+    digest is re-examined on every hourly run forever.
+    """
+    await daily_digest_messages_collection.update_one(
+        {"_id": digest_id},
+        {"$set": {
+            "sent": True,
+            "sent_at": datetime.utcnow(),
+            "skipped_reason": reason,
+        }}
+    )
+
+
 async def send_pending_digest_messages():
     """
     Send digest messages that are scheduled for now or earlier.
@@ -132,6 +173,9 @@ async def send_pending_digest_messages():
     Checks for digest messages where:
     - scheduled_for <= now
     - sent = False
+
+    Digests more than DIGEST_MAX_AGE_HOURS past their slot are retired unsent so
+    a delivery outage drains quietly instead of arriving as a burst.
     """
     print("\n" + "="*60)
     print(f"Daily Digest Delivery - {datetime.utcnow().isoformat()}")
@@ -150,43 +194,49 @@ async def send_pending_digest_messages():
 
         sent_count = 0
         error_count = 0
+        stale_count = 0
+        stale_cutoff = now - timedelta(hours=DIGEST_MAX_AGE_HOURS)
 
         for digest in pending_digests:
             try:
                 user_id = digest["user_id"]
 
+                # Staleness first — a digest describes TODAY's state, so an old
+                # one is never worth pushing regardless of who it belongs to.
+                scheduled_for = digest.get("scheduled_for")
+                if scheduled_for and scheduled_for < stale_cutoff:
+                    stale_count += 1
+                    print(f"  Skip: Stale digest ({scheduled_for.isoformat()}) for {user_id}")
+                    await _retire_digest(digest["_id"], "stale")
+                    continue
+
                 # Get user for push token
-                user = await users_collection.find_one({"_id": user_id})
+                user = await users_collection.find_one({"_id": _user_object_id(user_id)})
                 if not user:
                     print(f"  Skip: User not found for digest {digest['_id']}")
+                    await _retire_digest(digest["_id"], "user_not_found")
                     continue
 
                 push_token = user.get("push_token")
                 if not push_token:
                     print(f"  Skip: No push token for user {user.get('name', 'Unknown')}")
                     # Mark as sent anyway (can't deliver)
-                    await daily_digest_messages_collection.update_one(
-                        {"_id": digest["_id"]},
-                        {"$set": {"sent": True, "sent_at": datetime.utcnow()}}
-                    )
+                    await _retire_digest(digest["_id"], "no_push_token")
                     continue
 
                 # ✅ CHECK NOTIFICATION PREFERENCES - Respect user's settings!
                 # Daily digest = Practice Reminders
                 prefs = await notification_preferences_collection.find_one({"user_id": str(user_id)})
 
-                # Default to False if no preferences set (opt-in model - don't bother users)
-                practice_reminders_enabled = False
-                if prefs:
-                    practice_reminders_enabled = prefs.get("practice_reminders_enabled", False)
+                # Default ON — mirrors the generation-side gate above.
+                practice_reminders_enabled = True
+                if prefs is not None:
+                    practice_reminders_enabled = prefs.get("practice_reminders_enabled", True)
 
                 if not practice_reminders_enabled:
                     print(f"  Skip: Practice reminders disabled for user {user.get('name', 'Unknown')}")
                     # Mark as sent (user has opted out)
-                    await daily_digest_messages_collection.update_one(
-                        {"_id": digest["_id"]},
-                        {"$set": {"sent": True, "sent_at": datetime.utcnow(), "skipped_reason": "practice_reminders_disabled"}}
-                    )
+                    await _retire_digest(digest["_id"], "practice_reminders_disabled")
                     continue
 
                 # Send push notification
@@ -235,6 +285,7 @@ async def send_pending_digest_messages():
 
         print(f"\nDelivery Summary:")
         print(f"  - Digests sent: {sent_count}")
+        print(f"  - Retired as stale: {stale_count}")
         print(f"  - Errors: {error_count}")
         print(f"  - Total pending: {len(pending_digests)}")
 

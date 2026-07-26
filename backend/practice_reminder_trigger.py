@@ -43,9 +43,11 @@ class PracticeReminderTrigger:
             # Get current UTC time
             now_utc = datetime.utcnow()
 
-            # Find all users with practice reminders enabled
+            # Find all users with practice reminders enabled. Default-ON
+            # semantics ($ne False) match the news/story/plan triggers: a doc
+            # that predates the field isn't an opt-out.
             prefs_cursor = notification_preferences_collection.find({
-                "practice_reminders_enabled": True
+                "practice_reminders_enabled": {"$ne": False}
             })
 
             async for prefs in prefs_cursor:
