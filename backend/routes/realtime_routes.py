@@ -1977,6 +1977,20 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         # Use request voice if provided, otherwise use fetched preference
         selected_voice = request.voice or preferred_voice
 
+        # ── Level-based speaking rate (audio.output.speed) ───────────────────
+        # SLA/CALL research: a MODERATE slowdown helps A1/A2 comprehension, but
+        # extreme slowing (and flat prosody) is harmful and under-prepares
+        # learners for authentic speech. So we slow gently at the lowest levels
+        # and return to natural pace (1.0) by B2+. Set per-session from the
+        # known level — NOT adjusted mid-session (speed only changes playback
+        # rate and can only be updated between turns anyway). Prompt-based
+        # "speak slowly" does NOT reliably change rate on Realtime; the speed
+        # parameter does. Range is clamped to the API's [0.25, 1.5].
+        _speed_by_level = {"A1": 0.85, "A2": 0.9, "B1": 0.95}
+        selected_speed = _speed_by_level.get(request.level.upper(), 1.0)
+
+        if DEBUG_REALTIME:
+            print(f"[VOICE] Speaking speed for {request.level}: {selected_speed}")
         if DEBUG_REALTIME:
             print(f"[VOICE] User preferred voice: {preferred_voice}")
         if DEBUG_REALTIME:
@@ -2090,7 +2104,8 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                     }
                 },
                 "output": {
-                    "voice": selected_voice
+                    "voice": selected_voice,
+                    "speed": selected_speed
                 }
             },
             "truncation": build_truncation_config()
