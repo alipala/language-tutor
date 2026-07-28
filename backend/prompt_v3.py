@@ -296,6 +296,14 @@ def build_instructions_v3(request: Any, language: str, level: str) -> Optional[s
     else:
         context_block = f"- Free practice. Pick ONE everyday theme suited to {level} and stay on it."
 
+    # ── A1/A2 lexical + grammar ceiling ──────────────────────────────────
+    # CEFR research (arxiv 2501.15247; ERIC EJ1466280): the model only hits A1
+    # vs A2 when the prompt carries an EXPLICIT high-frequency word list. For
+    # B1+ this returns None (broad range is desired) and nothing is injected.
+    from beginner_wordlists import get_beginner_lexical_lock
+    lexical_lock = get_beginner_lexical_lock(language, level)
+    lexical_block = f"\n\n{lexical_lock}" if lexical_lock else ""
+
     corrections_enabled = not getattr(request, "disable_corrections", False)
 
     # ── Corrections section — the behavioral core of V3 ──────────────────
@@ -317,6 +325,19 @@ Corrections are disabled for this session. Recast errors naturally in your repli
         "say so kindly — honest beats flattering. No generic praise."
     )
 
+    # Sample phrases: the model copies these closely (guide G3), so they must
+    # obey the level's own grammar ceiling. A present-tense sample for A1 keeps
+    # the model from drifting into the past tense its grammar-lock forbids.
+    if level == "A1":
+        sample_fix = '"Quick tip — say \'I like coffee\', not \'I likes coffee\'. And you — tea or coffee?"'
+        sample_wrap = '"Good job today! You said many words. Next time: try longer answers, not just yes."'
+    elif level == "A2":
+        sample_fix = '"Quick tip — say \'I went home\', not \'I goed home\'. So, what did you do next?"'
+        sample_wrap = '"Nice work — your questions were clear. One thing to practice: past tense, it slipped a few times."'
+    else:
+        sample_fix = '"Quick tip — say \'I went home\', not \'I goed home\'. So, what happened next?"'
+        sample_wrap = '"Strong session — your past tense was solid. One thing to practice: articles; they slipped a few times today."'
+
     _art = "an" if level.startswith("A") else "a"
     instructions = f"""# Role & Objective
 You are a {lang_name} speaking coach in a live {duration}-minute voice session with {_art} {level} learner.
@@ -332,7 +353,7 @@ A successful session means: the student did most of the talking, they practiced 
 # Language
 - Speak ONLY {lang_name}, at difficulty matching {level}.
 - If the student answers in another language: give them the {lang_name} words they needed and continue in {lang_name}. Never switch languages yourself.
-- If their audio is unclear, ask them in simple {lang_name} to say it again. Do not guess.
+- If their audio is unclear, ask them in simple {lang_name} to say it again. Do not guess.{lexical_block}
 
 # Context
 - Session length: {duration} minute(s) — about {turns} exchanges. {pacing.get('pacing_note', '')}
@@ -346,8 +367,8 @@ A successful session means: the student did most of the talking, they practiced 
 3. WRAP-UP: {wrapup_line}
 
 # Sample phrases (patterns only — speak them in {lang_name}, vary them, never copy every time)
-- Fix: "Quick tip — say 'I went home', not 'I goed home'. So, what happened next?"
+- Fix: {sample_fix}
 - Redirect: "Nice — and back to {goal_short}: ..."
-- Honest wrap: "Strong session — your past tense was solid. One thing to practice: articles; they slipped a few times today."
+- Honest wrap: {sample_wrap}
 """
     return instructions
