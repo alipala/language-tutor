@@ -50,7 +50,7 @@ _LEVEL_PROFILES: Dict[str, Dict[str, str]] = {
     "A1": {
         "turn":      "ONE short simple sentence per turn (max ~8 words), spoken slowly and clearly.",
         "ratio":     "The student should speak about 60% of the time.",
-        "questions": "Ask yes/no or this-or-that questions about simple facts. One question per turn. Never ask 'why', opinions, or anything needing numbers, dates or reasons.",
+        "questions": "Ask yes/no or this-or-that questions about simple facts. Ask the question and STOP — never tack a spoken tag like 'yes or no?' onto the end; the question form already makes the choice clear, and the tag makes you sound robotic. One question per turn. Never ask 'why', opinions, or anything needing numbers, dates or reasons.",
         "fix_style": "Corrections: 3–5 words, then say the full correct phrase once and move on.",
     },
     "A2": {
