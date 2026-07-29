@@ -881,10 +881,78 @@ def get_sub_goal_activities(
     return level_focus.get(level_category, [])
 
 
+def get_theme_pool(
+    goal_ids: List[str],
+    level: str,
+    include_all_fallback: bool = True
+) -> List[Dict[str, Any]]:
+    """
+    Build a flat, rotation-ready pool of concrete themes from the user's goals.
+
+    Each theme is one sub-goal expanded into a self-contained unit the schedule
+    generator can drop onto a week WITHOUT the caller re-reading ENRICHED_GOALS:
+
+        {
+          "goal_id", "sub_goal_id",
+          "title":         e.g. "Family & Relationships",
+          "description":   e.g. "Talk about family, describe relationships",
+          "activities":    level-appropriate activity list (level_focus band),
+          "key_vocabulary": [...],   "key_phrases": [...],
+        }
+
+    Why this exists (2026-07-29): the skill-focused schedule path produced weeks
+    with 0 key_vocabulary and only ~9 unique focuses across 48 weeks, because it
+    never reached the rich per-sub-goal content here. This helper exposes that
+    content as a diverse, ordered list the generator can rotate through so a
+    192-session plan draws on many distinct themes instead of 5–9.
+
+    Args:
+        goal_ids: the user's selected main goals (e.g. ["daily", "travel"]).
+        level:    CEFR level — selects the level_focus activity band.
+        include_all_fallback: if the selected goals yield no themes (unknown
+            ids), fall back to ALL goals so the pool is never empty.
+
+    Returns:
+        Ordered list of theme dicts. Order interleaves sub-goals ACROSS goals
+        (goal A #1, goal B #1, goal A #2, …) so rotation doesn't spend many
+        consecutive weeks inside one goal.
+    """
+    def _themes_for(goal_id: str) -> List[Dict[str, Any]]:
+        goal = ENRICHED_GOALS.get(goal_id, {})
+        out = []
+        for sub_id, sub in goal.get("sub_goals", {}).items():
+            activities = get_sub_goal_activities(goal_id, sub_id, level)
+            out.append({
+                "goal_id": goal_id,
+                "sub_goal_id": sub_id,
+                "title": sub.get("text", sub_id.replace("_", " ").title()),
+                "description": sub.get("description", ""),
+                "activities": list(activities),
+                "key_vocabulary": list(sub.get("key_vocabulary", [])),
+                "key_phrases": list(sub.get("key_phrases", [])),
+            })
+        return out
+
+    valid_goals = [g for g in (goal_ids or []) if g in ENRICHED_GOALS]
+    if not valid_goals and include_all_fallback:
+        valid_goals = list(ENRICHED_GOALS.keys())
+
+    # Per-goal theme lists, then interleave across goals (round-robin) so the
+    # pool alternates goals instead of grouping them.
+    per_goal = [_themes_for(g) for g in valid_goals]
+    pool: List[Dict[str, Any]] = []
+    if per_goal:
+        for i in range(max(len(p) for p in per_goal)):
+            for p in per_goal:
+                if i < len(p):
+                    pool.append(p[i])
+    return pool
+
+
 def get_all_main_goals() -> List[Dict[str, Any]]:
     """
     Get list of all main goal categories
-    
+
     Returns:
         List of main goal configurations (without sub-goals)
     """

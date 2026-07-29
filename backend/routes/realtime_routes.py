@@ -1996,9 +1996,11 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         # must match (guide: prompt/tool misalignment degrades tool calling).
         _prompt_v3_on = os.getenv("PROMPT_V3", "false").lower() == "true"
         _grammar_tool_desc = (
-            "Report a clear grammar or word-choice mistake the student made. Call this every time "
-            "you give the student a spoken correction, and also for clear mistakes you only recast. "
-            "Do NOT call for minor pronunciation slips."
+            "Show the student a correction card for a CLEAR grammar, verb-form, word-choice, or "
+            "word-order mistake. This is the ONLY way corrections reach the student, so call it "
+            "FIRST — before you speak — whenever there is a real error, then just acknowledge briefly "
+            "out loud. Do NOT call it for a sentence that is already correct, and do NOT call it for "
+            "minor pronunciation slips."
             if _prompt_v3_on else
             "Report a MAJOR grammar mistake made by the student. Only call this for significant errors in articles, verb conjugation, or word order. Do NOT call for minor pronunciation or vocabulary issues."
         )

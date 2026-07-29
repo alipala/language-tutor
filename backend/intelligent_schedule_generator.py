@@ -9,6 +9,7 @@ from enriched_goals_config import (
     get_level_category,
     get_sub_goal,
     get_sub_goal_activities,
+    get_theme_pool,
     ENRICHED_GOALS
 )
 from assessment_analyzer import AssessmentAnalyzer
@@ -219,26 +220,57 @@ class IntelligentScheduleGenerator:
                     "Complete exercises for your level"
                 ]
             
-            # Generate weeks for this sub-goal
+            # Generate weeks for this sub-goal. Rotate the activity focus and
+            # vocabulary window PER WEEK so multiple weeks on the same sub-goal
+            # aren't byte-identical (was: 9 consecutive weeks with the same
+            # focus/description/vocab).
+            _title = sub_goal_config.get('text', 'Language Practice')
+            _desc = sub_goal_config.get('description', '')
+            _all_acts = activities or []
+            _sg_vocab = sub_goal_config.get('key_vocabulary', [])
+            _sg_phrases = sub_goal_config.get('key_phrases', [])
             for i in range(weeks_per_sub_goal):
                 if week_num > total_weeks:
                     break
-                
+
+                # Per-week activity slice (rotates through the level_focus band).
+                if _all_acts:
+                    start = i % len(_all_acts)
+                    rotated_acts = (_all_acts[start:] + _all_acts[:start])[:3]
+                    lead_activity = _all_acts[start]
+                else:
+                    rotated_acts = activities[:3]
+                    lead_activity = _desc
+
+                # Focus names the week's concrete angle instead of repeating the
+                # sub-goal description verbatim every week.
+                if weeks_per_sub_goal > 1 and lead_activity:
+                    focus = f"{_title} — {lead_activity}"
+                else:
+                    focus = f"{_title}: {_desc}"
+
+                # Rotate a vocabulary window so each week surfaces a different
+                # slice first (the model hears variety), while all words stay
+                # available across the sub-goal's weeks.
+                if _sg_vocab:
+                    v_start = (i * 3) % len(_sg_vocab)
+                    week_vocab = (_sg_vocab[v_start:] + _sg_vocab[:v_start])
+                else:
+                    week_vocab = _sg_vocab
+
                 week_data = {
                     "week": week_num,
-                    "focus": f"{sub_goal_config.get('text', 'Language Practice')}: {sub_goal_config.get('description', '')}",
+                    "focus": focus,
                     "main_goal": main_goal,
                     "sub_goal": sub_goal_id,
-                    "activities": activities[:3],  # Top 3 activities
-                    "key_vocabulary": sub_goal_config.get('key_vocabulary', []),
-                    "key_phrases": sub_goal_config.get('key_phrases', []),
+                    "activities": rotated_acts,
+                    "key_vocabulary": week_vocab,
+                    "key_phrases": _sg_phrases,
                     "sessions_completed": 0,
                     "total_sessions": 2,
-                    "session_details": IntelligentScheduleGenerator._initialize_session_details(
-                        f"{sub_goal_config.get('text', 'Language Practice')}: {sub_goal_config.get('description', '')}"
-                    )
+                    "session_details": IntelligentScheduleGenerator._initialize_session_details(focus)
                 }
-                
+
                 weekly_schedule.append(week_data)
                 week_num += 1
         
@@ -264,35 +296,68 @@ class IntelligentScheduleGenerator:
 
         skill_rotation_idx = 0
         area_rotation_idx = 0
+        # Theme pool for reinforcement weeks so they, too, carry real vocabulary
+        # and a concrete topic instead of a bare skill label (was: 0 vocab).
+        remainder_theme_pool = get_theme_pool(goals, level)
+        theme_rotation_idx = 0
 
         while week_num <= total_weeks:
             # Rotate skill
             current_skill = skill_rotation[skill_rotation_idx % len(skill_rotation)]
             skill_rotation_idx += 1
 
-            # Rotate improvement area for variety
-            if areas_for_improvement:
-                focus_area = areas_for_improvement[area_rotation_idx % len(areas_for_improvement)]
-                area_rotation_idx += 1
-                # Shorten very long improvement strings to 80 chars for readability
-                focus_area_short = focus_area[:80].rstrip() + ("…" if len(focus_area) > 80 else "")
-                focus = f"Skill Reinforcement — {current_skill.title()}: {focus_area_short}"
-            else:
-                focus = f"Skill Reinforcement — {current_skill.title()}"
-
-            activities = IntelligentScheduleGenerator._get_skill_activities(
-                current_skill, level, language, learning_velocity
+            # Rotate a concrete theme so reinforcement weeks have topic + vocab.
+            theme = (
+                remainder_theme_pool[theme_rotation_idx % len(remainder_theme_pool)]
+                if remainder_theme_pool else None
             )
+            theme_rotation_idx += 1
+
+            if theme:
+                acts = theme["activities"] or []
+                p = (theme_rotation_idx - 1) // len(remainder_theme_pool)
+                if acts:
+                    s = p % len(acts)
+                    activities = (acts[s:] + acts[:s])[:3]
+                else:
+                    activities = IntelligentScheduleGenerator._get_skill_activities(
+                        current_skill, level, language, learning_velocity
+                    )
+                focus = f"Skill Reinforcement — {theme['title']} ({current_skill.title()})"
+                key_vocabulary = theme["key_vocabulary"]
+                key_phrases = theme["key_phrases"]
+                main_goal_r = theme["goal_id"]
+                sub_goal_r = theme["sub_goal_id"]
+            else:
+                if areas_for_improvement:
+                    focus_area = areas_for_improvement[area_rotation_idx % len(areas_for_improvement)]
+                    area_rotation_idx += 1
+                    focus_area_short = focus_area[:80].rstrip() + ("…" if len(focus_area) > 80 else "")
+                    focus = f"Skill Reinforcement — {current_skill.title()}: {focus_area_short}"
+                else:
+                    focus = f"Skill Reinforcement — {current_skill.title()}"
+                activities = IntelligentScheduleGenerator._get_skill_activities(
+                    current_skill, level, language, learning_velocity
+                )
+                key_vocabulary = []
+                key_phrases = []
+                main_goal_r = None
+                sub_goal_r = None
 
             week_data = {
                 "week": week_num,
                 "focus": focus,
                 "primary_skill": current_skill,
                 "activities": activities,
+                "key_vocabulary": key_vocabulary,
+                "key_phrases": key_phrases,
                 "sessions_completed": 0,
                 "total_sessions": 2,
                 "session_details": IntelligentScheduleGenerator._initialize_session_details(focus),
             }
+            if main_goal_r:
+                week_data["main_goal"] = main_goal_r
+                week_data["sub_goal"] = sub_goal_r
 
             weekly_schedule.append(week_data)
             week_num += 1
@@ -318,17 +383,23 @@ class IntelligentScheduleGenerator:
         
         weekly_schedule = []
         weeks_per_skill = focus_distribution.get('weeks_per_skill', {})
-        
-        # Create schedule that distributes skills optimally
-        skill_schedule = []
-        for skill, weeks in sorted(weeks_per_skill.items(), key=lambda x: x[1], reverse=True):
-            skill_schedule.extend([skill] * weeks)
-        
-        # Ensure we have enough entries
+
+        # Round-robin skill schedule (interleaved, NOT contiguous runs) so the
+        # weekly skill lens changes week-to-week instead of repeating for a
+        # whole block. Weight is preserved via how many times each skill enters
+        # the rotation list.
         primary_focus = focus_distribution.get('primary_focus', 'fluency')
-        while len(skill_schedule) < total_weeks:
-            skill_schedule.append(primary_focus)
-        
+        skill_rotation = []
+        for skill, weeks in sorted(weeks_per_skill.items(), key=lambda x: x[1], reverse=True):
+            skill_rotation.extend([skill] * max(int(weeks), 1))
+        if not skill_rotation:
+            skill_rotation = [primary_focus]
+
+        # Concrete theme pool from the user's goals — this is what makes each
+        # week talk about something DIFFERENT (and carry real vocabulary), rather
+        # than 48 weeks of "Strengthening Vocabulary skills" with 0 words.
+        theme_pool = get_theme_pool(goals, level)
+
         # Get assessment insights — strip short-sample warning from area strings
         _SHORT_SAMPLE_MARKER = "we recommend speaking for at least 60 words"
         raw_areas = assessment_data.get('areas_for_improvement', [])
@@ -336,16 +407,14 @@ class IntelligentScheduleGenerator:
             a for a in raw_areas
             if isinstance(a, str) and _SHORT_SAMPLE_MARKER not in a
         ]
-        strengths = assessment_data.get('strengths', [])
 
         # Generate weeks
         for week_num in range(1, total_weeks + 1):
-            # Determine which skill to focus on this week
-            current_skill = skill_schedule[week_num - 1] if week_num <= len(skill_schedule) else primary_focus
-            
-            # Create focus description
+            # Rotate the skill lens per week (round-robin, not block).
+            current_skill = skill_rotation[(week_num - 1) % len(skill_rotation)]
+
+            # Progression phase from position in the plan.
             progress_percentage = (week_num / total_weeks) * 100
-            
             if progress_percentage < 25:
                 phase = "Building Foundation"
             elif progress_percentage < 50:
@@ -354,36 +423,65 @@ class IntelligentScheduleGenerator:
                 phase = "Refining Abilities"
             else:
                 phase = "Mastering Advanced Techniques"
-            
-            # Find relevant improvement area for this skill
-            relevant_improvement = None
-            for area in areas_for_improvement:
-                if current_skill.lower() in area.lower():
-                    relevant_improvement = area
-                    break
-            
-            if relevant_improvement:
-                focus = f"{phase}: {relevant_improvement} (Focus: {current_skill.title()})"
+
+            # Rotate a concrete theme per week. The theme drives the focus title,
+            # the activities, and (critically) the key_vocabulary/key_phrases.
+            theme = theme_pool[(week_num - 1) % len(theme_pool)] if theme_pool else None
+
+            if theme:
+                # Vary the activity slice per pass through the pool so revisiting
+                # a theme later in a long plan isn't identical.
+                acts = theme["activities"] or []
+                pass_idx = (week_num - 1) // len(theme_pool) if theme_pool else 0
+                if acts:
+                    start = pass_idx % len(acts)
+                    rotated = acts[start:] + acts[:start]
+                    activities = rotated[:3]
+                else:
+                    activities = IntelligentScheduleGenerator._get_skill_activities(
+                        current_skill, level, language, learning_velocity
+                    )
+                focus = f"{phase} — {theme['title']} ({current_skill.title()})"
+                key_vocabulary = theme["key_vocabulary"]
+                key_phrases = theme["key_phrases"]
+                main_goal = theme["goal_id"]
+                sub_goal = theme["sub_goal_id"]
             else:
-                focus = f"{phase}: Strengthening {current_skill.title()} skills"
-            
-            # Get activities
-            activities = IntelligentScheduleGenerator._get_skill_activities(
-                current_skill, level, language, learning_velocity
-            )
-            
+                # No goals resolved — fall back to skill-only weeks (old behavior).
+                relevant_improvement = next(
+                    (a for a in areas_for_improvement if current_skill.lower() in a.lower()),
+                    None
+                )
+                focus = (
+                    f"{phase}: {relevant_improvement} (Focus: {current_skill.title()})"
+                    if relevant_improvement
+                    else f"{phase}: Strengthening {current_skill.title()} skills"
+                )
+                activities = IntelligentScheduleGenerator._get_skill_activities(
+                    current_skill, level, language, learning_velocity
+                )
+                key_vocabulary = []
+                key_phrases = []
+                main_goal = None
+                sub_goal = None
+
             week_data = {
                 "week": week_num,
                 "focus": focus,
                 "primary_skill": current_skill,
                 "activities": activities,
+                "key_vocabulary": key_vocabulary,
+                "key_phrases": key_phrases,
                 "sessions_completed": 0,
                 "total_sessions": 2,
                 "session_details": IntelligentScheduleGenerator._initialize_session_details(focus)
             }
-            
+            if main_goal:
+                week_data["main_goal"] = main_goal
+                week_data["sub_goal"] = sub_goal
+
             weekly_schedule.append(week_data)
-        
+
         return weekly_schedule
     
     @staticmethod
