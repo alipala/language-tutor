@@ -122,7 +122,7 @@ def _plan_context(learning_plan_data: Dict) -> Optional[tuple]:
 
     # fetch_active_learning_plan (realtime_routes) provides exactly:
     # plan_content / completed_sessions / total_sessions / session_history /
-    # session_summaries — NO sessions_per_week. The get() below therefore
+    # session_summaries / goals / sub_goals. The get() below therefore
     # always falls back to 4, which is deliberate: the legacy builder
     # hardcodes sessions_per_week = 4 for its week math, and V3 must map
     # sessions to the same weeks or a mid-plan flag flip would shift the
@@ -141,7 +141,28 @@ def _plan_context(learning_plan_data: Dict) -> Optional[tuple]:
     vocab = _rotate_slice(week.get("key_vocabulary") or [], session_in_week, 4)
     phrases = _rotate_slice(week.get("key_phrases") or [], session_in_week, 2)
 
-    lines = [
+    # User-selected goals and sub-goals (stored on the plan document).
+    # These are the macro topics the learner committed to when creating the plan.
+    # We show them to the tutor as the non-negotiable learning contract so it
+    # never drifts to an unrelated topic, even in short 1-minute sessions.
+    raw_goals = learning_plan_data.get("goals") or []
+    raw_sub_goals = learning_plan_data.get("sub_goals") or []
+    # Humanize IDs: "daily_life" → "daily life", keep short strings as-is
+    def _humanize(s: str) -> str:
+        return str(s).replace("_", " ").replace("-", " ").strip()
+
+    goal_labels = [_humanize(g) for g in raw_goals if g]
+    sub_goal_labels = [_humanize(sg) for sg in raw_sub_goals if sg]
+
+    lines = []
+
+    # Top-level plan identity — tutor sees the learner's actual commitment
+    if goal_labels:
+        lines.append(f"- Plan goal(s): {', '.join(goal_labels)}")
+    if sub_goal_labels:
+        lines.append(f"- Plan sub-goal(s): {', '.join(sub_goal_labels)}")
+
+    lines += [
         f"- Week {week_idx + 1} focus: {focus}",
         f"- TODAY'S GOAL (session {session_in_week + 1} of this week): {activity}",
     ]
@@ -347,9 +368,30 @@ Corrections are disabled for this session. Recast errors naturally in your repli
         sample_wrap = '"Strong session — your past tense was solid. One thing to practice: articles; they slipped a few times today."'
 
     _art = "an" if level.startswith("A") else "a"
+
+    # Duration-scaled focus rules: shorter sessions = stricter on-topic enforcement.
+    # 1 min (~4 exchanges) — zero drift budget; 3 min — one redirect max; 5 min — brief follow + redirect.
+    if duration <= 1:
+        drift_rule = (
+            "STAY ON TODAY'S GOAL for all exchanges — there is no time for detours. "
+            "If the student goes off-topic, redirect immediately: \"Interesting — and back to [goal]: ...\""
+        )
+    elif duration <= 3:
+        drift_rule = (
+            "If the student drifts off TODAY'S GOAL, acknowledge with ONE short sentence then redirect: "
+            "\"Nice — and back to [goal]: ...\" Do NOT follow the detour for more than one exchange."
+        )
+    else:
+        drift_rule = (
+            "If the student drifts far off TODAY'S GOAL, follow briefly (one exchange), "
+            "then steer back with a question tied to the goal."
+        )
+
     instructions = f"""# Role & Objective
 You are a {lang_name} speaking coach in a live {duration}-minute voice session with {_art} {level} learner.
-A successful session means: the student did most of the talking, they practiced TODAY'S GOAL, and they leave remembering 1–2 concrete corrections.
+A successful session means: the student did most of the talking, they practiced TODAY'S GOAL throughout, and they leave with 1–2 concrete corrections.
+
+LEARNING PLAN CONTRACT — the student built this plan to improve in these specific areas. You must honor it every session, even short ones. Never drift to unrelated small talk or generic topics when a goal and sub-goal are listed in Context.
 
 # Personality & Tone
 - Warm, encouraging, natural — a coach, not a quiz machine and not a cheerleader.
@@ -371,7 +413,7 @@ A successful session means: the student did most of the talking, they practiced 
 
 # Conversation Flow
 1. OPEN (first turn): {_OPENER_STYLES[opener_idx]} Do NOT use a generic greeting like "Hello! What would you like to practice?"
-2. PRACTICE: stay on TODAY'S GOAL. If the student drifts far off, follow briefly, then steer back with a question.
+2. PRACTICE — STAY ON GOAL: {drift_rule}
 3. WRAP-UP: {wrapup_line}
 
 # Never drill a phrase — NEVER make the student repeat the same sentence more than once

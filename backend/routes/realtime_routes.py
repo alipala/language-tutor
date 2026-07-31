@@ -83,7 +83,7 @@ class RealtimeUsageData(BaseModel):
     session_end: Optional[str] = None
     session_duration_seconds: Optional[int] = None
     estimated_cost: float = 0.0
-    model: str = "gpt-realtime-mini"
+    model: str = "gpt-realtime-2.1-mini"
     start_time: Optional[int] = None
     end_time: Optional[int] = None
 
@@ -1410,11 +1410,22 @@ async def process_usage_log_background(
                 # which over-reported cached-text cost ~5x (reporting only — billing
                 # is OpenAI-side and unaffected).
                 "cached_text": 0.06 / 1_000_000
+            },
+            # gpt-realtime-2.1-mini: same price tier as gpt-realtime-mini (verified 2026-07-31).
+            # Adds reasoning token support and improved alphanumeric recognition.
+            # Session config shape is identical — same endpoint, same parameters.
+            "gpt-realtime-2.1-mini": {
+                "audio_input": 10.0 / 1_000_000,
+                "audio_output": 20.0 / 1_000_000,
+                "text_input": 0.6 / 1_000_000,
+                "text_output": 2.4 / 1_000_000,
+                "cached_audio": 0.30 / 1_000_000,
+                "cached_text": 0.06 / 1_000_000
             }
         }
 
         # Always use environment variable model for cost calculation
-        model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-mini")
+        model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-2.1-mini")
 
         if DEBUG_REALTIME:
             print(f"[USAGE_LOG] Using model from environment: {model}")
@@ -1425,8 +1436,8 @@ async def process_usage_log_background(
 
         if model not in PRICING:
             if DEBUG_REALTIME:
-                print(f"[USAGE_LOG] Unknown model '{model}', defaulting to gpt-realtime-mini pricing")
-            model = "gpt-realtime-mini"
+                print(f"[USAGE_LOG] Unknown model '{model}', defaulting to gpt-realtime-2.1-mini pricing")
+            model = "gpt-realtime-2.1-mini"
 
         pricing = PRICING[model]
 
@@ -1905,6 +1916,9 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                         # session_history carries structured_summary objects for continuity
                         "session_history": learning_plan.get("session_history", []),
                         "session_summaries": learning_plan.get("session_summaries", []),
+                        # User-selected goals and sub-goals — passed to tutor prompt
+                        "goals": learning_plan.get("goals", []),
+                        "sub_goals": learning_plan.get("sub_goals", []),
                     }
                 else:
                     if DEBUG_REALTIME:
@@ -1985,7 +1999,7 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             print(f"[VOICE] Selected voice: {selected_voice}")
 
         # Create ephemeral token with complete configuration
-        model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-mini")
+        model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-2.1-mini")
 
         # Import truncation config helper
         from prompt_optimization_helpers import build_truncation_config
@@ -2449,13 +2463,13 @@ async def get_model_config():
     Get the current OpenAI Realtime API model configuration
     """
     try:
-        model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-mini")
+        model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-2.1-mini")
 
         return {
             "model": model,
             "configured_via": "environment_variable" if os.getenv("OPENAI_REALTIME_MODEL") else "default",
-            "available_models": ["gpt-realtime-mini", "gpt-4o-mini-realtime-preview"],
-            "default_model": "gpt-realtime-mini"
+            "available_models": ["gpt-realtime-2.1-mini", "gpt-realtime-mini", "gpt-4o-mini-realtime-preview"],
+            "default_model": "gpt-realtime-2.1-mini"
         }
     except Exception as e:
         if DEBUG_REALTIME:

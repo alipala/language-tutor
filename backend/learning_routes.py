@@ -969,6 +969,9 @@ Using ALL the information above, provide:
             "language": plan_request.language,
             "proficiency_level": plan_request.proficiency_level,
             "goals": plan_request.goals,
+            # sub_goals come in from raw request_data (not on LearningPlanRequest model)
+            # and must be persisted so the realtime tutor can read them back per session.
+            "sub_goals": request_data.get("sub_goals", []) or [],
             "duration_months": plan_request.duration_months,
             "custom_goal": plan_request.custom_goal,
             "plan_content": plan_content_json,
