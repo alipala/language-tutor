@@ -10,10 +10,15 @@ Bug fixes verified:
   Bug 3 — _get_reviewed_flashcard_count uses local-date window, not UTC midnight.
   Bug 4 — Bronze mission reads daily_stats.learning_plan_sessions (new dedicated
            counter) instead of total_sessions, so practice sessions don't pollute it.
+  Bug 5 — Gold mission never completed: the three timestamp-window counters
+           (freestyle, news, flashcards) built their day window with a hardcoded
+           "UTC" timezone while local_date was the user's LOCAL date, dropping
+           every session between local midnight and UTC midnight.
 """
 
 import pytest
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from unittest.mock import AsyncMock, MagicMock, patch
 import asyncio
 
@@ -22,10 +27,17 @@ import asyncio
 # Pure-logic helpers (no DB, no I/O) — mirrors backend formulas exactly
 # ─────────────────────────────────────────────────────────────────────────────
 
-def get_day_start_end(local_date: str, _tz: str = "UTC"):
-    """Mirrors services/timezone_utils.get_day_start_end for UTC dates."""
-    day = datetime.strptime(local_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-    return day, day + timedelta(days=1) - timedelta(microseconds=1)
+def get_day_start_end(local_date: str, tz: str = "UTC"):
+    """
+    Mirrors services/timezone_utils.get_day_start_end: builds midnight..23:59:59
+    IN `tz`, then converts to UTC for querying UTC timestamp fields.
+
+    The `tz` argument is load-bearing. Passing "UTC" for a user who is not in
+    UTC produces a window shifted by their offset — see TestBug5GoldMissionTimezone.
+    """
+    day = datetime.strptime(local_date, "%Y-%m-%d").replace(tzinfo=ZoneInfo(tz))
+    end = day + timedelta(days=1) - timedelta(microseconds=1)
+    return day.astimezone(timezone.utc), end.astimezone(timezone.utc)
 
 
 def should_write_practice_minutes_to_plan(tracking_success: bool) -> bool:
@@ -265,7 +277,13 @@ class TestBug3FlashcardMissionTimezone:
     """
     _get_reviewed_flashcard_count used UTC midnight as today_start, causing
     flashcards reviewed in the evening (local time ahead of UTC) to be missed.
-    Fix: use get_day_start_end(local_date, "UTC") for a proper local-date window.
+
+    NOTE: the original fix passed "UTC" as the timezone, which is NOT a proper
+    local-date window — it only fixed the evening case by moving the window
+    onto the user's local *date*, while leaving the post-local-midnight hours
+    outside it. See TestBug5GoldMissionTimezone for the half of the bug that
+    survived, and note these tests all use tz="UTC" so they only cover the
+    UTC-user case. The real fix threads the user's tz through.
     """
 
     LOCAL_DATE = "2026-05-16"
@@ -572,3 +590,85 @@ class TestEndToEndScenarios:
 
         # Total should not be 16 (what double-counting would produce)
         assert lp_after + practice_after == 8.0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BUG 5 — Gold mission never completes: local date interpreted as a UTC date
+# ─────────────────────────────────────────────────────────────────────────────
+
+def freestyle_sessions_today(
+    session_times_utc, local_date: str, tz: str
+) -> int:
+    """
+    Mirrors _get_today_freestyle_sessions: counts conversation_sessions whose
+    created_at falls inside the day window.
+
+    Before the fix the call site hardcoded tz="UTC" while local_date was the
+    user's LOCAL date, so the window was shifted by the user's UTC offset and
+    every session played between local midnight and UTC midnight fell outside it.
+    """
+    day_start, day_end = get_day_start_end(local_date, tz)
+    return sum(1 for t in session_times_utc if day_start <= t <= day_end)
+
+
+class TestBug5GoldMissionTimezone:
+    """
+    Production repro (user 6a5e4422eb9c4b7105f8f257, Europe/Istanbul = UTC+3):
+    two freestyle sessions at 23:08:51Z and 23:21:56Z on 2026-07-31, which is
+    02:08 and 02:21 LOCAL on 2026-08-01 — the user's local_date.
+
+    Bronze and Silver were unaffected because they match a stored `local_date`
+    STRING field. Only the three timestamp-window counters (freestyle, news,
+    flashcards) had the blind spot, which is why the user saw Bronze ✅
+    Silver ✅ Gold ❌ despite having done the work.
+    """
+
+    LOCAL_DATE = "2026-08-01"
+    TZ = "Europe/Istanbul"
+    SESSIONS = [
+        datetime(2026, 7, 31, 23, 8, 51, tzinfo=timezone.utc),   # 02:08 local Aug 1
+        datetime(2026, 7, 31, 23, 21, 56, tzinfo=timezone.utc),  # 02:21 local Aug 1
+    ]
+
+    def test_hardcoded_utc_misses_post_local_midnight_sessions(self):
+        """The bug, pinned: tz='UTC' finds neither session."""
+        assert freestyle_sessions_today(self.SESSIONS, self.LOCAL_DATE, "UTC") == 0
+
+    def test_real_timezone_counts_both_sessions(self):
+        """The fix: the user's real tz finds both → Gold (target=1) completes."""
+        count = freestyle_sessions_today(self.SESSIONS, self.LOCAL_DATE, self.TZ)
+        assert count == 2
+        assert min(1, count) >= 1, "Gold mission target=1 must be satisfied"
+
+    def test_window_spans_local_midnight_to_local_midnight(self):
+        start, end = get_day_start_end(self.LOCAL_DATE, self.TZ)
+        # UTC+3 → local midnight Aug 1 is 21:00Z on Jul 31
+        assert start == datetime(2026, 7, 31, 21, 0, tzinfo=timezone.utc)
+        assert end.replace(microsecond=0) == datetime(2026, 8, 1, 20, 59, 59, tzinfo=timezone.utc)
+
+    def test_previous_local_day_still_excluded(self):
+        """The widened window must not leak yesterday's sessions in."""
+        yesterday = datetime(2026, 7, 31, 20, 59, tzinfo=timezone.utc)  # 23:59 local Jul 31
+        assert freestyle_sessions_today([yesterday], self.LOCAL_DATE, self.TZ) == 0
+
+    def test_late_evening_local_still_counted(self):
+        """The half of the bug the original Bug 3 fix did address stays fixed."""
+        evening = datetime(2026, 8, 1, 20, 30, tzinfo=timezone.utc)  # 23:30 local Aug 1
+        assert freestyle_sessions_today([evening], self.LOCAL_DATE, self.TZ) == 1
+
+    def test_negative_offset_timezone(self):
+        """Symmetric case: UTC-5 user's evening sessions land on the next UTC date."""
+        tz = "America/New_York"  # UTC-4 in August (EDT)
+        local_date = "2026-08-01"
+        evening = datetime(2026, 8, 2, 2, 30, tzinfo=timezone.utc)  # 22:30 local Aug 1
+        assert freestyle_sessions_today([evening], local_date, "UTC") == 0
+        assert freestyle_sessions_today([evening], local_date, tz) == 1
+
+    def test_utc_user_unaffected_by_the_change(self):
+        """No regression for genuine UTC users — old and new behaviour identical."""
+        times = [
+            datetime(2026, 8, 1, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 8, 1, 12, 0, tzinfo=timezone.utc),
+            datetime(2026, 8, 1, 23, 59, tzinfo=timezone.utc),
+        ]
+        assert freestyle_sessions_today(times, "2026-08-01", "UTC") == 3

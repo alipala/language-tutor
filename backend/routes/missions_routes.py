@@ -550,16 +550,21 @@ async def _resolve_language(user_id: str, language: Optional[str]) -> Optional[s
 
 
 async def _get_today_freestyle_sessions(
-    user_id: str, local_date: str, language: Optional[str] = None
+    user_id: str, local_date: str, language: Optional[str] = None, tz: str = "UTC"
 ) -> int:
     """Count freestyle/practice conversation sessions completed today.
     The mobile saves free conversations as conversation_type='practice' (the default
     when no explicit sessionType is passed). Both 'freestyle' and 'practice' count.
-    Uses the user's local date window to avoid UTC-midnight timezone mismatch.
     Language-scoped so another language's sessions don't complete this one.
+
+    `tz` MUST be the user's real timezone. Passing "UTC" here builds the window
+    from the LOCAL date interpreted as a UTC date, which silently drops every
+    session played between local midnight and UTC midnight — a blind spot the
+    width of the UTC offset (3h for Europe/Istanbul). That is how two completed
+    freestyle sessions at 02:08 and 02:21 local failed to close the Gold mission.
     """
     try:
-        day_start, day_end = get_day_start_end(local_date, "UTC")
+        day_start, day_end = get_day_start_end(local_date, tz)
         return await conversation_sessions_collection.count_documents({
             "user_id": user_id,
             "conversation_type": {"$in": ["freestyle", "practice"]},
@@ -919,6 +924,7 @@ async def _hydrate_progress(
     missions: List[Dict],
     silver_reason: Optional[str] = None,
     language: Optional[str] = None,
+    tz: str = "UTC",
 ) -> List[DailyMission]:
     """
     Attach live progress to each mission.
@@ -933,6 +939,12 @@ async def _hydrate_progress(
     and the mobile fired the "session complete" celebration on every switch.
     When language is None (older callers), counts fall back to all-language
     behavior — preserving prior semantics.
+
+    `tz` is the user's real timezone and is required for correct day windows on
+    the three timestamp-based counters (news / flashcards / freestyle). Bronze
+    and Silver match a stored `local_date` STRING and are timezone-safe already;
+    that asymmetry is exactly why Bronze+Silver could show DONE while Gold stayed
+    open for a UTC+3 user practising after local midnight.
 
     Phase 0 additive enrichment: populates skill_label, skill_strand, reason,
     and xp on every returned mission. silver_reason is optional so existing
@@ -954,10 +966,10 @@ async def _hydrate_progress(
     (today_learning_plan_sessions, today_news_sessions, completed_challenge_sessions, reviewed_sets, today_freestyle) = \
         await asyncio.gather(
             _get_today_learning_plan_sessions(user_id, local_date),
-            _get_today_news_sessions(user_id, local_date, language),
+            _get_today_news_sessions(user_id, local_date, language, tz),
             _get_completed_challenge_sessions_today(user_id, local_date, challenge_type, language),
-            _get_reviewed_flashcard_count(user_id, local_date, language),
-            _get_today_freestyle_sessions(user_id, local_date, language),
+            _get_reviewed_flashcard_count(user_id, local_date, language, tz),
+            _get_today_freestyle_sessions(user_id, local_date, language, tz),
         )
 
     # Build flashcard subtitle live (works from cache too)
@@ -1057,15 +1069,18 @@ async def _get_today_learning_plan_sessions(user_id: str, local_date: str) -> in
 
 
 async def _get_today_news_sessions(
-    user_id: str, local_date: str, language: Optional[str] = None
+    user_id: str, local_date: str, language: Optional[str] = None, tz: str = "UTC"
 ) -> int:
     """
     Count news conversation sessions completed today.
     News sessions are stored in conversation_sessions with conversation_type='news'.
     daily_stats.total_sessions includes them, so we need this to isolate news vs plan.
     Language-scoped so another language's news sessions don't complete this one.
+
+    `tz` must be the user's real timezone — see _get_today_freestyle_sessions
+    for why passing "UTC" drops post-local-midnight sessions.
     """
-    day_start, day_end = get_day_start_end(local_date, "UTC")
+    day_start, day_end = get_day_start_end(local_date, tz)
     return await conversation_sessions_collection.count_documents({
         "user_id": user_id,
         "conversation_type": "news",
@@ -1104,12 +1119,15 @@ async def _get_completed_challenge_sessions_today(
 
 
 async def _get_reviewed_flashcard_count(
-    user_id: str, local_date: str, language: Optional[str] = None
+    user_id: str, local_date: str, language: Optional[str] = None, tz: str = "UTC"
 ) -> int:
     """Count flashcard sets reviewed TODAY — not all-time — so the mission
     resets properly each day and can't be pre-completed by past activity.
-    Language-scoped so another language's reviews don't complete this one."""
-    day_start, day_end = get_day_start_end(local_date, "UTC")
+    Language-scoped so another language's reviews don't complete this one.
+
+    `tz` must be the user's real timezone — see _get_today_freestyle_sessions
+    for why passing "UTC" drops post-local-midnight reviews."""
+    day_start, day_end = get_day_start_end(local_date, tz)
     return await flashcard_sets_collection.count_documents(
         {
             "user_id": user_id,
@@ -1145,6 +1163,17 @@ async def get_today_missions(
     tz         = timezone or getattr(current_user, "timezone", None) or "UTC"
     local_date = get_current_local_date(tz)
 
+    # Backfill users.timezone from the device zone. Without this, correctness
+    # depends on every caller remembering the ?timezone= param — and the ones
+    # that have no param (e.g. /api/missions/reset, the reminder schedulers)
+    # silently fall back to UTC, which is what made the Gold mission window
+    # miss post-local-midnight sessions. Writing it once here makes the real
+    # zone available to every consumer. Idempotent, best-effort, never raises.
+    from services.timezone_utils import persist_user_timezone
+    await persist_user_timezone(
+        users_collection, user_id, getattr(current_user, "timezone", None), timezone
+    )
+
     # Load or generate missions
     cached = None
     if not force_regenerate:
@@ -1167,7 +1196,7 @@ async def get_today_missions(
 
     # Always hydrate progress live — language-scoped so another language's
     # activity can't complete this language's missions (see _hydrate_progress).
-    missions   = await _hydrate_progress(user_id, local_date, raw, language=language)
+    missions   = await _hydrate_progress(user_id, local_date, raw, language=language, tz=tz)
     all_done   = all(m.progress.done for m in missions)
 
     return DailyMissionsResponse(

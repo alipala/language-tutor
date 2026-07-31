@@ -575,7 +575,8 @@ async def _get_or_generate_missions(
         silver_source = doc.get("silver_source", "") if doc else ""
 
     hydrated = await _hydrate_progress(
-        user_id, local_date, raw, silver_reason=silver_reason, language=lang_key or None
+        user_id, local_date, raw, silver_reason=silver_reason,
+        language=lang_key or None, tz=timezone,
     )
     return [m.dict() for m in hydrated], silver_reason, silver_source
 
@@ -607,6 +608,15 @@ async def get_hub_today(
     user_id    = str(current_user.id)
     tz         = timezone or getattr(current_user, "timezone", None) or "UTC"
     local_date = get_current_local_date(tz)
+
+    # Backfill users.timezone from the device zone — see the same call in
+    # missions_routes.get_today_missions. The Hub is the first screen most
+    # users land on, so this is usually where the zone gets persisted first.
+    # Idempotent, best-effort, never raises.
+    from services.timezone_utils import persist_user_timezone
+    await persist_user_timezone(
+        users_collection, user_id, getattr(current_user, "timezone", None), timezone
+    )
 
     # ── Fire ALL queries in parallel ──────────────────────────
     (
