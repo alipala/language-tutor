@@ -762,7 +762,12 @@ class SpeakingDNAService:
                Fluency strand is transcript-based and runs every session.
         """
         weights = self.SESSION_WEIGHTS.get(session_type, self.SESSION_WEIGHTS["learning"])
-        alpha = 0.3  # Learning rate for exponential moving average
+        # Learning rate for the exponential moving average. Transcript-only
+        # "learning" (learning-plan) sessions were too conservative — the tiny
+        # per-session deltas made real growth invisible in the post-session
+        # recap. Give learning sessions a higher rate so improvement shows;
+        # other session types keep the calmer 0.3 so their signals stay smooth.
+        alpha = 0.45 if session_type == "learning" else 0.3
 
         existing_strands = existing_profile.get("dna_strands", {}) if existing_profile else {}
 
@@ -1276,8 +1281,11 @@ class SpeakingDNAService:
         )
         raw_score = max(0.0, min(1.0, raw_score))
 
-        # EMA — lower alpha for fluency (gradual change)
-        fluency_alpha = 0.15
+        # EMA — fluency changes gradually (noisy signal: latency/filler spikes),
+        # so it uses HALF the caller's learning rate. This still tracks the
+        # session alpha, so learning-plan sessions (higher alpha) let genuine
+        # fluency gains show, while other types stay smooth.
+        fluency_alpha = alpha * 0.5
         if existing:
             score = existing.get("score", raw_score) * (1 - fluency_alpha * weight) + raw_score * fluency_alpha * weight
         else:
