@@ -62,7 +62,18 @@ class SlackNotifier:
         print(f"[SLACK_NOTIFIER] Performance threshold: {self.performance_threshold}s")
     
     def is_enabled(self) -> bool:
-        """Check if Slack notifications are enabled"""
+        """
+        Check if Slack notifications are enabled.
+
+        SLACK_ALERTS_ENABLED=false is a hard kill switch: every alert becomes a
+        no-op without touching the webhook config. Each alert is an outbound
+        HTTPS POST made inline on the request path, so on a slow endpoint it adds
+        latency to a request that is already slow. Set it to false locally (or
+        anywhere the noise outweighs the signal) instead of deleting the
+        integration.
+        """
+        if os.getenv("SLACK_ALERTS_ENABLED", "true").lower() == "false":
+            return False
         return bool(self.webhook_url)
     
     def _generate_alert_key(self, alert: Alert) -> str:

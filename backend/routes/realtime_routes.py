@@ -20,6 +20,12 @@ from models import UserResponse
 # Off by default to keep Railway log rate below the 500/s cap under load.
 DEBUG_REALTIME = os.getenv("DEBUG_REALTIME", "false").lower() == "true"
 
+# First line of a PROMPT_V3 prompt (prompt_v3.build_instructions_v3). Used to tell
+# V3 output apart from the legacy builders after the fact — the legacy beginner
+# builder opens with "# {Language} Speaking Coach — …" and uses "## Role &
+# Objective" as a later section, so a startswith() check cannot confuse the two.
+_PROMPT_V3_SIGNATURE = "# Role & Objective"
+
 # Shared httpx client for OpenAI Realtime API calls.
 # One pool per worker process; reuses TLS connections across requests, eliminating
 # the 100-150ms per-request TLS handshake cost that existed when AsyncClient()
@@ -1946,6 +1952,13 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         if DEBUG_REALTIME:
             print(f"[UNIVERSAL] Instructions created: {len(instructions)} characters")
 
+        # Did PROMPT_V3 produce these instructions? The builder marks its output
+        # with a signature line, so we read the result rather than re-deriving the
+        # gate (V3 returns None for roleplay / final assessment and those fall
+        # through to the legacy builders). Used below to decide whether the DNA
+        # block may be appended; a wrong answer only changes that one decision.
+        _v3_active = instructions.startswith(_PROMPT_V3_SIGNATURE)
+
         # DEBUG: Check if emoji instructions are included (for A1/A2)
         if request.level.upper() in ['A1', 'A2']:
             if '{{emoji:' in instructions:
@@ -1977,9 +1990,26 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                 )
 
                 if dna_context:
-                    instructions += f"\n\n{dna_context}"
-                    if DEBUG_REALTIME:
-                        print(f"[DNA] Added Speaking DNA context: {len(dna_context)} characters")
+                    # PROMPT_V3 is a deliberately short, ordered prompt (~1.5k tokens,
+                    # sectioned Role/Personality/Language/Context/Corrections/Flow).
+                    # Appending the ~1.1k-char DNA block AFTER it put a second,
+                    # contradictory instruction set in the highest-recency position:
+                    # DNA says "offer challenges" / "mention achievements early" while
+                    # V3 says "never drill a phrase" / "no generic praise". In
+                    # production the mini model followed the tail and ignored the
+                    # drill ban (5 repeats of one phrase in a single session) and
+                    # spoke the correction mechanic out loud.
+                    #
+                    # V3 already carries the learner's plan, level and weak skills, so
+                    # it does not need the block. Only the legacy builders — which have
+                    # no learner profile of their own — get it appended.
+                    if _v3_active:
+                        if DEBUG_REALTIME:
+                            print("[DNA] Skipped DNA block (PROMPT_V3 owns its own prompt structure)")
+                    else:
+                        instructions += f"\n\n{dna_context}"
+                        if DEBUG_REALTIME:
+                            print(f"[DNA] Added Speaking DNA context: {len(dna_context)} characters")
             except Exception as e:
                 if DEBUG_REALTIME:
                     print(f"[DNA] Error adding DNA context (non-fatal): {str(e)}")

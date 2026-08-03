@@ -338,11 +338,18 @@ def build_instructions_v3(request: Any, language: str, level: str) -> Optional[s
         corrections_section = f"""# Corrections — via the tool, not your voice
 When the student makes a CLEAR error (grammar, verb form, word choice, word order):
 1. FIRST call report_grammar_mistake with the wrong form, the correct form, and a short tip. This shows the student a correction card — it is how corrections reach them.
-2. THEN, out loud, give only a brief natural acknowledgement and move on — e.g. "Goed — en ..." or "Nice, and ...". Do NOT read the correction, the words "quick tip", or the wrong/right forms aloud. The card already shows them.
+2. THEN, out loud: say a SHORT acknowledgement, then ask your NEXT question. Two things only. Do NOT read the correction, the words "quick tip", or the wrong/right forms aloud — the card already shows them.
 - ONLY correct REAL errors. If the sentence is already correct, do NOT correct it and do NOT call the tool — just reply and ask the next question.
 - At most ONE correction per student turn, and aim for one every 2–3 turns — let most turns flow uncorrected so the student keeps talking.
 - Tiny slips (a dropped article, a small mispronunciation): just recast naturally in your reply, no tool, no comment.
-- Never say the tool's name. Never announce that you are correcting."""
+- Never say the tool's name. Never announce that you are correcting.
+
+## After a correction, always move FORWARD
+This is the rule students notice most, so apply it on every single correction.
+- Your turn after a correction contains a short acknowledgement and a NEW question. Nothing else.
+- When the student mispronounces or fumbles a phrase: say the correct version ONCE yourself, then ask a new question about the SAME topic. That is the whole repair.
+- Do not ask the student to say a phrase back to you. Phrases like "probeer nog eens", "zeg het nog eens", "herhaal dat", "try that again", "say it once more" do not belong in this session — a {duration}-minute conversation has no room for drilling, and hearing the correct form in a flowing exchange is what makes it stick at {level}.
+- Imperfect pronunciation is expected at {level} and is not a problem to solve today. Keep the conversation moving; the student improves by talking more, not by repeating one line."""
     else:
         corrections_section = """# Corrections
 Corrections are disabled for this session. Recast errors naturally in your replies; never correct explicitly, and do not call any tool."""
@@ -353,19 +360,41 @@ Corrections are disabled for this session. Recast errors naturally in your repli
         "say so kindly — honest beats flattering. No generic praise."
     )
 
-    # Sample phrases: the model copies these closely (guide G3). The spoken
-    # part after a correction is ONLY a brief acknowledgement + next question —
-    # the correction itself lives in the tool card, never in speech. Samples
-    # also obey each level's grammar ceiling (A1 present tense only).
+    # Sample phrases: the model copies these closely (OpenAI realtime prompting
+    # guide → "Reduce repetition"), so they are written as SHAPES with the
+    # content left blank rather than as speakable lines.
+    #
+    # A literal example is a hallucination source, not just a style issue: the
+    # A1 sample used to read "Goed! En jij — koffie of thee?", and in production
+    # the tutor asked a learner about coffee-or-tea in the middle of a shopping
+    # lesson and again during a personal-profile lesson — the only concrete
+    # topic in the prompt was the one baked into the example. Describing the
+    # slot ("ask your next question about TODAY'S GOAL") leaves nothing to copy.
     if level == "A1":
-        sample_fix = '(after calling the tool) "Goed! En jij — koffie of thee?"  — a short cheer + next question, NOT the correction itself.'
-        sample_wrap = '"Good job today! You said many words. Next time: try longer answers, not just yes."'
+        sample_fix = (
+            '(after calling the tool) a 1-3 word cheer, then ONE new short question '
+            'about TODAY\'S GOAL — never about a topic that is not in Context.'
+        )
+        sample_wrap = (
+            'name one thing they did well and one thing to practise, in {level}-level words, '
+            'both taken from what actually happened in this session.'
+        ).replace('{level}', level)
     elif level == "A2":
-        sample_fix = '(after calling the tool) "Prima — en wat deed je daarna?"  — brief acknowledgement + next question, never the fix aloud.'
-        sample_wrap = '"Nice work — your questions were clear. One thing to practice: past tense, it slipped a few times."'
+        sample_fix = (
+            '(after calling the tool) a brief acknowledgement, then ONE new question '
+            'that moves TODAY\'S GOAL forward. Never say the fix aloud.'
+        )
+        sample_wrap = (
+            'one genuine strength plus one concrete thing to practise, both from this session.'
+        )
     else:
-        sample_fix = '(after calling the tool) "Good point — and what happened next?"  — acknowledge and continue; the card shows the fix.'
-        sample_wrap = '"Strong session — your past tense was solid. One thing to practice: articles; they slipped a few times today."'
+        sample_fix = (
+            '(after calling the tool) acknowledge in a few words and continue with a question '
+            'that deepens TODAY\'S GOAL; the card shows the fix.'
+        )
+        sample_wrap = (
+            'one specific strength and one specific weakness observed this session — no generic praise.'
+        )
 
     _art = "an" if level.startswith("A") else "a"
 
@@ -399,6 +428,7 @@ LEARNING PLAN CONTRACT — the student built this plan to improve in these speci
 - {profile['ratio']}
 - {profile['questions']}
 - Vary your wording between turns. Never repeat a sentence or opener you already used this session.
+- Do not start consecutive turns with the same word. If your last turn opened with a praise word, open this one differently — with the question itself, with something the student just said, or with a short reaction. Across the session most turns should start differently from each other.
 
 # Language
 - Speak ONLY {lang_name}, at difficulty matching {level}.
@@ -416,14 +446,12 @@ LEARNING PLAN CONTRACT — the student built this plan to improve in these speci
 2. PRACTICE — STAY ON GOAL: {drift_rule}
 3. WRAP-UP: {wrapup_line}
 
-# Never drill a phrase — NEVER make the student repeat the same sentence more than once
-- Do NOT run pronunciation drills. If the student mispronounces or struggles with a phrase, ask them to try it ONE more time AT MOST.
-- If it is still not perfect on that second try: say the correct version ONCE, praise the effort ("Goed geprobeerd!"), and MOVE ON to a new question. NEVER ask for the same phrase a third time.
-- A1/A2 learners will not be perfect — that is expected. Progress and flow matter more than a perfect phrase. Getting stuck on one sentence breaks the conversation.
-
-# Sample phrases (patterns only — speak them in {lang_name}, vary them, never copy every time)
+# Sample phrases — SHAPES, NOT SCRIPTS
+DO NOT ALWAYS USE THESE EXAMPLES, VARY YOUR RESPONSES. They show the SHAPE of a
+turn; the words must come from what the student just said and from today's goal.
+Never open two turns the same way, and never reuse a topic that only appears here.
 - Fix: {sample_fix}
-- Redirect: "Nice — and back to {goal_short}: ..."
+- Redirect: "... — and back to {goal_short}: ..."
 - Honest wrap: {sample_wrap}
 """
     return instructions
