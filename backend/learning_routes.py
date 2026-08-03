@@ -452,14 +452,86 @@ async def create_learning_plan(
             
             return weekly_schedule
         
-        # 🔥 NEW: Use intelligent schedule generator if available
-        if INTELLIGENT_SYSTEM_AVAILABLE:
+        # Extract sub_goals from request if provided (shared by both generators)
+        sub_goals = request_data.get('sub_goals', [])
+
+        # ── Recover main goals dropped by the client ──────────────────────────
+        # The picker lets a learner take sub-goals from several main goals, but
+        # older app builds sent only the last one (observed in production: picks
+        # from `business` + `daily` arrived as goals:["daily"], so the curriculum
+        # generator and the tutor prompt never saw `business` at all).
+        # Every sub-goal knows which goal owns it, so derive the missing goals
+        # from the sub-goals the client DID send. On a fixed client this is a
+        # no-op — the derived set already equals what was sent.
+        if sub_goals and INTELLIGENT_SYSTEM_AVAILABLE:
+            try:
+                from enriched_goals_config import ENRICHED_GOALS as _EG_OWN
+                _owner_of = {
+                    _sg_id: _gid
+                    for _gid, _gdata in _EG_OWN.items()
+                    for _sg_id in (_gdata.get("sub_goals") or {})
+                }
+                _existing = list(plan_request.goals or [])
+                _recovered = [
+                    _owner_of[_sg] for _sg in sub_goals
+                    if _sg in _owner_of and _owner_of[_sg] not in _existing
+                ]
+                if _recovered:
+                    # Preserve the client's ordering, append each missing goal once.
+                    for _g in _recovered:
+                        if _g not in _existing:
+                            _existing.append(_g)
+                    logger.warning(
+                        f"[LEARNING_PLAN] ⚠️ Client sent goals={plan_request.goals} but sub_goals "
+                        f"{sub_goals} also belong to {sorted(set(_recovered))} — "
+                        f"using goals={_existing} (old app build?)"
+                    )
+                    plan_request.goals = _existing
+            except Exception as _goal_err:
+                logger.warning(
+                    f"[LEARNING_PLAN] ⚠️ Could not reconcile goals from sub-goals: {_goal_err}"
+                )
+
+        # ── LLM_CURRICULUM_V1 ────────────────────────────────────────────────
+        # gpt-5.6-terra writes the whole weekly curriculum — target-language
+        # vocabulary, phrases, and a skill sequence driven by the assessment
+        # scores. The legacy path below reads a static English dict, which
+        # produced 32 English words across 24 weeks with zero assessment
+        # influence. Returns None on ANY failure (flag off, timeout, bad JSON,
+        # empty vocabulary), in which case the existing generator runs
+        # unchanged — plan creation never fails because of this.
+        weekly_schedule = None
+        llm_plan_content = None
+        try:
+            from llm_curriculum_generator import generate_llm_curriculum
+            llm_plan_content = await generate_llm_curriculum(
+                language=plan_request.language,
+                level=recommended_level,
+                duration_months=plan_request.duration_months,
+                sessions_per_week=4,  # matches prompt_v3._plan_context() week math
+                goals=plan_request.goals,
+                sub_goals=sub_goals if sub_goals else None,
+                assessment_data=assessment_data or {},
+                interface_language=plan_request.interface_language or "en",
+            )
+        except Exception as _llm_err:
+            logger.warning(
+                f"[LEARNING_PLAN] ⚠️ LLM curriculum unavailable: {_llm_err} — using legacy generator"
+            )
+            llm_plan_content = None
+
+        if llm_plan_content:
+            weekly_schedule = llm_plan_content.get("weekly_schedule") or None
+
+        if weekly_schedule:
+            logger.info(
+                f"[LEARNING_PLAN] ✅ LLM curriculum generated: {len(weekly_schedule)} weeks"
+            )
+        # 🔥 Use intelligent schedule generator if available
+        elif INTELLIGENT_SYSTEM_AVAILABLE:
             try:
                 logger.info("[LEARNING_PLAN] 🎯 Using intelligent schedule generator")
-                
-                # Extract sub_goals from request if provided
-                sub_goals = request_data.get('sub_goals', [])
-                
+
                 weekly_schedule = IntelligentScheduleGenerator.generate_optimized_schedule(
                     duration_months=plan_request.duration_months,
                     assessment_data=assessment_data,
@@ -497,8 +569,16 @@ async def create_learning_plan(
         # This covers focus titles and activities which are generated in English
         # by IntelligentScheduleGenerator / generate_weekly_schedule.
         # Safe-by-default: any error keeps the English schedule intact.
+        # LLM_CURRICULUM_V1 weeks are already authored in the interface language
+        # (the generator is given interface_language directly), so re-translating
+        # them would be a lossy round-trip. Skip translation for those.
+        _llm_authored = bool(weekly_schedule) and all(
+            w.get("generated_by") == "llm_curriculum_v1" for w in weekly_schedule
+        )
         _iface_code_sched = (getattr(plan_request, 'interface_language', None) or "en").lower().strip()
-        if _iface_code_sched != "en" and weekly_schedule:
+        if _llm_authored:
+            logger.info("[LEARNING_PLAN] 🌐 Skipping schedule translation (LLM authored in-language)")
+        elif _iface_code_sched != "en" and weekly_schedule:
             try:
                 _LANG_NAMES_SCHED = {
                     "tr": "Turkish", "nl": "Dutch", "de": "German",
@@ -634,8 +714,32 @@ async def create_learning_plan(
         # Falls back to programmatic defaults on any failure so the plan is
         # always created successfully.
         # ──────────────────────────────────────────────────────────────────────
+        # If gpt-5.6-terra already wrote the summary alongside the weeks, use it
+        # and skip the gpt-4.1 call entirely: terra reasoned over the actual
+        # curriculum it produced, whereas gpt-4.1 only ever saw the week TITLES
+        # and had to guess at the content. Each field falls back independently to
+        # the programmatic default if terra returned it empty.
+        _llm_summary_applied = False
+        if llm_plan_content:
+            _ov = llm_plan_content.get("overview") or ""
+            _obj = llm_plan_content.get("learning_objectives") or []
+            _res = llm_plan_content.get("resources") or []
+            if _ov:
+                plan_content_json["overview"] = _ov
+            if len(_obj) >= 3:
+                plan_content_json["learning_objectives"] = _obj
+            if len(_res) >= 3:
+                plan_content_json["resources"] = _res
+            _llm_summary_applied = bool(_ov and len(_obj) >= 3 and len(_res) >= 3)
+            logger.info(
+                f"[LEARNING_PLAN] ✅ Applied gpt-5.6-terra plan content: "
+                f"overview={'yes' if _ov else 'no'}, {len(_obj)} objectives, "
+                f"{len(_res)} resources"
+                + ("" if _llm_summary_applied else " (partial — gpt-4.1 will fill the rest)")
+            )
+
         openai_client = get_async_openai()
-        if openai_client and assessment_data:
+        if openai_client and assessment_data and not _llm_summary_applied:
             logger.info("[LEARNING_PLAN] 🤖 Calling gpt-4.1 to generate personalised plan content")
 
             # ── Build rich context sections ──────────────────────────────────
@@ -930,7 +1034,14 @@ Using ALL the information above, provide:
                     "— keeping programmatic defaults"
                 )
         else:
-            if not assessment_data:
+            if _llm_summary_applied:
+                # Expected path when LLM_CURRICULUM_V1 is on: gpt-5.6-terra already
+                # wrote overview/objectives/resources alongside the weeks, so the
+                # gpt-4.1 fallback is deliberately skipped. Not a failure.
+                logger.info(
+                    "[LEARNING_PLAN] ⏭️ Skipping gpt-4.1 — plan content already written by gpt-5.6-terra"
+                )
+            elif not assessment_data:
                 logger.info("[LEARNING_PLAN] ℹ️ No assessment data — using template content")
             else:
                 logger.warning("[LEARNING_PLAN] ⚠️ OpenAI client unavailable — using template content")
@@ -1031,7 +1142,18 @@ Using ALL the information above, provide:
             try:
                 # Generate assessment fingerprint BEFORE any database operations
                 # This fingerprint is based on user + language + level, NOT plan ID
-                assessment_fingerprint = f"{current_user.id}_{plan_request.language}_{plan_request.proficiency_level}"
+                # Fingerprint must capture everything that makes a plan DIFFERENT.
+                # It previously keyed on user+language+level only, so a genuinely
+                # new plan (different sub-goals or duration) was treated as a
+                # duplicate and the API returned the OLD plan instead — observed
+                # in production 2026-08-03: a new 6-month shopping/housing/family
+                # plan returned yesterday's 3-month academic plan.
+                _fp_goals = ",".join(sorted(plan_request.goals or []))
+                _fp_sub_goals = ",".join(sorted(request_data.get("sub_goals") or []))
+                assessment_fingerprint = (
+                    f"{current_user.id}_{plan_request.language}_{plan_request.proficiency_level}"
+                    f"_{plan_request.duration_months}_{_fp_goals}_{_fp_sub_goals}"
+                )
                 assessment_timestamp = datetime.utcnow().isoformat()
                 
                 print(f"[IDEMPOTENT_SAVE] 🔒 Checking for duplicate assessment: {assessment_fingerprint}")

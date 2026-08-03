@@ -50,9 +50,16 @@ class LearningPlanService:
                 # Ensure the plan has a unique custom id field
                 plan_data_copy = plan_data.copy()
                 plan_data_copy["id"] = unique_plan_id
-                
+
                 # Add creation timestamp
                 plan_data_copy["created_at"] = datetime.utcnow().isoformat()
+
+                # Every plan must carry an explicit lifecycle status. Plans created
+                # without one relied on readers defaulting a missing field
+                # (hub_routes / missions_routes both special-case `not status`),
+                # which worked by accident and made "is this plan active?" ambiguous
+                # in the DB. Set it once, here, without overriding a caller value.
+                plan_data_copy.setdefault("status", "in_progress")
                 
                 # CRITICAL: Remove any existing _id field to let MongoDB generate it
                 if "_id" in plan_data_copy:

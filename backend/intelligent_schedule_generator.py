@@ -190,13 +190,25 @@ class IntelligentScheduleGenerator:
 
             # Phase 2: fallback — search ALL goals (handles cross-goal sub-goals,
             # e.g. 'hobbies'/'family' live under 'daily', not 'culture')
+            #
+            # NOTE: this is a real mobile↔config mismatch, not just a lookup
+            # convenience. The picker offers sub-goals that do not exist under the
+            # selected goal — e.g. 'shopping' is only defined under 'travel', so a
+            # learner who picked 'daily' gets travel/tourist shopping content
+            # (observed in production: 'warranty', 'refund', 'exchange' for an A1
+            # learner). We keep resolving cross-goal so the week is never dropped,
+            # but flag it loudly and record the mismatch on the week so the
+            # discrepancy is visible in the plan document instead of silent.
+            cross_goal_resolved = False
             if not main_goal:
                 for goal_id, goal_data in ENRICHED_GOALS.items():
                     if sub_goal_id in goal_data.get('sub_goals', {}):
                         main_goal = goal_id
-                        logger.info(
-                            f"[SCHEDULE_GEN] Sub-goal '{sub_goal_id}' resolved via cross-goal "
-                            f"fallback → '{goal_id}' (not in selected goals {goals})"
+                        cross_goal_resolved = True
+                        logger.warning(
+                            f"[SCHEDULE_GEN] ⚠️ Sub-goal '{sub_goal_id}' is not defined under the "
+                            f"learner's selected goals {goals}; resolved from '{goal_id}'. "
+                            f"Content may not match the learner's intent."
                         )
                         break
 
@@ -270,6 +282,9 @@ class IntelligentScheduleGenerator:
                     "total_sessions": 2,
                     "session_details": IntelligentScheduleGenerator._initialize_session_details(focus)
                 }
+                if cross_goal_resolved:
+                    # Surfaces the mobile↔config mismatch in the stored plan.
+                    week_data["cross_goal_resolved_from"] = main_goal
 
                 weekly_schedule.append(week_data)
                 week_num += 1

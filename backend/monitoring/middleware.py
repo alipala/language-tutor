@@ -46,6 +46,11 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
             "/lobby-promo/generate",
             "/generate-portrait",
             "/story-worlds/generate",
+            # Plan creation runs a reasoning model over the whole curriculum
+            # (gpt-5.6-terra, ~40-115s depending on plan length). It is a
+            # one-off at onboarding, not a hot path — alerting on it only
+            # buries real regressions in noise.
+            "/api/learning/plan",
         )
 
         # Critical endpoints that need special attention
