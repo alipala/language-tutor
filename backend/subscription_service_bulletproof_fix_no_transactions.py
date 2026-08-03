@@ -220,11 +220,36 @@ class BulletproofSubscriptionServiceNoTransactions:
                 # For unlimited plans, just create tracking record without updating user
                 user_update_result = type('MockResult', (), {'modified_count': 1})()  # Mock success
             else:
-                user_update_result = await users_collection.update_one(
-                    {
+                # Guard against a concurrent double-deduction by requiring the
+                # value to be unchanged since we read it.
+                #
+                # A plain {"practice_minutes_used": 0.0} filter does NOT match a
+                # document where the field is absent, so a user who has never had
+                # a session (the field only appears on first deduction) could
+                # never be charged for it: the update matched 0 documents, the
+                # tracking row was marked failed, and the minutes were silently
+                # never deducted. Read defaults to 0.0 in Python, so express the
+                # same intent to MongoDB — "still 0" means 0 or not set yet.
+                # NOTE: a null value is deliberately NOT matched here — $inc
+                # raises "Cannot apply $inc to a value of non-numeric type" on
+                # null, which would turn a silent miss into a 500. Nulls fall
+                # through to the normal miss path and are logged.
+                if practice_minutes_used == 0:
+                    _match_filter = {
                         "_id": user_object_id,
-                        "practice_minutes_used": practice_minutes_used  # Only update if usage hasn't changed
-                    },
+                        "$or": [
+                            {"practice_minutes_used": 0},
+                            {"practice_minutes_used": {"$exists": False}},
+                        ],
+                    }
+                else:
+                    _match_filter = {
+                        "_id": user_object_id,
+                        "practice_minutes_used": practice_minutes_used,
+                    }
+
+                user_update_result = await users_collection.update_one(
+                    _match_filter,
                     {
                         "$inc": {
                             "practice_minutes_used": deducted_amount

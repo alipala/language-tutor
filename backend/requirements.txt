@@ -77,8 +77,23 @@ lxml==5.2.1
 
 # Audio processing for Speaking DNA feature
 librosa==0.10.1
-soundfile==0.12.1
+# soundfile 0.12.1 links against a libsndfile build that can lack WAV support
+# (observed locally: sf.available_formats() had no 'WAV', so every acoustic
+# analysis failed with "Format not recognised" and DNA fell back to
+# acoustic_metrics_captured=False). 0.14.x bundles libsndfile 1.2.2 with WAV in
+# the manylinux_2_28_x86_64 wheel, so no apt package is needed on Railway.
+# Upper bound is deliberate: this pin exists to fix a native-library problem, so
+# a future minor must be verified against sf.available_formats(), not picked up
+# silently by a redeploy.
+soundfile>=0.14.0,<0.15
 praat-parselmouth==0.4.3
+# pkg_resources was removed in setuptools 81+; librosa's lazy audio path still
+# imports it, which surfaced as "No module named 'pkg_resources'" at runtime
+# (import-time was fine, so it only failed mid-assessment). Railway's build
+# already pins setuptools==69.5.1 before this file is installed (see
+# nixpacks.toml / Dockerfile), so this is a belt-and-braces guard for anyone
+# building without that step.
+setuptools<81
 
 # Azure Speech SDK for pronunciation assessment
 azure-cognitiveservices-speech==1.41.1

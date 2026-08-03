@@ -266,6 +266,21 @@ class SpeakingDNAService:
                 _AZURE_SESSION_TYPES = {"voice_check", "speaking_assessment"}
                 run_azure = session_type_for_audio in _AZURE_SESSION_TYPES and _pron_svc.enabled
 
+                # A speaking_assessment already ran Azure in SCRIPTED mode and passed
+                # the resulting score in via assessment_scores. Re-running it here in
+                # unscripted mode costs ~15s and produces a contradictory number
+                # (it grades its own transcript, so it returns ~98 for any audio),
+                # which _update_pronunciation_strand now discards anyway. Skip it.
+                if (
+                    session_type_for_audio == "speaking_assessment"
+                    and (session_data.get("assessment_scores") or {}).get("pronunciation")
+                ):
+                    run_azure = False
+                    logger.info(
+                        "[DNA] Skipping duplicate Azure call — using the scripted "
+                        "pronunciation score from the assessment"
+                    )
+
                 async def _extract_acoustic():
                     try:
                         logger.info("[DNA] Extracting acoustic metrics from session audio")
@@ -788,6 +803,7 @@ class SpeakingDNAService:
                 existing_strands.get("pronunciation"),
                 azure_pronunciation_result,
                 session_type,
+                session_metrics.get("assessment_scores"),
             )
             emotional_result  = await self._update_emotional_strand(
                 existing_strands.get("emotional"),
@@ -1281,6 +1297,22 @@ class SpeakingDNAService:
         )
         raw_score = max(0.0, min(1.0, raw_score))
 
+        # SOURCE OF TRUTH (2026-08-03): on a speaking assessment the graded
+        # fluency score outranks this proxy. The proxy is built for live
+        # conversation, where fillers and reply latency are real signals; a
+        # one-way assessment monologue has no replies and usually no fillers, so
+        # filler_component + variance_component hand out 0.8 for free. That is
+        # how a learner graded 27/100 ("langzaam, veel herhalingen en pauzes")
+        # got a 0.84 "Speech flows naturally" DNA strand.
+        assessment_scores = metrics.get("assessment_scores") or {}
+        graded_fluency = assessment_scores.get("fluency")
+        if isinstance(graded_fluency, (int, float)) and graded_fluency > 0:
+            logger.info(
+                "[DNA] Fluency source: assessment score %.0f/100 (proxy said %.0f — ignored)",
+                float(graded_fluency), raw_score * 100,
+            )
+            raw_score = max(0.0, min(1.0, float(graded_fluency) / 100.0))
+
         # EMA — fluency changes gradually (noisy signal: latency/filler spikes),
         # so it uses HALF the caller's learning rate. This still tracks the
         # session alpha, so learning-plan sessions (higher alpha) let genuine
@@ -1323,6 +1355,7 @@ class SpeakingDNAService:
         existing: Optional[Dict],
         azure_result: Optional[Dict],
         session_type: str,
+        assessment_scores: Optional[Dict] = None,
     ) -> Dict:
         """
         S4 — Pronunciation strand: acoustic-only, updated only when Azure result available.
@@ -1331,7 +1364,41 @@ class SpeakingDNAService:
         (same pin-not-skip semantics as other acoustic strands).
 
         EMA alpha=0.25 — acoustic strand, faster update (voice check is deliberate).
+
+        SOURCE OF TRUTH (2026-08-03): on a speaking_assessment we use the SAME
+        pronunciation score the user was shown on their results screen, not the
+        separate unscripted Azure pass run here.
+
+        Azure is called in two different modes in one request:
+          - assessment path : reference_text set, enable_miscue=True  → 46.8
+          - this DNA path   : reference_text="",  enable_miscue=False → 98.8
+        Unscripted mode grades whatever it *thinks* it heard, so it scores ~98 for
+        almost any audio. Storing that made the DNA card say "Excellent
+        pronunciation" to a learner whose results screen said 46.8/100, and it
+        pushed pronunciation out of `growth_areas` — which then fed the wrong
+        signal into the tutor prompt and the LLM curriculum.
         """
+        # When the assessment supplied a graded pronunciation score we can update
+        # the strand without any Azure payload — synthesize one from that score so
+        # the pin-guard below doesn't skip a session we actually have data for.
+        synthesized_from_assessment = False
+        if (
+            azure_result is None
+            and session_type == "speaking_assessment"
+            and assessment_scores
+            and isinstance(assessment_scores.get("pronunciation"), (int, float))
+            and assessment_scores["pronunciation"] > 0
+        ):
+            _shown = float(assessment_scores["pronunciation"])
+            azure_result = {
+                "pronunciation_score": _shown,
+                "accuracy_score": _shown,
+                "prosody_score": _shown,
+                "completeness_score": _shown,
+                "fluency_score": _shown,
+            }
+            synthesized_from_assessment = True
+
         if azure_result is None:
             if existing:
                 logger.info(f"[DNA] Pronunciation pinned (no Azure result). session_type={session_type}")
@@ -1354,6 +1421,34 @@ class SpeakingDNAService:
         new_prosody      = azure_result.get("prosody_score", 0) / 100.0
         new_completeness = azure_result.get("completeness_score", 0) / 100.0
         new_fluency      = azure_result.get("fluency_score", 0) / 100.0
+
+        # Prefer the scored-against-reference result the learner actually saw.
+        # Only the headline pronunciation number is authoritative there; the
+        # sub-scores (phoneme/prosody/completeness) stay from Azure but are
+        # rescaled so they cannot contradict the headline.
+        if session_type == "speaking_assessment" and assessment_scores:
+            shown = assessment_scores.get("pronunciation")
+            if isinstance(shown, (int, float)) and shown > 0:
+                shown_norm = max(0.0, min(1.0, float(shown) / 100.0))
+                if new_score > 0:
+                    ratio = shown_norm / new_score
+                    new_phoneme      = max(0.0, min(1.0, new_phoneme * ratio))
+                    new_prosody      = max(0.0, min(1.0, new_prosody * ratio))
+                    new_completeness = max(0.0, min(1.0, new_completeness * ratio))
+                    new_fluency      = max(0.0, min(1.0, new_fluency * ratio))
+                if synthesized_from_assessment:
+                    logger.info(
+                        "[DNA] Pronunciation source: assessment score %.1f/100 "
+                        "(duplicate Azure call skipped)",
+                        float(shown),
+                    )
+                else:
+                    logger.info(
+                        "[DNA] Pronunciation source: assessment score %.1f/100 "
+                        "(unscripted Azure said %.1f — ignored, it grades its own transcript)",
+                        float(shown), azure_result.get("pronunciation_score", 0),
+                    )
+                new_score = shown_norm
 
         if existing and existing.get("voice_checks_count", 0) > 0:
             score        = existing.get("score", new_score) * (1 - pron_alpha) + new_score * pron_alpha
