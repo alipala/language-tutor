@@ -37,7 +37,9 @@ APPLE_IAP_PRODUCTS = {
     "com.bigdavinci.mytaco.language_mastery_annual": {
         "plan_id": "language_mastery",
         "period": "annual",
-        "price": 107.88,
+        # Matches the App Store price point; 12 × 17.99 = 107.88 is not one, so
+        # the store charges 107.99. Stripe still uses 107.88 for its own plans.
+        "price": 107.99,
         "minutes": -1,  # Unlimited
         "assessments": -1  # Unlimited
     }

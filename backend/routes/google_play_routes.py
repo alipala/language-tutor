@@ -13,6 +13,11 @@ from auth import get_current_user
 from models import UserResponse
 from database import database
 from google_play_config import GooglePlayVerifier, get_plan_for_product, GOOGLE_PLAY_PRODUCTS
+# See the note in apple_iap_routes.py: users are stored under ObjectId, so a raw
+# string _id matched nothing — the conflict check passed silently and the update
+# 404'd after Google had already charged the user.
+from subscription_service import get_user_query
+from cache_helpers import invalidate_user_cache, invalidate_subscription_cache
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +66,7 @@ async def verify_purchase(
             raise HTTPException(status_code=400, detail=f"Invalid product ID: {request.product_id}")
 
         # 🔥 PROVIDER CONFLICT PROTECTION: Check for active subscription from different provider
-        user = await database.get_collection("users").find_one({"_id": str(current_user.id)})
+        user = await database.get_collection("users").find_one(get_user_query(str(current_user.id)))
         if user:
             current_provider = user.get("subscription_provider")
             current_status = user.get("subscription_status")
@@ -171,7 +176,7 @@ async def _create_or_update_subscription(
     }
 
     result = await users_collection.update_one(
-        {"_id": user_id},
+        get_user_query(user_id),
         {
             "$set": update_data,
             "$unset": unset_data
@@ -181,6 +186,15 @@ async def _create_or_update_subscription(
     if result.matched_count == 0:
         logger.error(f"[GOOGLE_PLAY] User {user_id} not found")
         raise HTTPException(status_code=404, detail="User not found")
+
+    # See apple_iap_routes: drop the cached user/subscription docs so the buyer
+    # does not keep seeing free-tier limits until the Redis TTL expires. Errors
+    # are swallowed — the subscription is already committed.
+    for _invalidate in (invalidate_user_cache, invalidate_subscription_cache):
+        try:
+            await _invalidate(user_id)
+        except Exception as _cache_err:
+            logger.warning(f"[GOOGLE_PLAY] {_invalidate.__name__} failed for {user_id}: {_cache_err}")
 
     logger.info(f"[GOOGLE_PLAY] ✅ Subscription updated for user {user_id} - Google Play {plan_config['period']}")
 
@@ -220,7 +234,7 @@ async def get_subscription_status(
     """
     try:
         users_collection = database.get_collection("users")
-        user = await users_collection.find_one({"_id": str(current_user.id)})
+        user = await users_collection.find_one(get_user_query(str(current_user.id)))
 
         if not user:
             raise HTTPException(status_code=404, detail="User not found")

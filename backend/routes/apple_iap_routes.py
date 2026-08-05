@@ -13,7 +13,13 @@ from auth import get_current_user
 from models import UserResponse
 from database import database
 from apple_iap_config import AppleIAPVerifier, get_plan_for_product, APPLE_IAP_PRODUCTS
-from subscription_service import SubscriptionService
+# get_user_query resolves a user id to the right _id type. Users are stored under
+# ObjectId, so querying with the raw string matched nothing: the conflict check
+# below silently passed and the update matched 0 documents, returning 404 to a
+# user Apple had already charged. It falls back to the string form for any
+# legacy UUID-keyed document.
+from subscription_service import get_user_query
+from cache_helpers import invalidate_user_cache, invalidate_subscription_cache
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +68,7 @@ async def verify_receipt(
             raise HTTPException(status_code=400, detail=f"Invalid product ID: {request.product_id}")
 
         # 🔥 PROVIDER CONFLICT PROTECTION: Check for active subscription from different provider
-        user = await database.get_collection("users").find_one({"_id": str(current_user.id)})
+        user = await database.get_collection("users").find_one(get_user_query(str(current_user.id)))
         if user:
             current_provider = user.get("subscription_provider")
             current_status = user.get("subscription_status")
@@ -172,7 +178,7 @@ async def _create_or_update_subscription(
     }
 
     result = await users_collection.update_one(
-        {"_id": user_id},
+        get_user_query(user_id),
         {
             "$set": update_data,
             "$unset": unset_data
@@ -182,6 +188,17 @@ async def _create_or_update_subscription(
     if result.matched_count == 0:
         logger.error(f"[APPLE_IAP] User {user_id} not found")
         raise HTTPException(status_code=404, detail="User not found")
+
+    # The user doc is Redis-cached (auth.get_user_by_id), so without this the
+    # buyer keeps seeing free-tier limits until the TTL expires. Stripe does the
+    # same after every subscription write. Errors are swallowed deliberately: the
+    # paid subscription is already committed to MongoDB, and a stale cache entry
+    # is recoverable — failing here would 500 a request Apple has already charged.
+    for _invalidate in (invalidate_user_cache, invalidate_subscription_cache):
+        try:
+            await _invalidate(user_id)
+        except Exception as _cache_err:
+            logger.warning(f"[APPLE_IAP] {_invalidate.__name__} failed for {user_id}: {_cache_err}")
 
     logger.info(f"[APPLE_IAP] ✅ Subscription updated for user {user_id} - Apple IAP {plan_config['period']}")
 
@@ -221,7 +238,7 @@ async def get_subscription_status(
     """
     try:
         users_collection = database.get_collection("users")
-        user = await users_collection.find_one({"_id": str(current_user.id)})
+        user = await users_collection.find_one(get_user_query(str(current_user.id)))
 
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
