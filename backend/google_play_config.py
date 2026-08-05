@@ -4,6 +4,7 @@ Maps Google Play product IDs to internal plan IDs and provides purchase verifica
 """
 
 import os
+import json
 import logging
 from typing import Optional, Dict
 from datetime import datetime
@@ -79,18 +80,31 @@ class GooglePlayVerifier:
             logger.error("[GOOGLE_PLAY] Google Play dependencies not installed")
             raise ValueError("Google Play billing not available - install google-api-python-client")
 
-        # Get service account credentials path from environment
-        credentials_path = os.getenv("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON")
-        if not credentials_path:
+        # Accept the service account either as raw JSON or as a path to a file.
+        #
+        # Railway (and most container hosts) have no persistent writable disk to
+        # drop a key file on, so the practical way to ship this credential is to
+        # paste the JSON straight into the environment variable. The original
+        # code only handled a file path, which meant the variable could never be
+        # set correctly in production. A path is still supported for local dev,
+        # where keeping the key out of the shell history is easier.
+        raw_credentials = os.getenv("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON")
+        if not raw_credentials:
             logger.error("[GOOGLE_PLAY] GOOGLE_PLAY_SERVICE_ACCOUNT_JSON not configured")
             raise ValueError("Google Play service account not configured")
 
         try:
-            # Load service account credentials
-            credentials = service_account.Credentials.from_service_account_file(
-                credentials_path,
-                scopes=['https://www.googleapis.com/auth/androidpublisher']
-            )
+            stripped = raw_credentials.strip()
+            if stripped.startswith("{"):
+                credentials = service_account.Credentials.from_service_account_info(
+                    json.loads(stripped),
+                    scopes=['https://www.googleapis.com/auth/androidpublisher']
+                )
+            else:
+                credentials = service_account.Credentials.from_service_account_file(
+                    stripped,
+                    scopes=['https://www.googleapis.com/auth/androidpublisher']
+                )
 
             # Build Google Play Developer API service
             service = build('androidpublisher', 'v3', credentials=credentials)
