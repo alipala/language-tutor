@@ -281,6 +281,12 @@ class AppleIAPVerifier:
             "is_trial_period": is_intro_offer,
             "is_in_intro_offer_period": is_intro_offer,
             "environment": environment,
+            # Set by the client when starting the purchase; Apple signs it into
+            # the transaction. This is the only field that says WHICH of our
+            # accounts paid — a receipt alone proves only that some Apple ID
+            # bought the product. Absent for purchases made before the client
+            # started sending it, and for legacy receipts.
+            "app_account_token": getattr(payload, "appAccountToken", None),
         }
 
     @classmethod

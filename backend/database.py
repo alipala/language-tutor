@@ -209,6 +209,24 @@ async def init_db():
         # Create unique index for email in users collection
         await users_collection.create_index("email", unique=True)
 
+        # One store subscription can only belong to one account.
+        #
+        # The routes already reject a transaction owned by someone else, but
+        # that is a read-then-write and two concurrent verifications could both
+        # pass it. These indexes make the database the final arbiter, which
+        # matters because the failure mode is granting a paid subscription to an
+        # account that did not pay for it — observed in production, where one
+        # Apple transaction was claimed by three separate users.
+        #
+        # Sparse: the vast majority of users have no store subscription, and a
+        # non-sparse unique index would collide on every missing field.
+        await users_collection.create_index(
+            "apple_original_transaction_id", unique=True, sparse=True
+        )
+        await users_collection.create_index(
+            "google_play_purchase_token", unique=True, sparse=True
+        )
+
         # Create composite index for user_notifications (for soft delete queries)
         await user_notifications_collection.create_index([
             ("user_id", 1),

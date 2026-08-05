@@ -96,6 +96,33 @@ async def verify_purchase(
         logger.info(f"[GOOGLE_PLAY] Purchase verified successfully for user {current_user.id}")
         logger.info(f"[GOOGLE_PLAY] Order ID: {verification_result.get('order_id')}")
 
+        # Same ownership gap as Apple (see apple_iap_routes for the production
+        # incident): a Play subscription belongs to a Google account, and a
+        # verified purchase token says nothing about which of our users paid.
+        # Without this, every app account signing in on the device can claim it.
+        # The purchase token is the stable identity of a Play subscription.
+        if request.purchase_token:
+            existing_owner = await database.get_collection("users").find_one(
+                {
+                    "google_play_purchase_token": request.purchase_token,
+                    "_id": {"$ne": get_user_query(str(current_user.id))["_id"]},
+                },
+                {"_id": 1},
+            )
+            if existing_owner:
+                logger.warning(
+                    f"[GOOGLE_PLAY] User {current_user.id} tried to claim a purchase "
+                    f"token already owned by {existing_owner['_id']}"
+                )
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "This subscription is already linked to another account. "
+                        "Please sign in with the account that made the purchase, "
+                        "or contact support."
+                    ),
+                )
+
         # Create or update subscription
         await _create_or_update_subscription(
             user_id=str(current_user.id),

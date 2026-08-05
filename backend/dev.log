@@ -1,0 +1,396 @@
+INFO:     Will watch for changes in these directories: ['/Users/alipala/CascadeProjects/language-tutor/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [93023] using WatchFiles
+INFO:redis_client:🔗 Connecting to Redis at redis-14288.c135.eu-central-1-1.ec2.cloud.redislabs.com:14288
+INFO:rate_limiter:[RATE_LIMITER] Exempt paths (exact match): ['/api/health', '/api/health/ping', '/api/health/status', '/api/test', '/health']
+Loaded .env for production
+Using MongoDB URL from MONGODB_URL
+Connecting to MongoDB at: mongodb://***:***@crossover.proxy.rlwy.net:44437/language_tutor?authSource=admin&maxPoolSize=50&minPoolSize=10&serverSelectionTimeoutMS=30000&connectTimeoutMS=30000&socketTimeoutMS=60000&retryWrites=true&retryReads=true
+Using database: language_tutor
+MongoDB client initialized successfully with optimized connection pool
+Connection pool: maxPoolSize=50, minPoolSize=5, maxIdleTime=45s
+Using hashlib for password hashing (bcrypt bypass)
+Configured CORS with origins: ['http://localhost:3000', 'http://127.0.0.1:3000', '*']
+[SLACK_NOTIFIER] Initialized for development environment
+[SLACK_NOTIFIER] Webhook configured: True
+[SLACK_NOTIFIER] Performance threshold: 5.0s
+2026-08-03 14:19:13 - language_tutor - INFO - info:109 - ✅ Rate limiting enabled - monitoring API usage to prevent abuse
+INFO:learning_routes:[LEARNING_ROUTES] ✅ Intelligent system modules loaded successfully
+INFO:stripe_routes:[STRIPE_INIT] ✅ Stripe API key set successfully
+INFO:performance_cache:[PERF_CACHE] Initialized performance cache
+INFO:stripe_routes:[STRIPE_INIT] iDEAL payment support: ENABLED
+INFO:services.audio_analysis_service:[AUDIO_ANALYSIS] Service initialized
+INFO:services.coach_service_optimized:[COACH] Redis client available for caching
+INFO:services.coach_service_optimized:[COACH] Redis client initialized: redis://default:5lXe9YY4VYE0Wvr3icM3k4XpuuOxO3Lv@redis-14288.c135.eu-central-1-1.ec2.cloud.redislabs.com:14288
+INFO:services.vector_db_service:✅ Pinecone vector DB is ENABLED
+INFO:pinecone_plugin_interface.logging:Discovering subpackages in _NamespacePath(['/Users/alipala/CascadeProjects/language-tutor/venv/lib/python3.11/site-packages/pinecone_plugins'])
+INFO:pinecone_plugin_interface.logging:Looking for plugins in pinecone_plugins.inference
+INFO:pinecone_plugin_interface.logging:Installing plugin inference into Pinecone
+INFO:services.vector_db_service:✅ Connected to existing Pinecone index: taalcoach-semantic-search
+INFO:services.vector_db_service:📊 Index stats: 418 vectors, 1536 dimensions
+INFO:services.query_enhancement_service:[QUERY_ENHANCE] Query Enhancement Service initialized
+ERROR:services.semantic_reranker:❌ sentence-transformers not installed. Install: pip install sentence-transformers
+WARNING:services.semantic_reranker:⚠️  Cross-encoder disabled - will use vector scores only
+INFO:services.learning_trajectory_analyzer:[TRAJECTORY] Learning Trajectory Analyzer initialized
+INFO:services.vector_db_service:✅ Connected to existing Pinecone index: taalcoach-semantic-search
+INFO:services.vector_db_service:📊 Index stats: 418 vectors, 1536 dimensions
+INFO:services.hybrid_search_service:[HYBRID] Hybrid Search Service initialized
+INFO:services.coach_service_optimized:[COACH] Redis client initialized: redis://default:5lXe9YY4VYE0Wvr3icM3k4XpuuOxO3Lv@redis-14288.c135.eu-central-1-1.ec2.cloud.redislabs.com:14288
+INFO:services.coach_service_vector_enhanced:[COACH] Initialized with vector search enhancement - Mode: hybrid (BM25 + Semantic)
+INFO:services.coach_service_optimized:[COACH] Redis client initialized: redis://default:5lXe9YY4VYE0Wvr3icM3k4XpuuOxO3Lv@redis-14288.c135.eu-central-1-1.ec2.cloud.redislabs.com:14288
+INFO:services.coach_service_vector_enhanced:[COACH] Initialized with vector search enhancement - Mode: hybrid (BM25 + Semantic)
+INFO:crewai.cli.config:Using config path: /Users/alipala/.config/crewai/settings.json
+INFO:news_generation.crew_agents:[NEWS_AGENTS] CrewAI available for LLM-based generation
+INFO:pronunciation_assessment_service:✅ Azure Pronunciation Assessment enabled (Region: eastus)
+INFO:reading_detection_service:✅ Reading Detection Service initialized
+INFO:     Started server process [93065]
+INFO:     Waiting for application startup.
+INFO:redis_client:🔄 Initializing Redis connection...
+INFO:redis_client:✅ Redis connected successfully!
+INFO:redis_client:📊 Redis memory: 6.67 MB used
+INFO:     Application startup complete.
+Loaded 14 documents with embeddings
+Loaded 4 contextual documents with embeddings
+================================================================================
+🔧 FRONTEND SERVING MODE
+================================================================================
+✅ Using Next.js server mode (not static export)
+✅ Frontend will be served by Next.js on port 3001
+✅ Backend API only handles /api/* routes
+================================================================================
+[MONITORING_MIDDLEWARE] Initialized with enhanced error handling and alerting
+MongoDB connection verified with ping
+Database indexes initialized successfully
+MongoDB initialized successfully
+Redis cache initialization complete
+📰 News generation runs in scheduler Railway service (run_scheduler.py)
+📧 Email verification migration: DISABLED (run manually if needed)
+Available database collections: ['story_progress', 'user_notifications', 'speaking_dna_profiles', 'story_repair_backups', 'sharing_activity', 'reference_challenges_backup_20260427_202113', 'notification_preferences', 'image_cache', 'usage_logs', 'reference_challenges', 'session_completions', 'speaking_breakthroughs', 'notifications', 'daily_challenges_cache', 'collaboration_queue', 'users', 'story_contributions', 'user_story_achievements', 'daily_stats', 'tutor_notifications', 'assessments', 'conversation_help_settings', 'conversation_sessions', 'story_worlds', 'user_achievements', 'tutors', 'recommended_actions', 'story_gen_jobs', 'news_batches', 'newsletter_subscriptions', 'sentence_analysis_feedback', 'flashcards', 'world_checkpoints', 'story_learning_metrics', 'institutions', 'learning_goals', 'conversations', 'heart_events', 'institutional_learners', 'sessions', 'challenge_sessions', 'session_feedback', 'email_verifications', 'learning_plans', 'speaking_time_tracking', 'reference_challenges_backup_20260427_202155', 'rescue_configurations', 'realtime_usage_logs', 'institution_learners', 'rescue_events', 'voice_journal_entries', 'subscription_periods', 'story_series', 'story_builder_samples', 'daily_digest_messages', 'lobby_promos', 'daily_missions', 'consent_records', 'journey_checkpoints', 'invitations', 'recent_performance', 'sentence_analysis_jobs', 'tutor_ai_reports', 'challenges', 'password_resets', 'challenge_pool', 'subscriptions', 'conversation_help_analytics', 'news_articles', 'activation_codes', 'world_invitations', 'user_focus_states', 'flashcard_sets', 'gpt4o_usage_logs', 'monitoring_queries', 'speaking_dna_history', 'challenge_generation_costs']
+Collection document counts: {'story_progress': 17, 'user_notifications': 179, 'speaking_dna_profiles': 48, 'story_repair_backups': 0, 'sharing_activity': 8, 'reference_challenges_backup_20260427_202113': 12161, 'notification_preferences': 16, 'image_cache': 670, 'usage_logs': 0, 'reference_challenges': 14544, 'session_completions': 0, 'speaking_breakthroughs': 26, 'notifications': 319, 'daily_challenges_cache': 0, 'collaboration_queue': 0, 'users': 54, 'story_contributions': 0, 'user_story_achievements': 0, 'daily_stats': 336, 'tutor_notifications': 30, 'assessments': 1, 'conversation_help_settings': 5, 'conversation_sessions': 398, 'story_worlds': 380, 'user_achievements': 563, 'tutors': 4, 'recommended_actions': 0, 'story_gen_jobs': 6, 'news_batches': 56, 'newsletter_subscriptions': 1, 'sentence_analysis_feedback': 38, 'flashcards': 1249, 'world_checkpoints': 0, 'story_learning_metrics': 0, 'institutions': 2, 'learning_goals': 5, 'conversations': 0, 'heart_events': 1097, 'institutional_learners': 22, 'sessions': 8, 'challenge_sessions': 654, 'session_feedback': 31, 'email_verifications': 0, 'learning_plans': 136, 'speaking_time_tracking': 342, 'reference_challenges_backup_20260427_202155': 12161, 'rescue_configurations': 1, 'realtime_usage_logs': 227, 'institution_learners': 2, 'rescue_events': 31, 'voice_journal_entries': 1, 'subscription_periods': 0, 'story_series': 76, 'story_builder_samples': 30, 'daily_digest_messages': 67, 'lobby_promos': 2, 'daily_missions': 8, 'consent_records': 0, 'journey_checkpoints': 0, 'invitations': 0, 'recent_performance': 0, 'sentence_analysis_jobs': 8, 'tutor_ai_reports': 5, 'challenges': 50, 'password_resets': 0, 'challenge_pool': 98, 'subscriptions': 2, 'conversation_help_analytics': 14682, 'news_articles': 212, 'activation_codes': 2, 'world_invitations': 0, 'user_focus_states': 3, 'flashcard_sets': 255, 'gpt4o_usage_logs': 3593, 'monitoring_queries': 1, 'speaking_dna_history': 9, 'challenge_generation_costs': 1553}
+[REQUEST] POST /api/auth/login - 192.168.1.228
+[MONITORING] POST /api/auth/login - User: Anonymous - ID: de109562-e1c2-48af-a6e2-a73e166c9302
+[RESPONSE] POST /api/auth/login - 200 - 0.624s
+INFO:     192.168.1.228:64122 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:cache_helpers:❌ [CACHE] User profile cache MISS: 6a5e4422eb9c4b7105f8f257 - querying MongoDB
+INFO:cache_helpers:📦 [CACHE] Cached user profile: 6a5e4422eb9c4b7105f8f257 (5min TTL)
+[REQUEST] GET /api/auth/me - 192.168.1.228
+[MONITORING] GET /api/auth/me - User: Anonymous - ID: dd2e28a3-bc76-4c73-a656-313206f57403
+[RESPONSE] GET /api/auth/me - 200 - 0.764s
+INFO:     192.168.1.228:64122 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:routes.speaking_dna_routes:[DNA API] Getting profile for user 6a5e4422eb9c4b7105f8f257, language english
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+[REQUEST] GET /api/notifications/ - 192.168.1.228
+[MONITORING] GET /api/notifications/ - User: Anonymous - ID: 480e6dbe-e9b7-427f-a287-13ecb28cae23
+[REQUEST] GET /api/notifications/ - 192.168.1.228
+[MONITORING] GET /api/notifications/ - User: Anonymous - ID: 8479bacb-798a-4d41-99e0-ee3f6bf03148
+[REQUEST] GET /api/hub/today - 192.168.1.228
+[MONITORING] GET /api/hub/today - User: Anonymous - ID: 4d78e6a6-932a-45bf-bf47-d292230a48d4
+[REQUEST] GET /api/speaking-dna/profile/english - 192.168.1.228
+[MONITORING] GET /api/speaking-dna/profile/english - User: Anonymous - ID: 45b65ece-735c-4dfd-8c96-a7b06c994c2e
+[NOTIFICATION_API] 🔍 Fetching notifications for user: 6a5e4422eb9c4b7105f8f257
+[NOTIFICATION_API] Parameters: skip=0, limit=20, unread_only=False, include_session_analysis=True
+[NOTIFICATION_API] 🔍 Fetching notifications for user: 6a5e4422eb9c4b7105f8f257
+[NOTIFICATION_API] Parameters: skip=0, limit=20, unread_only=False, include_session_analysis=False
+[RESPONSE] GET /api/speaking-dna/profile/english - 200 - 0.764s
+INFO:     192.168.1.228:64126 - "GET /api/speaking-dna/profile/english HTTP/1.1" 200 OK
+2026-08-03 14:24:50 - language_tutor - INFO - info:109 - Getting subscription status for user 6a5e4422eb9c4b7105f8f257
+2026-08-03 14:24:50 - language_tutor - DEBUG - debug:104 - [STRIPE_CACHE] MISS for cus_UvYaHOzOhvNVju — fetching from Stripe
+INFO:stripe:message='Request to Stripe api' method=get url=https://api.stripe.com/v1/subscriptions?customer=cus_UvYaHOzOhvNVju&limit=1
+[NOTIFICATION_API] 📊 Results: 8 notifications returned
+[NOTIFICATION_API] 📊 Total: 31, Unread: 0 (include_session_analysis=True)
+[RESPONSE] GET /api/notifications/ - 200 - 1.230s
+INFO:     192.168.1.228:64122 - "GET /api/notifications/?include_session_analysis=true HTTP/1.1" 200 OK
+[NOTIFICATION_API] 📊 Results: 0 notifications returned
+[NOTIFICATION_API] 📊 Total: 0, Unread: 0 (include_session_analysis=False)
+[RESPONSE] GET /api/notifications/ - 200 - 1.417s
+INFO:     192.168.1.228:64124 - "GET /api/notifications/?include_session_analysis=false HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://api.stripe.com/v1/subscriptions?customer=cus_UvYaHOzOhvNVju&limit=1 "HTTP/1.1 200 OK"
+INFO:stripe:message='Stripe API response' path=https://api.stripe.com/v1/subscriptions?customer=cus_UvYaHOzOhvNVju&limit=1 response_code=200
+2026-08-03 14:24:51 - language_tutor - INFO - info:109 - User 6a5e4422eb9c4b7105f8f257 has 7 lifetime conversation sessions
+2026-08-03 14:24:51 - language_tutor - WARNING - warning:113 - Using user record data for user 6a5e4422eb9c4b7105f8f257 (auto-correction not explicitly disabled)
+[MISSIONS] P4 DNA strands → native_check (score=0.59)
+[MISSIONS] Generated for user 6a5e4422eb9c4b7105f8f257 on 2026-08-03: bronze=news_session(target=1)  silver=native_check(src=P4)  gold=flashcards(1)
+[MISSIONS] P4 DNA strands → native_check (score=0.59)
+[MISSIONS] Variety guard: native_check repeated 2d → promoting runner-up smart_flashcard
+[RESPONSE] GET /api/hub/today - 200 - 4.164s
+INFO:     192.168.1.228:64125 - "GET /api/hub/today?timezone=Europe%2FIstanbul&language=english HTTP/1.1" 200 OK
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+[REQUEST] GET /api/learning/plan/880d422b-e2db-4f69-8eb5-108868b55a91/voice-check-status - 192.168.1.228
+[MONITORING] GET /api/learning/plan/880d422b-e2db-4f69-8eb5-108868b55a91/voice-check-status - User: Anonymous - ID: fb92b7d8-d408-48db-94fd-6af5c9726e33
+[REQUEST] GET /api/hub/today - 192.168.1.228
+[MONITORING] GET /api/hub/today - User: Anonymous - ID: 715b0f9b-4f7c-4548-995e-4d97ca9b4f8b
+[REQUEST] GET /api/learning/plan/880d422b-e2db-4f69-8eb5-108868b55a91/voice-check-status - 192.168.1.228
+[MONITORING] GET /api/learning/plan/880d422b-e2db-4f69-8eb5-108868b55a91/voice-check-status - User: Anonymous - ID: b6607d74-67e5-4ef0-b3e0-50523bbf517f
+[VOICE_CHECK] ❌ Cache MISS for plan 880d422b-e2db-4f69-8eb5-108868b55a91
+[VOICE_CHECK] ❌ Cache MISS for plan 880d422b-e2db-4f69-8eb5-108868b55a91
+2026-08-03 14:24:56 - language_tutor - INFO - info:109 - Getting subscription status for user 6a5e4422eb9c4b7105f8f257
+2026-08-03 14:24:56 - language_tutor - DEBUG - debug:104 - [STRIPE_CACHE] HIT for cus_UvYaHOzOhvNVju
+[VOICE_CHECK] plan=880d422b-e2db-4f69-8eb5-108868b55a91 completed=1 schedule=[12, 24, 36] completed_checks=[] skipped=[] is_due=False was_skipped=False
+[VOICE_CHECK] 📦 Cached result for plan 880d422b-e2db-4f69-8eb5-108868b55a91
+[RESPONSE] GET /api/learning/plan/880d422b-e2db-4f69-8eb5-108868b55a91/voice-check-status - 200 - 0.612s
+INFO:     192.168.1.228:64129 - "GET /api/learning/plan/880d422b-e2db-4f69-8eb5-108868b55a91/voice-check-status HTTP/1.1" 200 OK
+2026-08-03 14:24:57 - language_tutor - INFO - info:109 - User 6a5e4422eb9c4b7105f8f257 has 7 lifetime conversation sessions
+2026-08-03 14:24:57 - language_tutor - WARNING - warning:113 - Using user record data for user 6a5e4422eb9c4b7105f8f257 (auto-correction not explicitly disabled)
+[VOICE_CHECK] plan=880d422b-e2db-4f69-8eb5-108868b55a91 completed=1 schedule=[12, 24, 36] completed_checks=[] skipped=[] is_due=False was_skipped=False
+[VOICE_CHECK] 📦 Cached result for plan 880d422b-e2db-4f69-8eb5-108868b55a91
+[RESPONSE] GET /api/learning/plan/880d422b-e2db-4f69-8eb5-108868b55a91/voice-check-status - 200 - 1.302s
+INFO:     192.168.1.228:64125 - "GET /api/learning/plan/880d422b-e2db-4f69-8eb5-108868b55a91/voice-check-status HTTP/1.1" 200 OK
+[MISSIONS] P3 assessment scores → smart_flashcard (22)
+[MISSIONS] Generated for user 6a5e4422eb9c4b7105f8f257 on 2026-08-03: bronze=plan_session(target=1)  silver=smart_flashcard(src=P3)  gold=flashcards(1)
+[MISSIONS] P3 assessment scores → smart_flashcard (22)
+[REQUEST] GET /api/hub/today - 192.168.1.228
+[MONITORING] GET /api/hub/today - User: Anonymous - ID: 62c122b9-5244-4c65-9b14-eeeeda503f04
+[RESPONSE] GET /api/hub/today - 200 - 2.856s
+INFO:     192.168.1.228:64128 - "GET /api/hub/today?timezone=Europe%2FIstanbul&language=dutch HTTP/1.1" 200 OK
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+2026-08-03 14:24:59 - language_tutor - INFO - info:109 - Getting subscription status for user 6a5e4422eb9c4b7105f8f257
+2026-08-03 14:24:59 - language_tutor - DEBUG - debug:104 - [STRIPE_CACHE] HIT for cus_UvYaHOzOhvNVju
+2026-08-03 14:24:59 - language_tutor - INFO - info:109 - User 6a5e4422eb9c4b7105f8f257 has 7 lifetime conversation sessions
+2026-08-03 14:24:59 - language_tutor - WARNING - warning:113 - Using user record data for user 6a5e4422eb9c4b7105f8f257 (auto-correction not explicitly disabled)
+[MISSIONS] P3 assessment scores → smart_flashcard (22)
+[RESPONSE] GET /api/hub/today - 200 - 1.694s
+INFO:     192.168.1.228:64125 - "GET /api/hub/today?timezone=Europe%2FIstanbul&language=dutch HTTP/1.1" 200 OK
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:learning_plan_service:[LEARNING_PLAN_SERVICE] ✅ Archived plan 880d422b-e2db-4f69-8eb5-108868b55a91
+INFO:learning_plan_service:[LEARNING_PLAN_SERVICE] Deleted 1 sentence_analysis_jobs for plan 880d422b-e2db-4f69-8eb5-108868b55a91
+INFO:learning_plan_service:[LEARNING_PLAN_SERVICE] Deleted 1 speaking_time_tracking rows for plan 880d422b-e2db-4f69-8eb5-108868b55a91
+INFO:learning_plan_service:[LEARNING_PLAN_SERVICE] Deleted 1 notifications for plan 880d422b-e2db-4f69-8eb5-108868b55a91
+INFO:learning_plan_service:[LEARNING_PLAN_SERVICE] Deleted 7 plan_ badges for user 6a5e4422eb9c4b7105f8f257 (no active plans remaining)
+[REQUEST] PATCH /api/learning/plan/880d422b-e2db-4f69-8eb5-108868b55a91/archive - 192.168.1.228
+[MONITORING] PATCH /api/learning/plan/880d422b-e2db-4f69-8eb5-108868b55a91/archive - User: Anonymous - ID: 2b3c92b3-ee58-42a0-9a4a-a5bc52685ccb
+[RESPONSE] PATCH /api/learning/plan/880d422b-e2db-4f69-8eb5-108868b55a91/archive - 200 - 1.178s
+INFO:     192.168.1.228:64130 - "PATCH /api/learning/plan/880d422b-e2db-4f69-8eb5-108868b55a91/archive HTTP/1.1" 200 OK
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+[REQUEST] GET /api/hub/today - 192.168.1.228
+[MONITORING] GET /api/hub/today - User: Anonymous - ID: ed665331-3336-40a9-8917-40278758f62e
+2026-08-03 14:25:07 - language_tutor - INFO - info:109 - Getting subscription status for user 6a5e4422eb9c4b7105f8f257
+2026-08-03 14:25:07 - language_tutor - DEBUG - debug:104 - [STRIPE_CACHE] HIT for cus_UvYaHOzOhvNVju
+2026-08-03 14:25:08 - language_tutor - INFO - info:109 - User 6a5e4422eb9c4b7105f8f257 has 7 lifetime conversation sessions
+2026-08-03 14:25:08 - language_tutor - WARNING - warning:113 - Using user record data for user 6a5e4422eb9c4b7105f8f257 (auto-correction not explicitly disabled)
+[MISSIONS] Bronze reconciled for 6a5e4422eb9c4b7105f8f257 on 2026-08-03 lang=dutch: plan_session → news_session
+[MISSIONS] P3 assessment scores → smart_flashcard (22)
+[RESPONSE] GET /api/hub/today - 200 - 1.850s
+INFO:     192.168.1.228:64130 - "GET /api/hub/today?timezone=Europe%2FIstanbul&language=dutch HTTP/1.1" 200 OK
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+[REQUEST] GET /api/hub/today - 192.168.1.228
+[MONITORING] GET /api/hub/today - User: Anonymous - ID: 785c4804-e368-4f3a-a04c-316dd0665ee1
+2026-08-03 14:25:10 - language_tutor - INFO - info:109 - Getting subscription status for user 6a5e4422eb9c4b7105f8f257
+2026-08-03 14:25:10 - language_tutor - DEBUG - debug:104 - [STRIPE_CACHE] HIT for cus_UvYaHOzOhvNVju
+2026-08-03 14:25:10 - language_tutor - INFO - info:109 - User 6a5e4422eb9c4b7105f8f257 has 7 lifetime conversation sessions
+2026-08-03 14:25:10 - language_tutor - WARNING - warning:113 - Using user record data for user 6a5e4422eb9c4b7105f8f257 (auto-correction not explicitly disabled)
+[MISSIONS] P3 assessment scores → smart_flashcard (22)
+[RESPONSE] GET /api/hub/today - 200 - 1.516s
+INFO:     192.168.1.228:64131 - "GET /api/hub/today?timezone=Europe%2FIstanbul&language=dutch HTTP/1.1" 200 OK
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+[REQUEST] GET /api/notifications/ - 192.168.1.228
+[MONITORING] GET /api/notifications/ - User: Anonymous - ID: 8e223edf-a2d8-4e28-a73b-ce3793cd2d77
+[REQUEST] GET /api/notifications/ - 192.168.1.228
+[MONITORING] GET /api/notifications/ - User: Anonymous - ID: 618952e5-5db8-4c43-aedc-6eed81dfce4e
+[NOTIFICATION_API] 🔍 Fetching notifications for user: 6a5e4422eb9c4b7105f8f257
+[NOTIFICATION_API] Parameters: skip=0, limit=20, unread_only=False, include_session_analysis=True
+[NOTIFICATION_API] 🔍 Fetching notifications for user: 6a5e4422eb9c4b7105f8f257
+[NOTIFICATION_API] Parameters: skip=0, limit=20, unread_only=False, include_session_analysis=False
+[RESPONSE] GET /api/notifications/ - 200 - 0.400s
+INFO:     192.168.1.228:64132 - "GET /api/notifications/?include_session_analysis=false HTTP/1.1" 200 OK
+[RESPONSE] GET /api/notifications/ - 200 - 0.401s
+INFO:     192.168.1.228:64131 - "GET /api/notifications/?include_session_analysis=true HTTP/1.1" 200 OK
+INFO:cache_helpers:❌ [CACHE] User profile cache MISS: 6a5e4422eb9c4b7105f8f257 - querying MongoDB
+INFO:cache_helpers:❌ [CACHE] User profile cache MISS: 6a5e4422eb9c4b7105f8f257 - querying MongoDB
+INFO:cache_helpers:📦 [CACHE] Cached user profile: 6a5e4422eb9c4b7105f8f257 (5min TTL)
+INFO:cache_helpers:📦 [CACHE] Cached user profile: 6a5e4422eb9c4b7105f8f257 (5min TTL)
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+[REQUEST] GET /api/notifications/ - 192.168.1.228
+[MONITORING] GET /api/notifications/ - User: Anonymous - ID: d463c6b9-5141-445c-8048-e09752fe1572
+[REQUEST] GET /api/notifications/ - 192.168.1.228
+[MONITORING] GET /api/notifications/ - User: Anonymous - ID: ad2d7782-17c4-4faf-8d7a-dc00059b5967
+[NOTIFICATION_API] 🔍 Fetching notifications for user: 6a5e4422eb9c4b7105f8f257
+[NOTIFICATION_API] Parameters: skip=0, limit=20, unread_only=False, include_session_analysis=True
+[NOTIFICATION_API] 🔍 Fetching notifications for user: 6a5e4422eb9c4b7105f8f257
+[NOTIFICATION_API] Parameters: skip=0, limit=20, unread_only=False, include_session_analysis=False
+[REQUEST] GET /api/hub/today - 192.168.1.228
+[REQUEST] GET /api/notifications/ - 192.168.1.228
+[REQUEST] GET /api/notifications/ - 192.168.1.228
+[MONITORING] GET /api/hub/today - User: Anonymous - ID: bb8f3179-c0e1-4cae-8e64-07923f85137e
+[MONITORING] GET /api/notifications/ - User: Anonymous - ID: 65dfc187-f3dd-44cb-bcaa-5f0245521e19
+[MONITORING] GET /api/notifications/ - User: Anonymous - ID: 0cf9902d-586c-4227-a95a-c5c39ddf4fbf
+[NOTIFICATION_API] 📊 Results: 7 notifications returned
+[NOTIFICATION_API] 📊 Total: 31, Unread: 0 (include_session_analysis=True)
+[NOTIFICATION_API] 📊 Results: 0 notifications returned
+[NOTIFICATION_API] 📊 Total: 0, Unread: 0 (include_session_analysis=False)
+[NOTIFICATION_API] 🔍 Fetching notifications for user: 6a5e4422eb9c4b7105f8f257
+[NOTIFICATION_API] Parameters: skip=0, limit=20, unread_only=False, include_session_analysis=True
+[NOTIFICATION_API] 🔍 Fetching notifications for user: 6a5e4422eb9c4b7105f8f257
+[NOTIFICATION_API] Parameters: skip=0, limit=20, unread_only=False, include_session_analysis=False
+[RESPONSE] GET /api/notifications/ - 200 - 1.854s
+INFO:     192.168.1.228:64155 - "GET /api/notifications/?include_session_analysis=true HTTP/1.1" 200 OK
+[RESPONSE] GET /api/notifications/ - 200 - 2.091s
+INFO:     192.168.1.228:64156 - "GET /api/notifications/?include_session_analysis=false HTTP/1.1" 200 OK
+2026-08-03 14:32:05 - language_tutor - INFO - info:109 - Getting subscription status for user 6a5e4422eb9c4b7105f8f257
+2026-08-03 14:32:05 - language_tutor - DEBUG - debug:104 - [STRIPE_CACHE] MISS for cus_UvYaHOzOhvNVju — fetching from Stripe
+INFO:stripe:message='Request to Stripe api' method=get url=https://api.stripe.com/v1/subscriptions?customer=cus_UvYaHOzOhvNVju&limit=1
+[NOTIFICATION_API] 📊 Results: 7 notifications returned
+[NOTIFICATION_API] 📊 Total: 31, Unread: 0 (include_session_analysis=True)
+[RESPONSE] GET /api/notifications/ - 200 - 0.851s
+INFO:     192.168.1.228:64159 - "GET /api/notifications/?include_session_analysis=true HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET https://api.stripe.com/v1/subscriptions?customer=cus_UvYaHOzOhvNVju&limit=1 "HTTP/1.1 200 OK"
+INFO:stripe:message='Stripe API response' path=https://api.stripe.com/v1/subscriptions?customer=cus_UvYaHOzOhvNVju&limit=1 response_code=200
+[NOTIFICATION_API] 📊 Results: 0 notifications returned
+[NOTIFICATION_API] 📊 Total: 0, Unread: 0 (include_session_analysis=False)
+[RESPONSE] GET /api/notifications/ - 200 - 1.227s
+INFO:     192.168.1.228:64160 - "GET /api/notifications/?include_session_analysis=false HTTP/1.1" 200 OK
+2026-08-03 14:32:06 - language_tutor - INFO - info:109 - User 6a5e4422eb9c4b7105f8f257 has 7 lifetime conversation sessions
+2026-08-03 14:32:06 - language_tutor - WARNING - warning:113 - Using user record data for user 6a5e4422eb9c4b7105f8f257 (auto-correction not explicitly disabled)
+[MISSIONS] P3 assessment scores → smart_flashcard (22)
+[RESPONSE] GET /api/hub/today - 200 - 2.209s
+INFO:     192.168.1.228:64158 - "GET /api/hub/today?timezone=Europe%2FIstanbul&language=dutch HTTP/1.1" 200 OK
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+[REQUEST] GET /api/notifications/ - 192.168.1.228
+[REQUEST] GET /api/notifications/ - 192.168.1.228
+[MONITORING] GET /api/notifications/ - User: Anonymous - ID: 3f4f3fae-2138-4c98-b92d-75d8d3371e62
+[MONITORING] GET /api/notifications/ - User: Anonymous - ID: 0fc0e3a0-82a8-4264-8f63-d0cb927639d4
+[NOTIFICATION_API] 🔍 Fetching notifications for user: 6a5e4422eb9c4b7105f8f257
+[NOTIFICATION_API] Parameters: skip=0, limit=20, unread_only=False, include_session_analysis=False
+[NOTIFICATION_API] 🔍 Fetching notifications for user: 6a5e4422eb9c4b7105f8f257
+[NOTIFICATION_API] Parameters: skip=0, limit=20, unread_only=False, include_session_analysis=True
+[RESPONSE] GET /api/notifications/ - 200 - 0.326s
+INFO:     192.168.1.228:64156 - "GET /api/notifications/?include_session_analysis=false HTTP/1.1" 200 OK
+[RESPONSE] GET /api/notifications/ - 200 - 0.331s
+INFO:     192.168.1.228:64155 - "GET /api/notifications/?include_session_analysis=true HTTP/1.1" 200 OK
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+[REQUEST] GET /api/notifications/ - 192.168.1.228
+[REQUEST] GET /api/notifications/ - 192.168.1.228
+[MONITORING] GET /api/notifications/ - User: Anonymous - ID: e0737024-b501-4777-9ab1-bcae107a9b86
+[MONITORING] GET /api/notifications/ - User: Anonymous - ID: 217306a3-57f6-4e22-a11a-1c979b647e90
+[NOTIFICATION_API] 🔍 Fetching notifications for user: 6a5e4422eb9c4b7105f8f257
+[NOTIFICATION_API] Parameters: skip=0, limit=20, unread_only=False, include_session_analysis=False
+[NOTIFICATION_API] 🔍 Fetching notifications for user: 6a5e4422eb9c4b7105f8f257
+[NOTIFICATION_API] Parameters: skip=0, limit=20, unread_only=False, include_session_analysis=True
+[RESPONSE] GET /api/notifications/ - 200 - 0.361s
+INFO:     192.168.1.228:64156 - "GET /api/notifications/?include_session_analysis=false HTTP/1.1" 200 OK
+[RESPONSE] GET /api/notifications/ - 200 - 0.382s
+INFO:     192.168.1.228:64155 - "GET /api/notifications/?include_session_analysis=true HTTP/1.1" 200 OK
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+[REQUEST] GET /api/notifications/ - 192.168.1.228
+[MONITORING] GET /api/notifications/ - User: Anonymous - ID: 74f84389-2b8a-4cbd-8dc3-583cc7eb5c1c
+[REQUEST] GET /api/notifications/ - 192.168.1.228
+[MONITORING] GET /api/notifications/ - User: Anonymous - ID: 978219a6-aed8-4266-8a08-27fa6477febf
+[NOTIFICATION_API] 🔍 Fetching notifications for user: 6a5e4422eb9c4b7105f8f257
+[NOTIFICATION_API] Parameters: skip=0, limit=20, unread_only=False, include_session_analysis=False
+[NOTIFICATION_API] 🔍 Fetching notifications for user: 6a5e4422eb9c4b7105f8f257
+[NOTIFICATION_API] Parameters: skip=0, limit=20, unread_only=False, include_session_analysis=True
+[RESPONSE] GET /api/notifications/ - 200 - 0.403s
+INFO:     192.168.1.228:64177 - "GET /api/notifications/?include_session_analysis=false HTTP/1.1" 200 OK
+[RESPONSE] GET /api/notifications/ - 200 - 0.493s
+INFO:     192.168.1.228:64176 - "GET /api/notifications/?include_session_analysis=true HTTP/1.1" 200 OK
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:learning_routes:Fetching learning plans for user ID: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+[REQUEST] GET /api/challenges/counts - 192.168.1.228
+[REQUEST] GET /api/stats/daily - 192.168.1.228
+[MONITORING] GET /api/challenges/counts - User: Anonymous - ID: 4626cda8-d133-44f3-8061-8582edd4abe4
+[MONITORING] GET /api/stats/daily - User: Anonymous - ID: 04c35bf9-af49-4872-bc58-73a2726d6ad9
+[REQUEST] GET /api/stats/lifetime - 192.168.1.228
+[MONITORING] GET /api/stats/lifetime - User: Anonymous - ID: 523803b8-e77e-4456-8b87-9a9d1fd9dbbe
+[REQUEST] GET /api/learning/plans - 192.168.1.228
+[MONITORING] GET /api/learning/plans - User: Anonymous - ID: da86961d-d585-484e-8766-f0064ef43824
+[REQUEST] GET /api/challenges/counts - 192.168.1.228
+[MONITORING] GET /api/challenges/counts - User: Anonymous - ID: f259c841-b702-4d39-9b73-82acb46d183f
+[STATS_API] 📊 Fetching daily stats for user 6a5e4422eb9c4b7105f8f257, date: 2026-08-03, timezone: UTC
+[CHALLENGE_POOL] 📊 Getting challenge counts for user 6a5e4422eb9c4b7105f8f257, source=reference
+[RESOLVE] Using explicit language parameter: english
+[RESOLVE] Using explicit level parameter: A1
+[RESOLVE] ✅ Final: language=english, level=A1
+[REFERENCE] ✅ Using reference challenges (Freestyle Practice)
+[REFERENCE] 📊 Getting reference challenge counts for english A1
+[CHALLENGE_POOL] 📊 Getting challenge counts for user 6a5e4422eb9c4b7105f8f257, source=reference
+[RESOLVE] Using explicit language parameter: dutch
+[RESOLVE] Using explicit level parameter: A1
+[RESOLVE] ✅ Final: language=dutch, level=A1
+[REFERENCE] ✅ Using reference challenges (Freestyle Practice)
+[REFERENCE] 📊 Getting reference challenge counts for dutch A1
+[STATS_API] 📊 Fetching lifetime progress for user 6a5e4422eb9c4b7105f8f257
+[LIFETIME_PROG] 📊 Fetching lifetime progress for user 6a5e4422eb9c4b7105f8f257
+[REFERENCE] ✅ Reference counts: {'error_spotting': 80, 'native_check': 77, 'story_builder': 80, 'swipe_fix': 80, 'smart_flashcard': 45, 'brain_tickler': 71, 'micro_quiz': 69, 'total': 502}
+[RESPONSE] GET /api/challenges/counts - 200 - 0.504s
+INFO:     192.168.1.228:64180 - "GET /api/challenges/counts?language=dutch&level=A1&source=reference HTTP/1.1" 200 OK
+[REFERENCE] ✅ Reference counts: {'smart_flashcard': 80, 'brain_tickler': 67, 'micro_quiz': 64, 'swipe_fix': 80, 'error_spotting': 77, 'native_check': 73, 'story_builder': 80, 'total': 521}
+[RESPONSE] GET /api/challenges/counts - 200 - 0.540s
+INFO:     192.168.1.228:64176 - "GET /api/challenges/counts?language=english&level=A1&source=reference HTTP/1.1" 200 OK
+[LIFETIME_PROG] ✅ Retrieved: 43 total challenges, 2 day streak
+[STATS_API] ✅ Lifetime progress retrieved: 43 challenges, 2 day streak
+[RESPONSE] GET /api/stats/lifetime - 200 - 0.678s
+INFO:     192.168.1.228:64178 - "GET /api/stats/lifetime?include_achievements=false HTTP/1.1" 200 OK
+[RESPONSE] GET /api/stats/daily - 200 - 0.686s
+INFO:     192.168.1.228:64177 - "GET /api/stats/daily?timezone=UTC HTTP/1.1" 200 OK
+[RESPONSE] GET /api/learning/plans - 200 - 0.705s
+INFO:     192.168.1.228:64179 - "GET /api/learning/plans HTTP/1.1" 200 OK
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+[REQUEST] GET /api/challenges/progression - 192.168.1.228
+[REQUEST] GET /api/challenges/next-step - 192.168.1.228
+[REQUEST] GET /api/hearts/status - 192.168.1.228
+[REQUEST] GET /api/story-series - 192.168.1.228
+[MONITORING] GET /api/challenges/progression - User: Anonymous - ID: 04a4f14f-f7de-4074-bb14-0f5cf067cbaa
+[MONITORING] GET /api/challenges/next-step - User: Anonymous - ID: a8b66796-9519-4099-885d-acce53127078
+[MONITORING] GET /api/hearts/status - User: Anonymous - ID: 940f730c-9d4d-4d45-b60a-26ab43d5cde0
+[MONITORING] GET /api/story-series - User: Anonymous - ID: e4ccf07c-457e-4ee3-b343-440851b1374d
+[REQUEST] GET /api/story/lobby-promo - 192.168.1.228
+[MONITORING] GET /api/story/lobby-promo - User: Anonymous - ID: f0224c72-a053-4281-9517-7701a3cd1380
+[RESOLVE] Using explicit language parameter: dutch
+[RESOLVE] Using explicit level parameter: A1
+[RESOLVE] ✅ Final: language=dutch, level=A1
+[RESPONSE] GET /api/story/lobby-promo - 200 - 0.752s
+INFO:     192.168.1.228:64181 - "GET /api/story/lobby-promo HTTP/1.1" 200 OK
+[RESPONSE] GET /api/challenges/next-step - 200 - 0.923s
+INFO:     192.168.1.228:64177 - "GET /api/challenges/next-step?language=dutch&level=A1 HTTP/1.1" 200 OK
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+[RESPONSE] GET /api/hearts/status - 200 - 1.671s
+INFO:     192.168.1.228:64179 - "GET /api/hearts/status HTTP/1.1" 200 OK
+[RESPONSE] GET /api/challenges/progression - 200 - 1.927s
+INFO:     192.168.1.228:64176 - "GET /api/challenges/progression?source=games HTTP/1.1" 200 OK
+[RESPONSE] GET /api/story-series - 200 - 1.981s
+INFO:     192.168.1.228:64180 - "GET /api/story-series?language=dutch&level=A1 HTTP/1.1" 200 OK
+INFO:cache_helpers:✅ [CACHE] User profile cache HIT: 6a5e4422eb9c4b7105f8f257
+[REQUEST] GET /api/img/story_cover_e8440e9f-b3c3-49a5-8c02-fb7966f930c7 - 192.168.1.228
+[MONITORING] GET /api/img/story_cover_e8440e9f-b3c3-49a5-8c02-fb7966f930c7 - User: Anonymous - ID: 8614dad2-dc7b-4444-9fe5-98d64992500c
+[REQUEST] GET /api/hub/today - 192.168.1.228
+[MONITORING] GET /api/hub/today - User: Anonymous - ID: 64042c97-9eda-42ab-8458-d7498a1e8445
+2026-08-03 14:32:35 - language_tutor - INFO - info:109 - Getting subscription status for user 6a5e4422eb9c4b7105f8f257
+2026-08-03 14:32:35 - language_tutor - DEBUG - debug:104 - [STRIPE_CACHE] HIT for cus_UvYaHOzOhvNVju
+[SLACK_NOTIFIER] Sending medium alert: Slow Response: /api/img/story_cover_e8440e9f-b3c3-49a5-8c02-fb7966f930c7
+2026-08-03 14:32:35 - language_tutor - INFO - info:109 - User 6a5e4422eb9c4b7105f8f257 has 7 lifetime conversation sessions
+2026-08-03 14:32:35 - language_tutor - WARNING - warning:113 - Using user record data for user 6a5e4422eb9c4b7105f8f257 (auto-correction not explicitly disabled)
+INFO:httpx:HTTP Request: POST https://hooks.slack.com/services/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 "HTTP/1.1 200 OK"
+[MISSIONS] P3 assessment scores → smart_flashcard (22)
+[SLACK_NOTIFIER] ✅ Alert sent successfully
+[RESPONSE] GET /api/img/story_cover_e8440e9f-b3c3-49a5-8c02-fb7966f930c7 - 200 - 6.566s
+INFO:     192.168.1.228:64182 - "GET /api/img/story_cover_e8440e9f-b3c3-49a5-8c02-fb7966f930c7 HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://hooks.slack.com/services/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 "HTTP/1.1 200 OK"
+[MISSIONS] Generated for user 6a5e4422eb9c4b7105f8f257 on 2026-08-03: bronze=news_session(target=1)  silver=smart_flashcard(src=P3)  gold=flashcards(1)
+[MISSIONS] P3 assessment scores → smart_flashcard (22)
+[SLACK_NOTIFIER] Sending medium alert: Slow Response: /api/hub/today
+[SLACK_NOTIFIER] ✅ Alert sent successfully
+[RESPONSE] GET /api/hub/today - 200 - 7.265s
+INFO:     192.168.1.228:64176 - "GET /api/hub/today?timezone=Europe%2FIstanbul HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:redis_client:✅ Redis connection closed
+INFO:     Application shutdown complete.
+INFO:     Finished server process [93065]
+INFO:     Stopping reloader process [93023]

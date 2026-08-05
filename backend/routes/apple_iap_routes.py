@@ -98,6 +98,63 @@ async def verify_receipt(
         logger.info(f"[APPLE_IAP] Receipt verified successfully for user {current_user.id}")
         logger.info(f"[APPLE_IAP] Transaction ID: {verification_result.get('transaction_id')}")
 
+        # If the transaction carries an appAccountToken, it names the account
+        # that started the purchase, and that is authoritative. Enforced only
+        # when present: purchases made before the client began sending it, and
+        # legacy receipts, have no token and still fall through to the
+        # ownership check below.
+        app_account_token = verification_result.get("app_account_token")
+        if app_account_token:
+            # The client encodes a 24-hex ObjectId as a UUID by right-padding
+            # with zeros, so stripping hyphens and taking the first 24 chars
+            # recovers the original id.
+            claimed_user_id = str(app_account_token).replace("-", "")[:24].lower()
+            if claimed_user_id != str(current_user.id).lower():
+                logger.warning(
+                    f"[APPLE_IAP] Transaction was purchased by {claimed_user_id} "
+                    f"but user {current_user.id} is trying to claim it"
+                )
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        "This purchase was made by a different account. "
+                        "Please sign in with the account that made the purchase."
+                    ),
+                )
+
+        # An Apple subscription belongs to an Apple ID, not to an app account.
+        # Nothing in a verified receipt says which of our users paid, so without
+        # this check the same transaction can be claimed by every app account
+        # that signs in on the device — observed in production: one transaction
+        # (2000001216903849) granted Fluency Builder to three separate users,
+        # two of whom paid nothing. Restore Purchases replays every transaction
+        # the Apple ID owns, so a manual restore reproduces it just as easily.
+        #
+        # original_transaction_id is the stable identity of a subscription
+        # across renewals, so it is the right key to claim.
+        original_transaction_id = verification_result.get("original_transaction_id")
+        if original_transaction_id:
+            existing_owner = await database.get_collection("users").find_one(
+                {
+                    "apple_original_transaction_id": original_transaction_id,
+                    "_id": {"$ne": get_user_query(str(current_user.id))["_id"]},
+                },
+                {"_id": 1, "email": 1},
+            )
+            if existing_owner:
+                logger.warning(
+                    f"[APPLE_IAP] User {current_user.id} tried to claim transaction "
+                    f"{original_transaction_id}, already owned by {existing_owner['_id']}"
+                )
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "This subscription is already linked to another account. "
+                        "Please sign in with the account that made the purchase, "
+                        "or contact support."
+                    ),
+                )
+
         # Create or update subscription
         await _create_or_update_subscription(
             user_id=str(current_user.id),
