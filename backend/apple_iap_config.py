@@ -67,6 +67,23 @@ class AppleIAPVerifier:
         """
         logger.info(f"[APPLE_IAP] Verifying receipt for product: {product_id}")
 
+        # /verifyReceipt only accepts the base64 PKCS#7 app receipt. A StoreKit 2
+        # signed transaction (three dot-separated base64url segments) is a
+        # different artifact and Apple rejects it with a malformed-data status.
+        # react-native-iap v14 hands out a JWS by default, so this input is a
+        # realistic mistake — fail with a message that names the cause instead of
+        # surfacing Apple's generic "receipt malformed".
+        if receipt_data.count(".") == 2 and " " not in receipt_data.strip():
+            logger.error(
+                "[APPLE_IAP] Received a StoreKit 2 JWS, not a base64 app receipt. "
+                "/verifyReceipt cannot validate it; the client must send the "
+                "receipt from getReceiptDataIOS(), or this backend must move to "
+                "the App Store Server API."
+            )
+            raise ValueError(
+                "Received a StoreKit 2 signed transaction; expected a base64 app receipt"
+            )
+
         # Get Apple shared secret from environment
         shared_secret = os.getenv("APPLE_IAP_SHARED_SECRET")
         if not shared_secret:
