@@ -95,6 +95,12 @@ praat-parselmouth==0.4.3
 # building without that step.
 setuptools<81
 
+# Apple StoreKit 2 signed-transaction verification (Apple's official library).
+# react-native-iap v14 returns a JWS, and under StoreKit 2 the on-device receipt
+# file often does not exist at all, so the legacy /verifyReceipt path cannot be
+# relied on. Verification is offline against the root certs in certs/apple.
+app-store-server-library==3.1.2
+
 # Azure Speech SDK for pronunciation assessment
 azure-cognitiveservices-speech==1.41.1
 
