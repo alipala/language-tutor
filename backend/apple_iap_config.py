@@ -261,11 +261,22 @@ class AppleIAPVerifier:
         if payload.purchaseDate:
             purchase_date = datetime.fromtimestamp(payload.purchaseDate / 1000).isoformat()
 
-        # offerType 1 is Apple's introductory offer, which is how a free trial
-        # is represented; the legacy receipt exposed the same thing as
-        # is_trial_period / is_in_intro_offer_period.
+        # Apple has four offer types, and only the first is an introductory
+        # offer: 1=INTRODUCTORY, 2=PROMOTIONAL, 3=OFFER_CODE, 4=WIN_BACK.
+        # Testing `== 1` alone meant a customer redeeming a discounted offer
+        # code was recorded as having paid full price, which silently corrupts
+        # any measurement of a campaign.
         raw_offer_type = getattr(payload, "rawOfferType", None)
+        raw_discount_type = getattr(payload, "rawOfferDiscountType", None)
         is_intro_offer = raw_offer_type == 1
+
+        # Whether the customer actually paid the list price this period. A free
+        # trial and a 90%-off first month are both discounted, regardless of
+        # which mechanism delivered them.
+        is_discounted = raw_offer_type in (1, 2, 3, 4)
+        # FREE_TRIAL is the discount type Apple reports for a zero-cost period,
+        # whether it arrives as an introductory offer or an offer code.
+        is_free_period = str(raw_discount_type or "").upper() == "FREE_TRIAL"
 
         # A revoked (refunded) transaction must never grant entitlement.
         if getattr(payload, "revocationDate", None):
@@ -278,8 +289,24 @@ class AppleIAPVerifier:
             "original_transaction_id": payload.originalTransactionId,
             "purchase_date": purchase_date,
             "expires_date": expires_date,
+            # Kept for the existing callers and the legacy receipt shape: true
+            # only for a genuine introductory offer.
             "is_trial_period": is_intro_offer,
             "is_in_intro_offer_period": is_intro_offer,
+            # Campaign attribution. offer_identifier names the offer configured
+            # in App Store Connect (e.g. the "Yagmur group" offer) — note it
+            # identifies the OFFER, not the individual code, so per-code
+            # attribution has to be tracked at distribution time.
+            "offer_type": raw_offer_type,
+            "offer_identifier": getattr(payload, "offerIdentifier", None),
+            "offer_discount_type": raw_discount_type,
+            "is_discounted": is_discounted,
+            "is_free_period": is_free_period,
+            # What Apple actually charged, so revenue is not inferred from our
+            # own price table when an offer was applied. price is in
+            # milli-units of currency (9990 = 9.99).
+            "price": getattr(payload, "price", None),
+            "currency": getattr(payload, "currency", None),
             "environment": environment,
             # Set by the client when starting the purchase; Apple signs it into
             # the transaction. This is the only field that says WHICH of our

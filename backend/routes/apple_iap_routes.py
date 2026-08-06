@@ -218,6 +218,20 @@ async def _create_or_update_subscription(
         "apple_original_transaction_id": verification_result["original_transaction_id"],
         "apple_is_trial": verification_result.get("is_trial_period", False),
 
+        # Offer / campaign attribution. Without these a customer who redeemed a
+        # discounted offer code is indistinguishable from one who paid list
+        # price, so campaign performance cannot be measured after the fact.
+        # apple_offer_identifier names the offer configured in App Store
+        # Connect; it identifies the offer, not the individual code.
+        "apple_offer_type": verification_result.get("offer_type"),
+        "apple_offer_identifier": verification_result.get("offer_identifier"),
+        "apple_offer_discount_type": verification_result.get("offer_discount_type"),
+        "apple_is_discounted": verification_result.get("is_discounted", False),
+        # What Apple charged, in milli-units (9990 = 9.99), so revenue is not
+        # inferred from our own price table when an offer was applied.
+        "apple_price": verification_result.get("price"),
+        "apple_currency": verification_result.get("currency"),
+
         # Period tracking
         "current_period_start": now,
         "current_period_end": expires_at,
