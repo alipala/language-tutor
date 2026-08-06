@@ -144,6 +144,20 @@ class GooglePlayVerifier:
         # Check if in trial period
         is_trial = response.get("paymentState") == 2  # 2 = free trial
 
+        # Promotion attribution, mirroring what apple_iap_config records. Google
+        # only populates these when a promotion was actually applied:
+        #   promotionType 0 = one-time code, 1 = vanity (custom) code
+        #   promotionCode = the vanity code string, e.g. "TEACHER90" — note this
+        #     is set ONLY for vanity codes, never for one-time codes
+        # introductoryPriceInfo is present when a base-plan intro offer applied.
+        #
+        # These live on the v1 endpoint. The newer subscriptionsv2 drops them in
+        # favour of lineItems[].offerDetails.offerId, so v1 is deliberately kept
+        # here — it is the only one that reports which code was redeemed.
+        promotion_type = response.get("promotionType")
+        promotion_code = response.get("promotionCode")
+        intro_price_info = response.get("introductoryPriceInfo") or {}
+
         return {
             "valid": True,
             "product_id": product_id,
@@ -156,6 +170,11 @@ class GooglePlayVerifier:
             "country_code": response.get("countryCode"),
             "price_currency_code": response.get("priceCurrencyCode"),
             "price_amount_micros": response.get("priceAmountMicros"),
+            # Campaign attribution
+            "promotion_type": promotion_type,
+            "promotion_code": promotion_code,
+            "is_discounted": promotion_type is not None or bool(intro_price_info) or is_trial,
+            "intro_price_micros": intro_price_info.get("introductoryPriceAmountMicros"),
         }
 
 

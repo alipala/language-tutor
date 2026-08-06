@@ -178,6 +178,14 @@ async def _create_or_update_subscription(
         "google_play_is_trial": verification_result.get("is_trial_period", False),
         "google_play_auto_renewing": verification_result.get("auto_renewing", False),
 
+        # Promotion attribution, mirroring the apple_offer_* fields. Google sets
+        # promotion_code only for vanity (custom) codes — a one-time code's
+        # string is never returned by the API, so those can only be attributed
+        # at distribution time.
+        "google_play_promotion_type": verification_result.get("promotion_type"),
+        "google_play_promotion_code": verification_result.get("promotion_code"),
+        "google_play_is_discounted": verification_result.get("is_discounted", False),
+
         # Period tracking
         "current_period_start": now,
         "current_period_end": expires_at,
