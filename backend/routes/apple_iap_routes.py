@@ -104,6 +104,15 @@ async def verify_receipt(
         # legacy receipts, have no token and still fall through to the
         # ownership check below.
         app_account_token = verification_result.get("app_account_token")
+        if not app_account_token:
+            # Expected for purchases started before the client began sending
+            # the token, and for legacy receipts. Logged because it is the
+            # difference between "the buyer is proven" and "we are relying on
+            # the ownership check below" — worth seeing in production.
+            logger.info(
+                "[APPLE_IAP] Transaction carries no appAccountToken; "
+                "falling back to the ownership check"
+            )
         if app_account_token:
             # The client encodes a 24-hex ObjectId as a UUID by right-padding
             # with zeros, so stripping hyphens and taking the first 24 chars
