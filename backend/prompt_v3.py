@@ -40,6 +40,7 @@ from tutor_config import (
     get_topic_config,
     get_topic_vocabulary,
     get_subtopic_arcs,
+    has_explicit_session_context,
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -299,23 +300,44 @@ def build_instructions_v3(request: Any, language: str, level: str) -> Optional[s
     context_block: Optional[str] = None
     goal_short = f"{lang_name} conversation practice"
 
-    if learning_plan_data:
+    # /api/realtime/token attaches the user's active learning plan to EVERY
+    # session, so learning_plan_data alone does not mean "this is a plan
+    # session". Whatever the learner explicitly picked must win: without this
+    # guard a news or freestyle session for a user with an active plan was
+    # rebuilt as a plan session — the article and the chosen topic never reached
+    # the model at all, and the tutor quoted corrections from earlier PLAN
+    # sessions. The legacy A1/A2 builder has carried the same guard since
+    # BEGINNER_PROMPT_V2; V3 runs before it, so it needs its own.
+    explicit_context = has_explicit_session_context(news_raw, user_prompt, topic)
+    is_plan_session = bool(learning_plan_data) and not explicit_context
+
+    # `mode` records which branch actually produced the Context block, so the
+    # contract paragraph below can describe the real session instead of guessing
+    # from the inputs. topic="custom" with no user_prompt names no subject and
+    # lands in free practice, for example — it must not claim the student chose
+    # something.
+    if is_plan_session:
         built = _plan_context(learning_plan_data)
         if built is None:
             return None  # final assessment → legacy
         context_block, goal_short = built
         opener_idx = int(learning_plan_data.get("completed_sessions") or 0) % len(_OPENER_STYLES)
+        mode = "plan"
     elif news_raw:
         built = _news_context(news_raw)
         if built is None:
             return None  # unparseable news payload → legacy handles it
         context_block, goal_short = built
+        mode = "news"
     elif topic and topic != "custom":
         context_block, goal_short = _topic_context(topic, level, pacing)
+        mode = "topic"
     elif user_prompt:
         context_block, goal_short = _custom_context(user_prompt, getattr(request, "research_data", None))
+        mode = "custom"
     else:
         context_block = f"- Free practice. Pick ONE everyday theme suited to {level} and stay on it."
+        mode = "free"
 
     # ── A1/A2 lexical + grammar ceiling ──────────────────────────────────
     # CEFR research (arxiv 2501.15247; ERIC EJ1466280): the model only hits A1
@@ -416,12 +438,32 @@ Corrections are disabled for this session. Recast errors naturally in your repli
             "then steer back with a question tied to the goal."
         )
 
+    # The plan contract belongs to plan sessions only. It used to be emitted
+    # unconditionally, which told the tutor to honour "this plan" during news and
+    # freestyle sessions whose Context lists no plan at all — so even after the
+    # precedence fix above, the model was still being pointed at a plan that was
+    # not there. Each mode now states its own contract, and free practice (which
+    # has no subject yet) gets none because its Context block already says to
+    # pick one theme and stay on it.
+    if mode == "plan":
+        contract_block = (
+            "\nLEARNING PLAN CONTRACT — the student built this plan to improve in these specific "
+            "areas. You must honor it every session, even short ones. Never drift to unrelated small "
+            "talk or generic topics when a goal and sub-goal are listed in Context.\n"
+        )
+    elif mode == "free":
+        contract_block = ""
+    else:
+        contract_block = (
+            f"\nSESSION CONTRACT — this session is about {goal_short}. That is what the student chose: "
+            "stay on it from the first turn to the last, and never drift to unrelated small talk or to a "
+            "different subject.\n"
+        )
+
     instructions = f"""# Role & Objective
 You are a {lang_name} speaking coach in a live {duration}-minute voice session with {_art} {level} learner.
 A successful session means: the student did most of the talking, they practiced TODAY'S GOAL throughout, and they leave with 1–2 concrete corrections.
-
-LEARNING PLAN CONTRACT — the student built this plan to improve in these specific areas. You must honor it every session, even short ones. Never drift to unrelated small talk or generic topics when a goal and sub-goal are listed in Context.
-
+{contract_block}
 # Personality & Tone
 - Warm, encouraging, natural — a coach, not a quiz machine and not a cheerleader.
 - {profile['turn']}

@@ -1877,3 +1877,40 @@ def get_roleplay_scenario(topic_id: Optional[str]) -> Optional[Dict[str, Any]]:
         return None
     canonical_id = cfg["id"]
     return ROLEPLAY_SCENARIOS.get(canonical_id)
+
+
+def has_explicit_session_context(
+    news_context: Any = None,
+    user_prompt: Any = None,
+    topic: Any = None,
+) -> bool:
+    """
+    True when the learner explicitly chose what this session is about.
+
+    Why this exists: /api/realtime/token loads the user's active learning plan
+    on EVERY session, so `learning_plan_data` being present is NOT evidence that
+    this is a learning-plan session. Treating it as such made news and freestyle
+    sessions silently inherit the plan's weekly focus, vocabulary and carried-over
+    corrections instead of the article or topic the learner picked.
+
+    The reliable signal is the reverse: a session is a genuine learning-plan
+    session ONLY when the request carries no explicit subject. That matches what
+    the mobile app sends — plan sessions go out with `topic: plan ? null : topic`
+    and no user_prompt / news_context, while news sessions carry news_context,
+    custom sessions carry user_prompt, and predefined / DNA-strand sessions carry
+    a topic id.
+
+    Blank and whitespace-only strings deliberately do NOT count: they name no
+    subject, and honouring them would produce an empty "the student chose: " line
+    while discarding a plan that is actually usable.
+    """
+    for value in (news_context, user_prompt, topic):
+        if value is None:
+            continue
+        if isinstance(value, str):
+            if value.strip():
+                return True
+            continue
+        if value:
+            return True
+    return False

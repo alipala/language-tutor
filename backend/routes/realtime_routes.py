@@ -1863,7 +1863,23 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                 return "alloy"
 
         async def fetch_active_learning_plan():
-            """Fetch user's active learning plan if not provided"""
+            """Fetch the user's active learning plan — only for plan sessions."""
+            # A news / custom-topic / predefined-topic session is not a plan
+            # session, even when the user has an active plan in this language.
+            # Loading it here is what let plan content leak into those sessions,
+            # so we skip the lookup outright; it also drops two Mongo queries
+            # from every freestyle and news session. The prompt builders keep
+            # their own guard, so this is defence in depth rather than the only
+            # thing standing between the plan and the wrong session.
+            from tutor_config import has_explicit_session_context
+
+            if has_explicit_session_context(
+                request.news_context, request.user_prompt, request.topic
+            ):
+                if DEBUG_REALTIME:
+                    print("[LEARNING_PLAN] Explicit session context present — skipping plan lookup")
+                return None
+
             # If learning_plan_data is already provided, use it
             if request.learning_plan_data:
                 if DEBUG_REALTIME:
@@ -1891,12 +1907,12 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
                 # Fetch user's active learning plan
                 plans_collection = database.learning_plans
 
-                # First, check what learning plans exist for this user
-                all_plans = await plans_collection.find({"user_id": current_user.id}).to_list(length=10)
+                # Diagnostics only — this listing never affects the result, so it
+                # must not cost a query when debug logging is off.
                 if DEBUG_REALTIME:
+                    all_plans = await plans_collection.find({"user_id": current_user.id}).to_list(length=10)
                     print(f"[LEARNING_PLAN] 📋 Found {len(all_plans)} total learning plans for user")
-                for plan in all_plans:
-                    if DEBUG_REALTIME:
+                    for plan in all_plans:
                         print(f"[LEARNING_PLAN]    - Language: {plan.get('language')}, Status: {plan.get('status')}")
 
                 # FIXED: Also match plans where status is missing/null (legacy plans)
