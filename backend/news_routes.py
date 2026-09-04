@@ -18,6 +18,9 @@ from database import (
     news_articles_collection,
     learning_plans_collection
 )
+# Leaf module — stdlib only, so this does not pull crewai/openai into the web
+# process the way importing news_generation.crew_agents would.
+from news_generation.config import get_lookback_days
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -113,18 +116,39 @@ async def get_todays_news(
                 return True
             return False
 
+        if batch is not None:
+            # Serve the batch's own stored date rather than the CET-aware
+            # today_start we computed: batches store date as a naive UTC
+            # datetime (CET midnight converted to UTC), and the article query
+            # below matches on it exactly.
+            query_date = batch["date"]
+
         if not _batch_has_visible_articles(batch):
-            # Try yesterday's news as fallback
-            logger.warning(f"[NEWS] Today's news not available, falling back to yesterday")
-            yesterday_start = today_start - timedelta(days=1)
+            # Fall back to the most recent completed batch inside the lookback
+            # window. The window is the generation interval, so on the default
+            # daily cadence this is "yesterday" — exactly what this branch used
+            # to hard-code. On a weekly cadence it reaches back 7 days, which is
+            # what keeps the tab populated on the six days that generate
+            # nothing. Widening it without the sort would be a bug: find_one
+            # with no sort returns an arbitrary match, so an older batch could
+            # win over a newer one.
+            lookback_days = get_lookback_days()
+            logger.warning(
+                f"[NEWS] Today's news not available, falling back to the newest "
+                f"completed batch within {lookback_days} day(s)"
+            )
+            window_start = today_start - timedelta(days=lookback_days)
             batch = await news_batches_collection.find_one(
-                {"date": {"$gte": yesterday_start}, "status": "completed"}
+                {"date": {"$gte": window_start}, "status": "completed"},
+                sort=[("date", -1)]
             )
             if batch:
                 fallback_used = True
-                query_date = yesterday_start
+                query_date = batch["date"]
             else:
-                logger.error(f"[NEWS] No news available for today or yesterday")
+                logger.error(
+                    f"[NEWS] No news available within the last {lookback_days} day(s)"
+                )
                 return NewsList(
                     date=today.isoformat(),
                     articles=[],
@@ -146,8 +170,15 @@ async def get_todays_news(
         if language:
             projection[f"variations.{language}"] = 1
 
+        # Match the served batch's date exactly rather than ">= that date".
+        # With a one-day lookback the two were equivalent (only one batch could
+        # ever satisfy the range), but once the window spans a week ">=" would
+        # union every batch in it — returning several hundred articles and
+        # interleaving them, since article_index only orders within a batch.
+        # Articles are written with the same date value as their batch, and the
+        # date_-1_batch_id_1 index still serves this.
         articles_cursor = news_articles_collection.find(
-            {"date": {"$gte": query_date}},
+            {"date": query_date},
             projection
         ).sort("article_index", 1)
 

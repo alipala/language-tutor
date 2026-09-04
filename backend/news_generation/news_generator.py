@@ -27,7 +27,12 @@ from news_generation.crew_agents import (
     MVP_LEVELS
 )
 from news_generation.news_tools import get_diverse_news
-from news_generation.config import is_multi_provider_enabled
+from news_generation.config import (
+    is_multi_provider_enabled,
+    get_languages,
+    get_levels,
+    get_retention_days,
+)
 from news_generation.providers import NewsApiProvider
 from news_generation.providers._common import backfill_images_for_articles
 from news_generation.orchestrator import (
@@ -83,13 +88,23 @@ async def generate_daily_news(
     Raises:
         NewsGenerationError: If generation fails after all retries
     """
-    # Use provided parameters or defaults
+    # Use provided parameters or defaults.
+    #
+    # The matrix is the dominant cost of a run: every article costs
+    # len(languages) x len(levels) gpt-4o-mini calls, so the full 6x6 default is
+    # 36 calls per article. NEWS_LANGUAGES / NEWS_LEVELS let an operator drop
+    # combinations nobody reads (a CEFR level with no learners, say) without a
+    # deploy. Unset means the full matrix, i.e. the historical behaviour.
     if languages is None:
-        languages = MVP_LANGUAGES
+        languages = get_languages()
     if levels is None:
-        levels = MVP_LEVELS
+        levels = get_levels()
 
     logger.info(f"[NEWS_GEN] Starting daily news generation (attempt {retry_count + 1}/{MAX_RETRY_COUNT})")
+    logger.info(
+        f"[NEWS_GEN] Variation matrix: {len(languages)}x{len(levels)} = "
+        f"{len(languages) * len(levels)} GPT calls per article"
+    )
     logger.info(f"[NEWS_GEN] Languages: {languages}")
     logger.info(f"[NEWS_GEN] Levels: {levels}")
     logger.info(f"[NEWS_GEN] Categories: {categories or 'default MVP categories'}")
@@ -662,7 +677,14 @@ async def generate_single_article_all_variations(
         "safety": article.get("safety", {}),
         "variations": {},
         "created_at": datetime.utcnow(),
-        "expires_at": datetime.utcnow() + timedelta(days=2)  # TTL: 2 days
+        # news_articles carries a TTL index on expires_at (expireAfterSeconds: 0),
+        # so this value is the hard lifetime of the article — once it passes,
+        # Mongo deletes the document and the news tab goes empty, not stale.
+        # It therefore has to cover the whole gap until the next batch:
+        # get_retention_days() derives that from the generation interval
+        # (interval + 1 day of grace) so a cadence change can't leave the feed
+        # to expire mid-week. Default is 2, the previous hard-coded value.
+        "expires_at": datetime.utcnow() + timedelta(days=get_retention_days())
     }
 
     # Generate all variations

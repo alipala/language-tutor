@@ -35,8 +35,14 @@ GPT_MODEL_MINI = "gpt-4o-mini"  # For cheaper vocabulary generation
 
 # MVP Configuration
 MVP_ARTICLE_COUNT = 5  # Target 5 articles per day
-MVP_LANGUAGES = ["en", "es", "nl", "pt", "de", "fr"]  # English, Spanish, Dutch, Portuguese, German, French
-MVP_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]  # All 6 CEFR proficiency levels
+# Re-exported from config so the matrix has one definition. These stay the full
+# set — the env-var trim (NEWS_LANGUAGES / NEWS_LEVELS) is applied by
+# generate_daily_news, not here, so callers that pass no override still get
+# every language/level exactly as before.
+from news_generation.config import DEFAULT_LANGUAGES, DEFAULT_LEVELS
+
+MVP_LANGUAGES = DEFAULT_LANGUAGES  # English, Spanish, Dutch, Portuguese, German, French
+MVP_LEVELS = DEFAULT_LEVELS  # All 6 CEFR proficiency levels
 
 # CEFR Level Requirements
 LEVEL_REQUIREMENTS = {
