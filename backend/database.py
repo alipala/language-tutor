@@ -129,6 +129,11 @@ try:
     session_completions_collection = database.session_completions
     sentence_analysis_feedback_collection = database.sentence_analysis_feedback
     story_contributions_collection = database.story_contributions
+    # Also assigned inside init_db() when its indexes are created, but that copy
+    # is local to the function — story_reminder_trigger imports this name at
+    # module scope, and without this line that import raises and takes the whole
+    # scheduler process down with it (every reminder job, not just story ones).
+    story_progress_collection = database.story_progress
     user_story_achievements_collection = database.user_story_achievements
     learning_goals_collection = database.learning_goals
     flashcards_collection = database.flashcards
