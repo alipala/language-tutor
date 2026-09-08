@@ -8,6 +8,17 @@ from datetime import datetime, timedelta
 from openai_client import get_async_openai
 from models import Flashcard, FlashcardSet, FlashcardGenerationRequest
 
+
+def _session_flashcards_enabled() -> bool:
+    """Whether ending a session should auto-generate a flashcard set.
+
+    Off by default: the generated sets were not being used, and each one costs an
+    LLM call on every completed session. The manual /api/flashcards/generate
+    endpoint stays available regardless of this flag.
+    """
+    return (os.getenv("SESSION_FLASHCARDS_ENABLED", "false") or "").strip().lower() == "true"
+
+
 class FlashcardService:
     """Service for generating and managing AI-powered flashcards"""
 

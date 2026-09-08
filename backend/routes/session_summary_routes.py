@@ -427,6 +427,9 @@ async def _generate_flashcards_background(
     topic, summary_text: str, user_id: str
 ):
     """Generate and persist flashcards without blocking the session-summary response."""
+    from flashcard_service import _session_flashcards_enabled
+    if not _session_flashcards_enabled():
+        return
     try:
         from flashcard_service import FlashcardService
         from models import FlashcardGenerationRequest

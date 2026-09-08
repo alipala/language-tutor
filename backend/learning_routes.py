@@ -513,6 +513,10 @@ async def create_learning_plan(
                 sub_goals=sub_goals if sub_goals else None,
                 assessment_data=assessment_data or {},
                 interface_language=plan_request.interface_language or "en",
+                # The curriculum sizes each activity against the same pacing
+                # table the live tutor runs on, so a 3-minute session never
+                # gets an activity built for 5.
+                session_minutes=plan_request.preferred_session_duration or 3,
             )
         except Exception as _llm_err:
             logger.warning(
@@ -1889,7 +1893,7 @@ async def save_session_summary_OLD_DEPRECATED(
         generated_flashcards = 0
 
         try:
-            from flashcard_service import FlashcardService
+            from flashcard_service import FlashcardService, _session_flashcards_enabled
             from models import FlashcardGenerationRequest
 
             # 🔥 CRITICAL FIX: Use the learning_plan_session_id so frontend can filter properly
@@ -1908,8 +1912,11 @@ async def save_session_summary_OLD_DEPRECATED(
             print(f"[FLASHCARD_INTEGRATION] 🎯 Generating flashcards for learning plan session: {learning_plan_session_id}")
             print(f"[FLASHCARD_INTEGRATION] Language: {flashcard_request.language}, Level: {flashcard_request.level}")
 
-            # Generate flashcards
-            flashcard_set = await FlashcardService.generate_flashcards(flashcard_request, str(current_user.id))
+            flashcard_set = None
+            if _session_flashcards_enabled():
+                flashcard_set = await FlashcardService.generate_flashcards(flashcard_request, str(current_user.id))
+            else:
+                print(f"[FLASHCARD_INTEGRATION] ⏭️ Skipped — SESSION_FLASHCARDS_ENABLED is off")
 
             if flashcard_set and flashcard_set.flashcards:
                 # 🔥 CRITICAL FIX: Save flashcards to database (they were being generated but not saved!)

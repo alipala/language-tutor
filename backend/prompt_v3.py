@@ -33,6 +33,7 @@ and unsupported paths stay byte-identical.
 """
 
 import json
+import os
 from typing import Any, Dict, List, Optional
 
 from tutor_config import (
@@ -49,37 +50,37 @@ from tutor_config import (
 
 _LEVEL_PROFILES: Dict[str, Dict[str, str]] = {
     "A1": {
-        "turn":      "ONE short simple sentence per turn (max ~8 words), spoken slowly and clearly.",
+        "turn":      "Your turn IS the question: ask it and stop. One short sentence, max ~8 words, spoken slowly and clearly. Do not restate their answer or comment on it first — that lead-in is what makes turns long and makes you sound like an echo.",
         "ratio":     "The student should speak about 60% of the time.",
-        "questions": "Ask yes/no or this-or-that questions about simple facts. Ask the question and STOP — never tack a spoken tag like 'yes or no?' onto the end; the question form already makes the choice clear, and the tag makes you sound robotic. One question per turn. Never ask 'why', opinions, or anything needing numbers, dates or reasons.",
+        "questions": "Ask yes/no or this-or-that questions about simple facts, and reach for this-or-that first: a plain yes/no buys back one word, while a choice makes the student produce a real one. Two bare yes/no questions in a row is the pattern to avoid. One question per turn, asked and then finished — no spoken tag like 'yes or no?' on the end. Nothing needing 'why', an opinion or a story yet.",
         "fix_style": "Corrections: 3–5 words, then say the full correct phrase once and move on.",
     },
     "A2": {
-        "turn":      "One or two short sentences per turn (max ~12 words total).",
+        "turn":      "Your turn IS the question: ask it and stop. One sentence, max ~10 words. Do not restate their answer or comment on it first.",
         "ratio":     "The student should speak about 70% of the time.",
         "questions": "Simple open questions are fine. One question per turn. An occasional gentle 'why' is OK.",
         "fix_style": "Corrections: one short sentence, then continue.",
     },
     "B1": {
-        "turn":      "One or two natural sentences per turn.",
+        "turn":      "A short reaction to what they just said, then your question — two sentences, no third.",
         "ratio":     "The student should speak about 80% of the time.",
         "questions": "Open questions and 'why' are good. One question per turn.",
         "fix_style": "Corrections: direct and brief — name the fix, give the correct form, continue.",
     },
     "B2": {
-        "turn":      "Two or three natural sentences per turn; idioms welcome.",
+        "turn":      "React to what they said, then ask — two or three natural sentences; idioms welcome.",
         "ratio":     "The student should speak about 80% of the time.",
         "questions": "Push for detail, opinions and comparisons. One question per turn.",
         "fix_style": "Corrections: direct — include word-choice and register issues, not just grammar.",
     },
     "C1": {
-        "turn":      "One or two dense, natural sentences per turn.",
+        "turn":      "React, then ask — one or two dense, natural sentences.",
         "ratio":     "The student should speak about 85% of the time.",
         "questions": "Probe nuance and counter-arguments. One question per turn.",
         "fix_style": "Corrections: precise — target nuance, collocation and register.",
     },
     "C2": {
-        "turn":      "Natural native register, concise turns.",
+        "turn":      "React, then ask, in natural native register — concise turns.",
         "ratio":     "The student should speak about 85% of the time.",
         "questions": "Challenge precision and style. One question per turn.",
         "fix_style": "Corrections: hold them to near-native standard; flag anything unidiomatic.",
@@ -90,10 +91,15 @@ _LEVEL_PROFILES: Dict[str, Dict[str, str]] = {
 # sessions (0 otherwise). The model cannot remember earlier sessions, so WE
 # provide the variety it is asked for.
 _OPENER_STYLES: List[str] = [
-    "Name today's goal in a few words, then ask one easy starter question.",
-    "Open with a question that uses one of today's vocabulary words — no preamble.",
-    "Briefly recall one thing from the last session (see Context), then bridge to today's goal with a question.",
-    "Drop the student straight into a tiny real-life scenario about today's goal and ask what they would say.",
+    "Say hello and name today's goal in a few words, then ask one easy starter question.",
+    "Say hello and name today's goal, then ask a question built around one of today's words.",
+    "Say hello, recall one thing from the last session (see Context), then bridge to today's goal with a question.",
+    # This one used to read "drop the student straight into a tiny real-life
+    # scenario ... and ask what they would say", and the tutor answered the
+    # invitation by becoming a character in the scene — offering its own passport
+    # and asking whether its own booking was fine. A situation the student speaks
+    # about is fine; a scene the tutor acts in is not.
+    "Say hello and name today's goal, then name one everyday situation where it comes up and ask the student what they would say in it.",
 ]
 
 
@@ -140,7 +146,18 @@ def _plan_context(learning_plan_data: Dict) -> Optional[tuple]:
     # session, so two sessions in the same week never share the same goal.
     activity = activities[session_in_week % len(activities)] if activities else focus
     vocab = _rotate_slice(week.get("key_vocabulary") or [], session_in_week, 4)
-    phrases = _rotate_slice(week.get("key_phrases") or [], session_in_week, 2)
+    # key_phrases is deliberately NOT read. The curriculum generator writes it
+    # from the student's own assessment transcript, so the entries are
+    # first-person statements of fact about them ("Ik woon in Utrecht.",
+    # "Ik kom uit Turkije."). Handing those to the coach as language to use has
+    # no good reading: say them as itself and it is claiming the student's life
+    # as its own, or turn them into questions and it is telling the student what
+    # the answer is. The measured session did the latter — "woon je in Utrecht
+    # of in een andere stad?", "Kom je uit Turkije of uit een ander land?" — and
+    # then could not let go of Utrecht when the student named a Turkish city,
+    # asking "Is jouw stad in Nederland?" four turns after they had said
+    # otherwise, because the instruction outranks the transcript. Vocabulary is
+    # safe (single words carry no claim); sentences are not.
 
     # User-selected goals and sub-goals (stored on the plan document).
     # These are the macro topics the learner committed to when creating the plan.
@@ -155,44 +172,60 @@ def _plan_context(learning_plan_data: Dict) -> Optional[tuple]:
     goal_labels = [_humanize(g) for g in raw_goals if g]
     sub_goal_labels = [_humanize(sg) for sg in raw_sub_goals if sg]
 
-    lines = []
-
-    # Top-level plan identity — tutor sees the learner's actual commitment
-    if goal_labels:
-        lines.append(f"- Plan goal(s): {', '.join(goal_labels)}")
-    if sub_goal_labels:
-        lines.append(f"- Plan sub-goal(s): {', '.join(sub_goal_labels)}")
-
-    lines += [
-        f"- Week {week_idx + 1} focus: {focus}",
-        f"- TODAY'S GOAL (session {session_in_week + 1} of this week): {activity}",
+    # Layered per the realtime guide's Long Context Behavior pattern: the model
+    # is told which lines govern today and which are background, instead of
+    # being handed one flat list and left to infer priority. Plan history grows
+    # every session, and undifferentiated bullets let last week's carry-over
+    # compete with today's goal — the guide's stated failure mode ("Do not rely
+    # on the model to infer source priority from a raw transcript or large
+    # context dump. Use structure.").
+    lines = [
+        "## Today — this governs the session",
+        f"- TODAY'S GOAL (session {session_in_week + 1} of week {week_idx + 1}): {activity}",
     ]
     if vocab:
-        lines.append(f"- Today's vocabulary to work in naturally: {', '.join(str(v) for v in vocab)}")
-    if phrases:
-        lines.append(f"- Useful phrases: {' | '.join(str(p) for p in phrases)}")
+        lines.append(f"- Words to work in: {', '.join(str(v) for v in vocab)}")
 
-    # Continuity from the last 2 sessions — corrections to re-check and the
-    # carry-over focus. Metadata only; keeps the prompt small.
+    # Continuity from the newest session that has a summary. The recurring
+    # errors belong with TODAY because re-checking them is the point of carrying
+    # them forward at all; filing them under "background, today wins" would tell
+    # the tutor to ignore the one thing it is meant to watch for. Only the softer
+    # continuity — what was covered, what was suggested next — is background,
+    # where it cannot outrank the goal this session was built around.
     history = learning_plan_data.get("session_history") or []
+    recheck: List[str] = []
+    background: List[str] = []
     for hist in reversed(history[-2:]):
         ss = hist.get("structured_summary") or {}
         if not ss:
             continue
-        prev = []
+        recheck = [
+            f"'{c['wrong']}' -> '{c['correct']}'"
+            for c in (ss.get("corrections_made") or [])[:2]
+            if isinstance(c, dict) and c.get("wrong") and c.get("correct")
+        ]
         practiced = ss.get("vocabulary_practiced") or []
         if practiced:
-            prev.append(f"practiced {', '.join(str(w) for w in practiced[:4])}")
+            background.append(f"- Covered last time: {', '.join(str(w) for w in practiced[:4])}")
         focus_next = ss.get("focus_next_session")
         if focus_next:
-            prev.append(f"carry-over focus: {focus_next}")
-        corrections = ss.get("corrections_made") or []
-        for c in corrections[:2]:
-            if isinstance(c, dict) and c.get("wrong") and c.get("correct"):
-                prev.append(f"watch for '{c['wrong']}' -> '{c['correct']}'")
-        if prev:
-            lines.append(f"- Last session: {'; '.join(prev)}")
-        break  # one line of continuity is enough — newest session with a summary
+            background.append(f"- Suggested next focus: {focus_next}")
+        break
+
+    if recheck:
+        lines.append(f"- Watch for these again: {'; '.join(recheck)}")
+
+    plan_lines = [f"- This week: {focus}"]
+    if goal_labels:
+        plan_lines.append(f"- Long-term goals: {', '.join(goal_labels)}")
+    if sub_goal_labels:
+        plan_lines.append(f"- Areas: {', '.join(sub_goal_labels)}")
+    lines += ["", "## The plan this belongs to"] + plan_lines
+
+    if background:
+        lines += ["", "## Background — earlier sessions"] + background + [
+            "- Status: background. Where any of it competes with TODAY'S GOAL, today wins."
+        ]
 
     return "\n".join(lines), str(activity)
 
@@ -360,26 +393,32 @@ def build_instructions_v3(request: Any, language: str, level: str) -> Optional[s
         corrections_section = f"""# Corrections — via the tool, not your voice
 When the student makes a CLEAR error (grammar, verb form, word choice, word order):
 1. FIRST call report_grammar_mistake with the wrong form, the correct form, and a short tip. This shows the student a correction card — it is how corrections reach them.
-2. THEN, out loud: say a SHORT acknowledgement, then ask your NEXT question. Two things only. Do NOT read the correction, the words "quick tip", or the wrong/right forms aloud — the card already shows them.
-- ONLY correct REAL errors. If the sentence is already correct, do NOT correct it and do NOT call the tool — just reply and ask the next question.
+2. THEN, out loud: take your normal turn for this level, exactly as described above — a correction adds nothing to it. Do NOT read the correction, the words "quick tip", or the wrong/right forms aloud; the card already shows them.
+- Correct REAL errors only: a sentence that is already right gets no tool call and no comment — just your reply and the next question.
 - At most ONE correction per student turn, and aim for one every 2–3 turns — let most turns flow uncorrected so the student keeps talking.
 - Tiny slips (a dropped article, a small mispronunciation): just recast naturally in your reply, no tool, no comment.
-- Never say the tool's name. Never announce that you are correcting.
+- Say nothing about the machinery: not the tool's name, not that a correction happened, not what you are about to do next. The student hears a conversation, not a description of one.
 
-## After a correction, always move FORWARD
-This is the rule students notice most, so apply it on every single correction.
-- Your turn after a correction contains a short acknowledgement and a NEW question. Nothing else.
+## After a fix, move forward
+This is the rule students notice most, so apply it every time you fix something.
+- The turn after a fix has the same shape as every other turn at this level. Nothing extra is tacked on because a correction happened.
 - When the student mispronounces or fumbles a phrase: say the correct version ONCE yourself, then ask a new question about the SAME topic. That is the whole repair.
-- Do not ask the student to say a phrase back to you. Phrases like "probeer nog eens", "zeg het nog eens", "herhaal dat", "try that again", "say it once more" do not belong in this session — a {duration}-minute conversation has no room for drilling, and hearing the correct form in a flowing exchange is what makes it stick at {level}.
+- Never hand the student a sentence to say back. This is banned as a SHAPE, in any wording and any language: "say that again", "now say: ...", "repeat after me", "ask the question: ...". A {duration}-minute conversation has no room for drilling, and at {level} the correct form sticks because they heard you use it, not because they recited it.
 - Imperfect pronunciation is expected at {level} and is not a problem to solve today. Keep the conversation moving; the student improves by talking more, not by repeating one line."""
     else:
         corrections_section = """# Corrections
 Corrections are disabled for this session. Recast errors naturally in your replies; never correct explicitly, and do not call any tool."""
 
+    # Counted in exchanges, not in time. Realtime conversation items carry no
+    # timestamps and the model gets no elapsed-session signal, so "in your last
+    # 1-2 turns" was an instruction it could not evaluate — and an unsatisfiable
+    # rule competes with the satisfiable ones around it. Exchanges it can count
+    # from the conversation it is holding.
     wrapup_line = (
-        "In your LAST 1–2 turns: name ONE specific thing the student did well and ONE specific thing "
-        "to practice, both based on what actually happened this session. If they made several errors, "
-        "say so kindly — honest beats flattering. No generic praise."
+        f"Once you have had about {max(turns - 2, 2)} exchanges, close the session: name ONE specific thing "
+        "the student did well and ONE specific thing to practise, both from what actually happened "
+        "today. If they struggled, say so kindly — honest beats flattering, and generic praise is "
+        "worse than none."
     )
 
     # Sample phrases: the model copies these closely (OpenAI realtime prompting
@@ -394,8 +433,8 @@ Corrections are disabled for this session. Recast errors naturally in your repli
     # slot ("ask your next question about TODAY'S GOAL") leaves nothing to copy.
     if level == "A1":
         sample_fix = (
-            '(after calling the tool) a 1-3 word cheer, then ONE new short question '
-            'about TODAY\'S GOAL — never about a topic that is not in Context.'
+            'ONE new short question about TODAY\'S GOAL '
+            '— never about a topic that is not in Context.'
         )
         sample_wrap = (
             'name one thing they did well and one thing to practise, in {level}-level words, '
@@ -403,15 +442,15 @@ Corrections are disabled for this session. Recast errors naturally in your repli
         ).replace('{level}', level)
     elif level == "A2":
         sample_fix = (
-            '(after calling the tool) a brief acknowledgement, then ONE new question '
-            'that moves TODAY\'S GOAL forward. Never say the fix aloud.'
+            'ONE new question that moves TODAY\'S GOAL forward. '
+            'Never say the fix aloud.'
         )
         sample_wrap = (
             'one genuine strength plus one concrete thing to practise, both from this session.'
         )
     else:
         sample_fix = (
-            '(after calling the tool) acknowledge in a few words and continue with a question '
+            'acknowledge in a few words and continue with a question '
             'that deepens TODAY\'S GOAL; the card shows the fix.'
         )
         sample_wrap = (
@@ -422,20 +461,53 @@ Corrections are disabled for this session. Recast errors naturally in your repli
 
     # Duration-scaled focus rules: shorter sessions = stricter on-topic enforcement.
     # 1 min (~4 exchanges) — zero drift budget; 3 min — one redirect max; 5 min — brief follow + redirect.
-    if duration <= 1:
+    # No quoted redirect line here. The guide is explicit that "the model closely
+    # follows sample phrases", and a quoted template with blanks is a script: the
+    # tutor read one aloud in production ("and back to the conversation: ...").
+    # These describe the move instead of scripting it.
+    # Free practice has no assigned goal, so both the step label and the redirect
+    # example have to stop naming one. Left alone they pointed at goal_short,
+    # which in this mode is the placeholder "<Language> conversation practice" —
+    # a subject the student never chose and the tutor would be policing.
+    practice_label = "PRACTICE — STAY ON YOUR THEME" if mode == "free" else "PRACTICE — STAY ON GOAL"
+    redirect_target = "the theme you picked" if mode == "free" else goal_short
+    # Test hook: pin the rotation to one opener so a specific style can be
+    # exercised now instead of waiting for completed_sessions to come round to
+    # it (a given style returns only every 4th plan session). Leave unset in
+    # normal operation — an unset or non-numeric value keeps the rotation.
+    _pinned = (os.getenv("REALTIME_OPENER_STYLE") or "").strip()
+    if _pinned.isdigit():
+        opener_idx = int(_pinned) % len(_OPENER_STYLES)
+
+    # The rotation's openers all name today's goal, which free practice does not
+    # have — off-plan sessions always land on index 0 ("Name today's goal…").
+    opener_line = (
+        "Say hello, name the everyday theme you have picked for today, then ask one easy "
+        "starter question about it."
+        if mode == "free" else _OPENER_STYLES[opener_idx]
+    )
+
+    if mode == "free":
         drift_rule = (
-            "STAY ON TODAY'S GOAL for all exchanges — there is no time for detours. "
-            "If the student goes off-topic, redirect immediately: \"Interesting — and back to [goal]: ...\""
+            "You chose the theme, so keep the conversation inside it. If the student "
+            "opens a new subject, follow them there and make THAT the theme rather "
+            "than steering back."
+        )
+    elif duration <= 1:
+        drift_rule = (
+            "Stay on TODAY'S GOAL for every exchange — there is no time for detours. "
+            "If the student goes elsewhere, let it pass and ask your next question about the goal."
         )
     elif duration <= 3:
         drift_rule = (
-            "If the student drifts off TODAY'S GOAL, acknowledge with ONE short sentence then redirect: "
-            "\"Nice — and back to [goal]: ...\" Do NOT follow the detour for more than one exchange."
+            "If the student goes off TODAY'S GOAL, give their answer a few words, then ask "
+            "your next question about the goal. One exchange of detour is the limit, and the "
+            "change of subject is made by asking — not by announcing it."
         )
     else:
         drift_rule = (
-            "If the student drifts far off TODAY'S GOAL, follow briefly (one exchange), "
-            "then steer back with a question tied to the goal."
+            "If the student goes far off TODAY'S GOAL, follow for one exchange, then ask a "
+            "question tied to the goal. Change the subject by asking, not by announcing it."
         )
 
     # The plan contract belongs to plan sessions only. It used to be emitted
@@ -463,14 +535,14 @@ Corrections are disabled for this session. Recast errors naturally in your repli
     instructions = f"""# Role & Objective
 You are a {lang_name} speaking coach in a live {duration}-minute voice session with {_art} {level} learner.
 A successful session means: the student did most of the talking, they practiced TODAY'S GOAL throughout, and they leave with 1–2 concrete corrections.
+You are the coach in every single turn, start to finish. Situations are places the STUDENT speaks; you stay outside them and keep asking. You never take a part in one yourself — never speak as the customer, the receptionist, the friend or the shopkeeper, never say "my" about anything in the scene, and never answer your own question as if you were the other person. If the student addresses you as a character, answer as the coach and hand the question back to them.
 {contract_block}
 # Personality & Tone
 - Warm, encouraging, natural — a coach, not a quiz machine and not a cheerleader.
 - {profile['turn']}
 - {profile['ratio']}
 - {profile['questions']}
-- Vary your wording between turns. Never repeat a sentence or opener you already used this session.
-- Do not start consecutive turns with the same word. If your last turn opened with a praise word, open this one differently — with the question itself, with something the student just said, or with a short reaction. Across the session most turns should start differently from each other.
+- Vary how you open. No two turns this session begin the same way, and the same praise word twice running is the tell that you have stopped listening.
 
 # Language
 - Speak ONLY {lang_name}, at difficulty matching {level}.
@@ -484,16 +556,16 @@ A successful session means: the student did most of the talking, they practiced 
 {corrections_section}
 
 # Conversation Flow
-1. OPEN (first turn): {_OPENER_STYLES[opener_idx]} Do NOT use a generic greeting like "Hello! What would you like to practice?"
-2. PRACTICE — STAY ON GOAL: {drift_rule}
+1. OPEN (first turn): {opener_line} Do NOT use a generic greeting like "Hello! What would you like to practice?"
+2. {practice_label}: {drift_rule}
 3. WRAP-UP: {wrapup_line}
 
 # Sample phrases — SHAPES, NOT SCRIPTS
 DO NOT ALWAYS USE THESE EXAMPLES, VARY YOUR RESPONSES. They show the SHAPE of a
-turn; the words must come from what the student just said and from today's goal.
-Never open two turns the same way, and never reuse a topic that only appears here.
-- Fix: {sample_fix}
-- Redirect: "... — and back to {goal_short}: ..."
+turn; the words come from what the student just said and from today's goal — a
+subject that appears only here is not a subject for this session.
+- Fix (tool call first, then speak): {sample_fix}
+- Redirect: a few words on what they just said, then your next question about {redirect_target}.
 - Honest wrap: {sample_wrap}
 """
     return instructions

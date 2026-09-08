@@ -389,6 +389,9 @@ async def _generate_flashcards_background(
     This runs AFTER the session response is sent to user.
     Waits for summary to be available if not provided.
     """
+    from flashcard_service import _session_flashcards_enabled
+    if not _session_flashcards_enabled():
+        return
     try:
         print(f"[FLASHCARD_BG] 🎯 Generating flashcards for session {session_id}")
 

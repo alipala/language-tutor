@@ -145,7 +145,11 @@ def _week_schema(n_weeks: int, sessions_per_week: int = 4) -> Dict[str, Any]:
                                 f"this week, in order. prompt_v3 picks activities[session_index] "
                                 f"as that session's goal, so a short list makes late sessions "
                                 f"repeat earlier ones. Do NOT prefix them with 'Session N:' — "
-                                f"position already determines the session."
+                                f"position already determines the session. Each one is a few "
+                                f"minutes of spoken conversation with an AI tutor: no screen, "
+                                f"nothing to read or write, no pictures or recordings, and no "
+                                f"role-play — the tutor never plays a character. Describe what "
+                                f"the student SAYS."
                             ),
                             "items": {"type": "string"},
                         },
@@ -185,6 +189,7 @@ def _build_prompt(
     level: str,
     n_weeks: int,
     sessions_per_week: int,
+    session_minutes: int,
     goals: List[str],
     sub_goals: List[str],
     assessment_data: Dict[str, Any],
@@ -248,6 +253,40 @@ def _build_prompt(
     goals_txt = ", ".join(goals) if goals else "general communication"
     sub_goals_txt = ", ".join(sub_goals) if sub_goals else "not specified"
 
+    # The session budget is not a guess — it is the same table the live tutor
+    # runs on (tutor_config.SESSION_PACING), so an activity can never ask for
+    # more ground than the tutor is given time to cover. Measured failure that
+    # led to this: a 3-minute A1 activity read "Give a short personal
+    # introduction with five different facts", while the tutor prompt for that
+    # very session said "Cover 2 subtopics" — 5 against 2 in one prompt. The
+    # tutor split the difference into six rapid-fire closed questions and the
+    # student never gave an introduction at all.
+    try:
+        from tutor_config import SESSION_PACING
+        _pace = SESSION_PACING.get(int(session_minutes or 3)) or SESSION_PACING[3]
+    except Exception:
+        _pace = {"turns_target": 10, "subtopics_to_cover": 2}
+    turns_target = _pace.get("turns_target", 10)
+    subtopics = _pace.get("subtopics_to_cover", 2)
+    # Tutor turns include the opener and the wrap-up, so what is actually left
+    # for the activity itself is smaller than the headline number.
+    student_answers = max(turns_target - 2, 2)
+
+    # What the tutor is ALLOWED to ask at this level, quoted from the runtime
+    # prompt's own level profile. An activity that needs a question the tutor
+    # may not ask is unachievable by construction, however good it looks.
+    _CEFR_ASK = {
+        "A1": ("yes/no and this-or-that questions about simple facts, present tense only. "
+               "The tutor may NOT ask 'why', opinions, stories, times, dates, or numbers "
+               "beyond simple counting"),
+        "A2": ("simple open questions, present and simple past; an occasional gentle 'why'"),
+        "B1": ("open questions and 'why'; reasons, plans and short narratives"),
+        "B2": ("detail, opinions and comparisons; hypotheticals"),
+        "C1": ("nuance, counter-arguments and abstract discussion"),
+        "C2": ("precision, register and style; native-level challenge"),
+    }
+    cefr_ask = _CEFR_ASK.get(str(level).upper(), _CEFR_ASK["B1"])
+
     return f"""You are a CEFR-certified curriculum designer. Design a complete \
 {n_weeks}-week speaking curriculum for one real student.
 
@@ -256,6 +295,16 @@ Learning (TARGET LANGUAGE — all vocabulary and phrases go in this language): {
 App interface language (all descriptive text goes in this language): {iface_name}
 CEFR level: {level}
 Plan length: {n_weeks} weeks, {sessions_per_week} speaking sessions per week
+
+=== THE SIZE OF ONE SESSION — read this before writing any activity ===
+One session is {session_minutes} minute(s) of live speech. In that time the tutor
+gets about {turns_target} turns in total: one to open, one to close, and the rest
+for the activity. So the student answers roughly {student_answers} times, and the
+tutor can cover about {subtopics} subtopic(s) — no more.
+At {level} the tutor may only ask: {cefr_ask}.
+An activity that needs more turns than this, or a question the tutor is not
+allowed to ask at {level}, CANNOT be done. It is not an ambitious activity —
+it is a broken one.
 Overall assessment score: {assessment_data.get('overall_score', 0)}/100
 
 === SKILL ASSESSMENT ===
@@ -291,9 +340,20 @@ Specific topics they chose: {sub_goals_txt}
 4. NO REPEATS. Across all {n_weeks} weeks, vocabulary must keep expanding.
    A word used in one week must not reappear as a key word in another. Aim for
    6-10 new words every week.
-5. LEVEL-APPROPRIATE. Everything must be usable at {level}. At A1/A2 use
-   concrete high-frequency words and short present-tense sentences; do not
-   introduce abstract or low-frequency vocabulary.
+5. LEVEL-APPROPRIATE — CEFR, not a label. Everything must be sayable by a real
+   {level} speaker and askable by a tutor limited to: {cefr_ask}.
+   - A1: concrete high-frequency words; one-clause present-tense sentences.
+     Activities are answering simple factual questions and naming things.
+     Never ask an A1 student to explain, compare, justify or tell a story.
+   - A2: present and simple past; two clauses joined by "and"/"but"/"because".
+     Short descriptions of routine and recent events.
+   - B1: reasons, plans, short narratives; the student can hold a turn.
+   - B2: opinions, comparisons, hypotheticals, some abstraction.
+   - C1: nuance, counter-argument, abstract topics.
+   - C2: precision, register and style.
+   Write the activity so that {level} is what makes it hard enough — not the
+   number of things packed into it. If an activity would only work at a level
+   above {level}, rewrite it, do not keep it as a stretch goal.
 6. PROGRESSION. Later weeks build on earlier ones and get more demanding.
    Each week's `focus` must be a specific, concrete title — never a bare skill
    label like "Vocabulary practice".
@@ -302,6 +362,26 @@ Specific topics they chose: {sub_goals_txt}
    they should progress across the week (introduce → practise → produce).
    Do NOT number them or write "Session 1:" / "Sessions 2-3:" in the text;
    their position in the list already determines which session they belong to.
+8. EVERY ACTIVITY IS A SPOKEN CONVERSATION. Each session is a few minutes of
+   live talk between the student and an AI tutor who asks and listens. There is
+   no screen to look at, nothing to read or write, no pictures, cards, lists or
+   recordings to play, and no partner but the tutor — who stays the tutor and
+   never acts out a character. So never write an activity that asks the student
+   to point at, look at, match, read, write, fill in, listen to a recording, or
+   role-play with someone. Write what the student SAYS: describing something,
+   answering questions about it, telling what they would say in a situation,
+   giving a short spoken report. "Say which of two options fits" works (add
+   "and why" only where rule 5 allows 'why' at {level}); "Point to the picture
+   and name it" or "Role-play with a receptionist" does not.
+9. ONE ACTIVITY = ONE THING, AND IT MUST FIT THE SESSION. Each activity covers
+   about {subtopics} subtopic(s) and is finished in roughly {student_answers}
+   student answers. Never ask for a fixed COUNT of items — no "five different
+   facts", no "three sentences", no "name six words", no "cover your job, your
+   family and your city". A counted list turns the session into a checklist:
+   the tutor announces each item in turn, the student answers in fragments, and
+   nobody has a conversation. Name ONE thing the student talks about and let the
+   tutor's questions supply the depth. "Answer questions about where you live"
+   works; "Give an introduction with five different facts" does not.
 
 === ALSO WRITE THE PLAN SUMMARY ===
 After designing the {n_weeks} weeks, describe THAT PLAN — not a generic one.
@@ -474,6 +554,7 @@ async def generate_llm_curriculum(
     sub_goals: Optional[List[str]],
     assessment_data: Dict[str, Any],
     interface_language: str = "en",
+    session_minutes: int = 3,
 ) -> Optional[Dict[str, Any]]:
     """
     Generate the whole plan with gpt-5.6-terra in ONE reasoning pass.
@@ -502,7 +583,8 @@ async def generate_llm_curriculum(
 
         prompt = _build_prompt(
             language=language, level=level, n_weeks=n_weeks,
-            sessions_per_week=sessions_per_week, goals=goals, sub_goals=sub_goals,
+            sessions_per_week=sessions_per_week, session_minutes=session_minutes,
+            goals=goals, sub_goals=sub_goals,
             assessment_data=assessment_data or {}, interface_language=interface_language,
         )
 

@@ -94,6 +94,18 @@ class RealtimeUsageData(BaseModel):
     end_time: Optional[int] = None
 
 # Helper Functions
+def _positive_int_env(name: str, default: int) -> int:
+    """Read a non-negative int from the environment; anything malformed falls back."""
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return value if value >= 0 else default
+
+
 def get_language_iso_code(language: str) -> str:
     """Convert language name to ISO 639-1 code for Whisper transcription"""
     language_map = {
@@ -2125,6 +2137,17 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
         # which is the right call for non-native beginners.
         transcription_model = os.getenv("REALTIME_TRANSCRIBE_MODEL", "gpt-realtime-whisper")
         transcription_delay = os.getenv("REALTIME_TRANSCRIBE_DELAY", "high")
+
+        # Runaway guard, not a style control. Measured mean is ~370 audio tokens per
+        # response against a model ceiling of 4096, so 1000 only ever bites a response
+        # that has already gone far past any level's turn budget. Tightening this toward
+        # the mean would start cutting normal replies mid-sentence (response.status
+        # becomes "incomplete" and the audio just stops), which is worse than the spend.
+        # Reply length belongs in the prompt; this is only the ceiling. 0 disables.
+        # The GA field is max_output_tokens — beta's max_response_output_tokens is
+        # rejected as an unknown parameter and fails session creation outright.
+        max_output_tokens = _positive_int_env("REALTIME_MAX_OUTPUT_TOKENS", 1000)
+
         session_config = {
             "type": "realtime",
             "model": model,
@@ -2155,6 +2178,9 @@ async def generate_token(request: TutorSessionRequest, current_user: Optional[Us
             },
             "truncation": build_truncation_config()
         }
+
+        if max_output_tokens:
+            session_config["max_output_tokens"] = max_output_tokens
 
         # Add tools if available
         if tools:
